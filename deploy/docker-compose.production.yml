@@ -1,7 +1,9 @@
 name: ${COMPOSE_PROJECT_NAME:-backend_daily_production}
 
 x-app-common: &app-common
-  image: ${APP_IMAGE:?APP_IMAGE is required}
+  image: ${APP_IMAGE:-backend-daily-production:local}
+  build:
+    context: .
   restart: unless-stopped
   env_file:
     - .env

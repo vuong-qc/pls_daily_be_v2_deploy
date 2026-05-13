@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   deploy-production:
-    name: Build and Deploy Production Daily Backend
+    name: Deploy Production Daily Backend
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -30,6 +30,7 @@ jobs:
       PROD_APP_BLUE_HOST_PORT: 8011
       PROD_APP_GREEN_HOST_PORT: 8013
       PROD_COMPOSE_PROJECT_NAME: backend_daily_production
+      PROD_APP_IMAGE: backend-daily-production:local
       PROD_EXPECTED_PUBLIC_IP: 139.180.128.111
       PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
       PROD_SERVER_IP: ${{ secrets.PROD_SERVER_IP }}
@@ -38,26 +39,6 @@ jobs:
     steps:
       - name: Checkout deploy repo
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.PROD_DOCKER_USERNAME }}
-          password: ${{ secrets.PROD_DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest
-            ${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Configure SSH
         env:
@@ -95,21 +76,6 @@ jobs:
           ssh-keygen -y -f ~/.ssh/prod_deploy_key >/dev/null
           ssh-keyscan -p "$port" -H "$PROD_SERVER_IP" >> ~/.ssh/known_hosts
 
-      - name: Prepare server deploy directory
-        run: |
-          set -euo pipefail
-
-          port="${PROD_SSH_PORT:-22}"
-
-          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
-            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
-            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' bash -seu" <<'EOF_REMOTE'
-          set -euo pipefail
-          owner_user="$(id -un)"
-          owner_group="$(id -gn)"
-          sudo install -d -m 755 -o "$owner_user" -g "$owner_group" "${PROD_SERVER_DEPLOY_DIR}"
-          EOF_REMOTE
-
       - name: Write production env file
         run: |
           set -euo pipefail
@@ -118,7 +84,7 @@ jobs:
           ${{ secrets.PROD_APP_ENV_FILE }}
           EOF_ENV
 
-          printf '\nAPP_IMAGE=%s\n' "${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest" >> /tmp/backend_daily.production.env
+          printf '\nAPP_IMAGE=%s\n' "$PROD_APP_IMAGE" >> /tmp/backend_daily.production.env
           printf 'APP_BLUE_HOST_PORT=%s\n' "$PROD_APP_BLUE_HOST_PORT" >> /tmp/backend_daily.production.env
           printf 'APP_GREEN_HOST_PORT=%s\n' "$PROD_APP_GREEN_HOST_PORT" >> /tmp/backend_daily.production.env
           printf 'COMPOSE_PROJECT_NAME=%s\n' "$PROD_COMPOSE_PROJECT_NAME" >> /tmp/backend_daily.production.env
@@ -134,25 +100,53 @@ jobs:
             exit 1
           fi
 
-      - name: Copy production deploy files
+      - name: Upload source
         run: |
           set -euo pipefail
 
           port="${PROD_SSH_PORT:-22}"
 
-          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
-            deploy/docker-compose.production.yml \
-            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/docker-compose.yml"
+          tar \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.idea' \
+            --exclude='__pycache__' \
+            --exclude='.pytest_cache' \
+            -czf /tmp/pls_daily_be_v2_production.tar.gz .
 
           scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
-            deploy/nginx/backend_daily.production.conf \
-            deploy/nginx/backend_daily.production.bootstrap.conf \
-            scripts/deploy_production_blue_green.sh \
-            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/"
+            /tmp/pls_daily_be_v2_production.tar.gz \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:/tmp/pls_daily_be_v2_production.tar.gz"
 
           scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
             /tmp/backend_daily.production.env \
-            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/.env"
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:/tmp/backend_daily.production.env"
+
+          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' bash -seu" <<'EOF_REMOTE'
+          set -euo pipefail
+          owner_user="$(id -un)"
+          owner_group="$(id -gn)"
+
+          sudo install -d -m 755 -o "$owner_user" -g "$owner_group" "${PROD_SERVER_DEPLOY_DIR}"
+
+          find "${PROD_SERVER_DEPLOY_DIR}" -mindepth 1 -maxdepth 1 \
+            ! -name '.active_color' \
+            -exec rm -rf {} +
+
+          mv /tmp/backend_daily.production.env "${PROD_SERVER_DEPLOY_DIR}/.env"
+          cd "${PROD_SERVER_DEPLOY_DIR}"
+          tar -xzf /tmp/pls_daily_be_v2_production.tar.gz
+          rm -f /tmp/pls_daily_be_v2_production.tar.gz
+
+          cp deploy/docker-compose.production.yml docker-compose.yml
+          cp deploy/nginx/backend_daily.production.conf backend_daily.production.conf
+          cp deploy/nginx/backend_daily.production.bootstrap.conf backend_daily.production.bootstrap.conf
+          chmod +x scripts/deploy_production_blue_green.sh
+          EOF_REMOTE
 
       - name: Deploy backend stack on production server
         run: |
@@ -162,13 +156,9 @@ jobs:
 
           ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
             "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
-            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest' bash -seu" <<'EOF_REMOTE'
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${PROD_APP_IMAGE}' bash -seu" <<'EOF_REMOTE'
           set -euo pipefail
-          cat <<'EOF_DOCKER_PASSWORD' | sudo docker login -u "${{ secrets.PROD_DOCKER_USERNAME }}" --password-stdin
-          ${{ secrets.PROD_DOCKER_PASSWORD }}
-          EOF_DOCKER_PASSWORD
-          chmod +x "${PROD_SERVER_DEPLOY_DIR}/deploy_production_blue_green.sh"
-          bash "${PROD_SERVER_DEPLOY_DIR}/deploy_production_blue_green.sh"
+          bash "${PROD_SERVER_DEPLOY_DIR}/scripts/deploy_production_blue_green.sh"
           EOF_REMOTE
 
       - name: Verify backend healthcheck

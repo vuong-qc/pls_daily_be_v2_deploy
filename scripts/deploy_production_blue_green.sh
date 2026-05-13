@@ -11,7 +11,7 @@ PROD_PUBLIC_HTTP_HEALTHCHECK_URL="${PROD_PUBLIC_HTTP_HEALTHCHECK_URL:?PROD_PUBLI
 PROD_PUBLIC_HTTP_DOCS_URL="${PROD_PUBLIC_HTTP_DOCS_URL:?PROD_PUBLIC_HTTP_DOCS_URL is required}"
 PROD_COMPOSE_PROJECT_NAME="${PROD_COMPOSE_PROJECT_NAME:?PROD_COMPOSE_PROJECT_NAME is required}"
 PROD_DOMAIN="${PROD_DOMAIN:?PROD_DOMAIN is required}"
-APP_IMAGE="${APP_IMAGE:?APP_IMAGE is required}"
+APP_IMAGE="${APP_IMAGE:-backend-daily-production:local}"
 PROD_EXPECTED_PUBLIC_IP="${PROD_EXPECTED_PUBLIC_IP:-}"
 HEALTHCHECK_PATH="${HEALTHCHECK_PATH:-/support/check-server}"
 
@@ -181,10 +181,9 @@ echo "Target service: ${target_service}"
 echo "Target port: ${target_port}"
 
 export APP_IMAGE
-compose_bg pull "$target_service"
 compose up -d mongodb
 wait_for_service_state mongodb 90
-compose_bg up -d --no-deps --force-recreate "$target_service"
+compose_bg up -d --build --no-deps --force-recreate "$target_service"
 
 if ! wait_for_local_http "http://127.0.0.1:${target_port}${HEALTHCHECK_PATH}" 90; then
   echo "Production app did not become ready on port ${target_port}" >&2
@@ -227,5 +226,3 @@ legacy_app_container="$(compose ps -q app 2>/dev/null || true)"
 if [ -n "$legacy_app_container" ]; then
   compose rm -sf app || sudo docker rm -f "${PROD_COMPOSE_PROJECT_NAME}-app-1" >/dev/null 2>&1 || true
 fi
-
-sudo docker image prune -f
