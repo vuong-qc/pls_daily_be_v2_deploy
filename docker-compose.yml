@@ -1,0 +1,43 @@
+name: ${COMPOSE_PROJECT_NAME:-backend_daily}
+
+x-app-common: &app-common
+  image: ${APP_IMAGE:-backend-daily:local}
+  build:
+    context: .
+  restart: unless-stopped
+  env_file:
+    - .env
+  depends_on:
+    - mongodb
+
+services:
+  app:
+    <<: *app-common
+    profiles: ["single"]
+    #      - redis
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-8000}:8000"
+
+  app_blue:
+    <<: *app-common
+    profiles: ["bluegreen"]
+    ports:
+      - "127.0.0.1:${APP_BLUE_HOST_PORT:-8004}:8000"
+
+  app_green:
+    <<: *app-common
+    profiles: ["bluegreen"]
+    ports:
+      - "127.0.0.1:${APP_GREEN_HOST_PORT:-8005}:8000"
+
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

@@ -1,0 +1,204 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: production-daily-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-production:
+    name: Build and Deploy Production Daily Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PROD_DOMAIN: working.api.pls.edu.vn
+      PROD_API_BASE_URL: https://working.api.pls.edu.vn
+      PROD_HEALTHCHECK_URL: https://working.api.pls.edu.vn/support/check-server
+      PROD_DOCS_URL: https://working.api.pls.edu.vn/docs
+      PROD_HTTP_HEALTHCHECK_URL: http://working.api.pls.edu.vn/support/check-server
+      PROD_HTTP_DOCS_URL: http://working.api.pls.edu.vn/docs
+      PROD_NGINX_CONF_PATH: /etc/nginx/conf.d/backend_daily.production.conf
+      PROD_SERVER_DEPLOY_DIR: /opt/backend_daily_production
+      PROD_APP_BLUE_HOST_PORT: 8011
+      PROD_APP_GREEN_HOST_PORT: 8013
+      PROD_COMPOSE_PROJECT_NAME: backend_daily_production
+      PROD_EXPECTED_PUBLIC_IP: 139.180.128.111
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SERVER_IP: ${{ secrets.PROD_SERVER_IP }}
+      PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+
+    steps:
+      - name: Checkout deploy repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.PROD_DOCKER_USERNAME }}
+          password: ${{ secrets.PROD_DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest
+            ${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure SSH
+        env:
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROD_SERVER_IP:-}" ] || [ -z "${PROD_SERVER_USER:-}" ]; then
+            echo "Missing PROD_SERVER_IP or PROD_SERVER_USER." >&2
+            exit 1
+          fi
+
+          if [ -z "${PROD_SSH_PRIVATE_KEY:-}" ]; then
+            echo "Missing PROD_SSH_PRIVATE_KEY." >&2
+            exit 1
+          fi
+
+          port="${PROD_SSH_PORT:-22}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          key = os.environ.get("PROD_SSH_PRIVATE_KEY", "").strip()
+          if "\\n" in key and "\n" not in key:
+              key = key.replace("\\n", "\n")
+          key = key.replace("\r\n", "\n").replace("\r", "\n")
+          Path("/home/runner/.ssh/prod_deploy_key").write_text(f"{key}\n")
+          PY
+
+          chmod 600 ~/.ssh/prod_deploy_key
+          ssh-keygen -y -f ~/.ssh/prod_deploy_key >/dev/null
+          ssh-keyscan -p "$port" -H "$PROD_SERVER_IP" >> ~/.ssh/known_hosts
+
+      - name: Prepare server deploy directory
+        run: |
+          set -euo pipefail
+
+          port="${PROD_SSH_PORT:-22}"
+
+          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' bash -seu" <<'EOF_REMOTE'
+          set -euo pipefail
+          owner_user="$(id -un)"
+          owner_group="$(id -gn)"
+          sudo install -d -m 755 -o "$owner_user" -g "$owner_group" "${PROD_SERVER_DEPLOY_DIR}"
+          EOF_REMOTE
+
+      - name: Write production env file
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/backend_daily.production.env <<'EOF_ENV'
+          ${{ secrets.PROD_APP_ENV_FILE }}
+          EOF_ENV
+
+          printf '\nAPP_IMAGE=%s\n' "${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest" >> /tmp/backend_daily.production.env
+          printf 'APP_BLUE_HOST_PORT=%s\n' "$PROD_APP_BLUE_HOST_PORT" >> /tmp/backend_daily.production.env
+          printf 'APP_GREEN_HOST_PORT=%s\n' "$PROD_APP_GREEN_HOST_PORT" >> /tmp/backend_daily.production.env
+          printf 'COMPOSE_PROJECT_NAME=%s\n' "$PROD_COMPOSE_PROJECT_NAME" >> /tmp/backend_daily.production.env
+
+          chmod 600 /tmp/backend_daily.production.env
+
+      - name: Validate production env file
+        run: |
+          set -euo pipefail
+
+          if grep -Eq '^MONGO_URI=mongodb\+srv://' /tmp/backend_daily.production.env; then
+            echo "Invalid PROD_APP_ENV_FILE: MONGO_URI uses mongodb+srv://, but production expects the self-hosted mongodb service." >&2
+            exit 1
+          fi
+
+      - name: Copy production deploy files
+        run: |
+          set -euo pipefail
+
+          port="${PROD_SSH_PORT:-22}"
+
+          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
+            deploy/docker-compose.production.yml \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/docker-compose.yml"
+
+          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
+            deploy/nginx/backend_daily.production.conf \
+            deploy/nginx/backend_daily.production.bootstrap.conf \
+            scripts/deploy_production_blue_green.sh \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/"
+
+          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
+            /tmp/backend_daily.production.env \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:${PROD_SERVER_DEPLOY_DIR}/.env"
+
+      - name: Deploy backend stack on production server
+        run: |
+          set -euo pipefail
+
+          port="${PROD_SSH_PORT:-22}"
+
+          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${{ secrets.PROD_DOCKER_USERNAME }}/backend-daily:prod-latest' bash -seu" <<'EOF_REMOTE'
+          set -euo pipefail
+          cat <<'EOF_DOCKER_PASSWORD' | sudo docker login -u "${{ secrets.PROD_DOCKER_USERNAME }}" --password-stdin
+          ${{ secrets.PROD_DOCKER_PASSWORD }}
+          EOF_DOCKER_PASSWORD
+          chmod +x "${PROD_SERVER_DEPLOY_DIR}/deploy_production_blue_green.sh"
+          bash "${PROD_SERVER_DEPLOY_DIR}/deploy_production_blue_green.sh"
+          EOF_REMOTE
+
+      - name: Verify backend healthcheck
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --show-error --silent "$PROD_HEALTHCHECK_URL"; then
+              exit 0
+            fi
+
+            echo "Healthcheck attempt $attempt/30 failed; waiting for app startup..."
+            sleep 2
+          done
+
+          echo "Backend healthcheck did not become ready in time." >&2
+          exit 1
+
+      - name: Verify backend docs
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --show-error --silent --head "$PROD_DOCS_URL"; then
+              exit 0
+            fi
+
+            echo "Docs check attempt $attempt/30 failed; waiting for app startup..."
+            sleep 2
+          done
+
+          echo "Backend docs did not become ready in time." >&2
+          exit 1

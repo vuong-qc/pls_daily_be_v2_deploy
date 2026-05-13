@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+motor
+pydantic
+pydantic-settings
+httpx
+python-dotenv
+python-multipart
+PyJWT
+bcrypt
+beanie
+cryptography
+lxml==5.1.0
