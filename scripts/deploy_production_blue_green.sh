@@ -226,3 +226,9 @@ legacy_app_container="$(compose ps -q app 2>/dev/null || true)"
 if [ -n "$legacy_app_container" ]; then
   compose rm -sf app || sudo docker rm -f "${PROD_COMPOSE_PROJECT_NAME}-app-1" >/dev/null 2>&1 || true
 fi
+
+for service in app_blue app_green; do
+  if [ "$service" != "$target_service" ]; then
+    compose_bg stop "$service" >/dev/null 2>&1 || true
+  fi
+done
