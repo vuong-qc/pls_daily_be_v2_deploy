@@ -14,6 +14,7 @@ PROD_DOMAIN="${PROD_DOMAIN:?PROD_DOMAIN is required}"
 APP_IMAGE="${APP_IMAGE:-backend-daily-production:local}"
 PROD_EXPECTED_PUBLIC_IP="${PROD_EXPECTED_PUBLIC_IP:-}"
 HEALTHCHECK_PATH="${HEALTHCHECK_PATH:-/support/check-server}"
+MIN_FREE_DISK_MB="${MIN_FREE_DISK_MB:-2048}"
 
 https_nginx_source="${PROD_SERVER_DEPLOY_DIR}/backend_daily.production.conf"
 bootstrap_nginx_source="${PROD_SERVER_DEPLOY_DIR}/backend_daily.production.bootstrap.conf"
@@ -30,6 +31,37 @@ if [ -n "$PROD_EXPECTED_PUBLIC_IP" ]; then
     exit 1
   fi
 fi
+
+check_free_disk() {
+  path="$1"
+  min_mb="$2"
+  label="$3"
+  available_mb="$(df -Pm "$path" | awk 'NR == 2 {print $4}')"
+
+  if [ -z "$available_mb" ]; then
+    echo "Could not determine free disk for ${label}: ${path}" >&2
+    exit 1
+  fi
+
+  if [ "$available_mb" -lt "$min_mb" ]; then
+    echo "${label} has ${available_mb}MB free; requires at least ${min_mb}MB before build." >&2
+    exit 1
+  fi
+
+  echo "${label} free disk: ${available_mb}MB"
+}
+
+check_build_disk() {
+  docker_root="$(sudo docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+  if [ -z "$docker_root" ]; then
+    docker_root="/var/lib/docker"
+  fi
+
+  check_free_disk "$PROD_SERVER_DEPLOY_DIR" "$MIN_FREE_DISK_MB" "Deploy directory"
+  if [ -d "$docker_root" ]; then
+    check_free_disk "$docker_root" "$MIN_FREE_DISK_MB" "Docker root"
+  fi
+}
 
 cd "${PROD_SERVER_DEPLOY_DIR}"
 
@@ -181,6 +213,7 @@ echo "Target service: ${target_service}"
 echo "Target port: ${target_port}"
 
 export APP_IMAGE
+check_build_disk
 compose up -d mongodb
 wait_for_service_state mongodb 90
 compose_bg up -d --build --no-deps --force-recreate "$target_service"
