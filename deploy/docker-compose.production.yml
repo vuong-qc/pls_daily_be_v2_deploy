@@ -1,0 +1,52 @@
+name: ${COMPOSE_PROJECT_NAME:-backend_daily_production}
+
+x-app-common: &app-common
+  image: ${APP_IMAGE:-backend-daily-production:local}
+  build:
+    context: .
+  restart: unless-stopped
+  env_file:
+    - .env
+  depends_on:
+    mongodb:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *app-common
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-8011}:8000"
+
+  app_blue:
+    <<: *app-common
+    profiles: ["bluegreen"]
+    ports:
+      - "127.0.0.1:${APP_BLUE_HOST_PORT:-8011}:8000"
+
+  app_green:
+    <<: *app-common
+    profiles: ["bluegreen"]
+    ports:
+      - "127.0.0.1:${APP_GREEN_HOST_PORT:-8013}:8000"
+
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "echo 'db.adminCommand({ ping: 1 }).ok' | mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin | grep 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

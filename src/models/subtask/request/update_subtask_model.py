@@ -1,0 +1,16 @@
+from pydantic import BaseModel
+from src.enums.task_status_enum import TaskStatusEnum
+from typing import Optional
+
+class UpdateSubtaskModel(BaseModel):
+    title: Optional[str]
+    type: Optional[str] = None
+    des: Optional[str]
+    status: Optional[TaskStatusEnum] = TaskStatusEnum.NEW
+    duration: Optional[int] = None
+    time_rush: Optional[int] = None
+    review_status: Optional[str] = None
+    updated_at: Optional[int] = None
+    parent: Optional[str] = None
+
+

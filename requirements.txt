@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+motor
+pydantic
+pydantic-settings
+httpx
+python-dotenv
+python-multipart
+PyJWT
+bcrypt
+beanie
+Pillow
+moviepy
+pdf2image
+cryptography
+beautifulsoup4==4.12.3
+lxml==5.1.0

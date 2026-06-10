@@ -1,0 +1,34 @@
+from abc import ABC, abstractmethod
+from src.models.work_item.request.filter_work_item import FilterWorkItemModel
+from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
+
+class WorkItemRepository(ABC):
+    @abstractmethod
+    async def create_work_item(self, data: dict)->WorkItemDocument:
+        pass
+
+    @abstractmethod
+    async def update_work_item(self,project_id:str, data: dict)->WorkItemDocument|None:
+        pass
+    @abstractmethod
+    async def delete_work_item(self,project_id:str)->None:
+        pass
+    @abstractmethod
+    async def get_list_work_items(self, filters: FilterWorkItemModel)->tuple[list[WorkItemDocument], int]:
+        pass
+
+    @abstractmethod
+    async def get_work_item_by_id(self, project_id:str)->WorkItemDocument|None:
+        pass
+
+    @abstractmethod
+    async def count_work_item(self, filters: FilterWorkItemModel)->int:
+        pass
+
+    @abstractmethod
+    async def get_children(self, parent_id:str)->list[WorkItemDocument]:
+        pass
+
+    @abstractmethod
+    async def statistic_task(self, sprint_id:str, type:str, target_status:str)-> SprintTaskStatsResult | None:
+        pass
