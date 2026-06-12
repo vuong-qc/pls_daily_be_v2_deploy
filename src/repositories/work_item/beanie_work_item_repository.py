@@ -156,7 +156,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
                     UserDocument.model_construct(id=PydanticObjectId(uid))
                     for uid in data['assigned_id']
                 ]
-        print("check work item", project)
+        # print("check work item", project)
 
     async def statistic_task(self, sprint_id:str, item_type:str, target_status: str) -> SprintTaskStatsResult | None:
         pipeline = [

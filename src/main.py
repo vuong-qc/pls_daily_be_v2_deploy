@@ -15,11 +15,14 @@ from src.routes.task_route import router as task_route
 from src.routes.document_route import router as document_route
 from src.routes.testcase_route import router as testcase_route
 from src.routes.session_route import router as session_route
+from src.routes.work_item_route import router as work_item_route
 from src.configs import settings
+import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import lifespan
+from src.routes.chatbot_token_route import router as chatbot_token_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -43,8 +46,13 @@ app.include_router(sprint_route, prefix="/sprint")
 app.include_router(task_route, prefix="/task")
 app.include_router(document_route, prefix="/document")
 app.include_router(testcase_route, prefix="/testcase")
+app.include_router(work_item_route, prefix="/work-item")
+app.include_router(chatbot_token_route, prefix="/chatbot")
 
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
 
 
 

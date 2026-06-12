@@ -28,7 +28,10 @@ from src.models.document_result.document_result_document import DocumentResult
 from pymongo import AsyncMongoClient
 from src.models.work_item.work_item_document import WorkItemDocument
 from src.models.session.session_document import SessionDocument
+from src.models.chatbot_token.chatbot_token_document import ChatbotTokenDocument
+
 WorkItemDocument.model_rebuild()
+SessionDocument.model_rebuild()
 
 
 
@@ -41,7 +44,8 @@ async def init_db():
         await init_beanie(
             database=cast(Any, db),
             document_models=[UserDocument, GroupDocument, WorkItemDocument
-                , FileDocument, DocumentItem, DocumentResult, SessionDocument
+                , FileDocument, DocumentItem, DocumentResult, SessionDocument,
+                             ChatbotTokenDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")

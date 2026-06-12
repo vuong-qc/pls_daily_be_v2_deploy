@@ -20,6 +20,7 @@ class UpdateUserTaskModel(BaseModel):
     files: Optional[list[str]] = None
     handler_id: Optional[list[str]] = None
     session_id: Optional[str] = None
+    is_in_sprint: Optional[bool]
 
 class UpdateTaskModel(UpdateUserTaskModel):
     deadline: Optional[int] = None

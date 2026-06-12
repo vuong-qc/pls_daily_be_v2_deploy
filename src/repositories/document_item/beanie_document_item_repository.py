@@ -36,6 +36,14 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             filter_dump.update(
                 In(DocumentItem.parent_type, filters.parent_type),
             )
+        if filters.group_id:
+            filter_dump.update(
+                In(DocumentItem.group_id, filters.group_id),
+            )
+        if filters.object_id:
+            filter_dump.update(
+                In(DocumentItem.object_id, filters.object_id),
+            )
         query = DocumentItem.find(filter_dump)
         count = await query.count()
 

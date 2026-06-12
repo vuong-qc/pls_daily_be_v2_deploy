@@ -1,0 +1,28 @@
+from pydantic import BaseModel
+from typing import Optional
+
+class CreateWorkItemModel(BaseModel):
+    type: str
+    title: str
+    des: Optional[str] = None
+    status: str = None
+    created_at: int
+    updated_at: int
+    parent: Optional[str] = None
+    owner_id: Optional[str] = None
+    assigned_id: Optional[list[str]] = None
+    start: Optional[int] = None
+    end: Optional[int] = None
+    duration: Optional[int] = None
+    handler_id: Optional[list[str]] = None
+    priority: Optional[str] = None
+    deadline: Optional[int] = None
+    point: Optional[int] = None
+    files: Optional[list[str]] = None
+    note: Optional[str] = None
+    comment: Optional[str] = None
+    link: Optional[str] = None
+    session_id: Optional[str] = None
+    review_status: Optional[str] = None
+    time_rush: Optional[int] = None
+    is_in_sprint: Optional[bool] = None

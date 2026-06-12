@@ -1,8 +1,9 @@
 from typing import Optional
 
-from beanie import DocumentWithSoftDelete
+from beanie import DocumentWithSoftDelete, Link
 from datetime import datetime
 
+from src.models.user.user_document import UserDocument
 class SessionDocument(DocumentWithSoftDelete):
     user_id: str
     status: str
@@ -10,3 +11,4 @@ class SessionDocument(DocumentWithSoftDelete):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     notes: str
+    user: Optional[Link[UserDocument]] = None

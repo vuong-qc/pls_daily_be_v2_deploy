@@ -1,11 +1,14 @@
+from beanie import PydanticObjectId
+
 from src.models.session.request.filter_session_model import FilterSessionModel
 from src.models.session.session_document import SessionDocument
+from src.models.user.user_document import UserDocument
 from src.repositories.session.session_repository import SessionRepository
 from beanie.operators import Set, In, LTE, GTE
 
 class BeanieSessionRepository(SessionRepository):
     async def get_session_by_id(self, session_id: str) ->SessionDocument|None:
-        session = await SessionDocument.get(session_id)
+        session = await SessionDocument.get(session_id, fetch_links=True)
         return session
 
     async def get_list_session(self, filters: FilterSessionModel) -> tuple[list[SessionDocument], int]:
@@ -27,7 +30,7 @@ class BeanieSessionRepository(SessionRepository):
                 LTE(SessionDocument.start_time, filter_dump.pop("end_time"))
             )
         
-        query = SessionDocument.find(filter_dump)
+        query = SessionDocument.find(filter_dump, fetch_links=True)
 
         count = await query.count()
 
@@ -36,6 +39,8 @@ class BeanieSessionRepository(SessionRepository):
 
     async def create_session(self, session: dict) -> SessionDocument:
         new_session = SessionDocument(**session)
+        self._add_link_data(session, new_session)
+
         await new_session.insert()
         return new_session
 
@@ -49,3 +54,8 @@ class BeanieSessionRepository(SessionRepository):
         session = await SessionDocument.get(session_id)
         if session:
             await session.delete()
+
+    def _add_link_data(self, data: dict, session: SessionDocument):
+        user_id: str | bool = data.get('user_id', False)
+        if user_id:
+            session.user = UserDocument.model_construct(id=PydanticObjectId(user_id))

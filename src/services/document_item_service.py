@@ -69,7 +69,7 @@ class DocumentItemService:
         if document.created_by and document.created_by != user_id:
             raise DocumentException(DocumentMessage.NOT_CREATOR, DocumentStatusCode.NOT_CREATOR)
         await self.repository.delete_document(document_id)
-        return
+        return ResponseModel()
 
     async def get_document(self, document_id:str):
         document = await self.repository.get_document_item(document_id)

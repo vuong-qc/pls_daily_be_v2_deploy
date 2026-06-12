@@ -43,6 +43,7 @@ class ProjectService:
         raise ProjectException(ProjectMessage.NOT_FOUND, ProjectStatusCode.NOT_FOUND)
     async def delete_project(self, project_id:str):
         project = await self.project_repository.delete_work_item(project_id)
+        return ResponseModel()
 
     async def get_project_by_id(self, project_id:str):
         project = await self.project_repository.get_work_item_by_id(project_id)

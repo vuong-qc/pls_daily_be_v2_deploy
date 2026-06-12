@@ -12,14 +12,27 @@ class GroupService:
         data = await self.group_repository.create_group(request.model_dump())
         return ResponseModel(data=data)
 
-    async def update_group(self, group_id:str, request: UpdateGroupModel):
-        group = await self.group_repository.update_group(group_id, request.model_dump(exclude_unset=True))
-        if group:
-            return ResponseModel(data=group)
+    async def update_group(self, group_id:str, request: UpdateGroupModel, user_id: str):
+        # check is owner of group
+        group = await self.group_repository.get_group_by_id(group_id)
+        if not group:
+            raise GroupException(message=GroupMessage.NOT_FOUND,code=GroupStatusCode.NOT_FOUND)
+        if group.created_by != user_id:
+            raise GroupException(message=GroupMessage.NOT_CREATOR,code=GroupStatusCode.NOT_CREATOR)
+
+        updated_group = await self.group_repository.update_group(group_id, request.model_dump(exclude_unset=True))
+        if updated_group:
+            return ResponseModel(data=updated_group)
         raise GroupException(message=GroupMessage.NOT_FOUND,code=GroupStatusCode.NOT_FOUND)
 
-    async def delete_group(self, group_id:str):
-        return await self.group_repository.delete_group(group_id)
+    async def delete_group(self, group_id:str, user_id: str):
+        group = await self.group_repository.get_group_by_id(group_id)
+        if not group:
+            raise GroupException(message=GroupMessage.NOT_FOUND,code=GroupStatusCode.NOT_FOUND)
+        if group.created_by != user_id:
+            raise GroupException(message=GroupMessage.NOT_CREATOR,code=GroupStatusCode.NOT_CREATOR)
+        await self.group_repository.delete_group(group_id)
+        return ResponseModel(data=group)
     async def get_group_by_id(self, group_id:str):
         group = await self.group_repository.get_group_by_id(group_id)
         if group:

@@ -8,4 +8,4 @@ class FilterDocumentItem(BaseModel):
     type: Optional[list[DocumentTypeEnum]] = None
     limit: int = Field(10, le=100)
     offset: int = 0
-    parent_type: Optional[str] = None
+    parent_type: Optional[list[str]] = None

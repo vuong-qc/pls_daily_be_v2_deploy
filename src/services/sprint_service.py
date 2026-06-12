@@ -10,6 +10,8 @@ from src.exception.sprint_exception import SprintException, SprintMessage, Sprin
 from src.models.sprint.response.sprint_response_model import SprintResponse
 from src.enums.work_item_type import WorkItemType
 from src.enums.task_status_enum import TaskStatusEnum
+import logging
+logger = logging.getLogger(__name__)
 
 class SprintService:
     def __init__(self, sprint_repository: WorkItemRepository, user_service: UserService, project_service: ProjectService):
@@ -53,6 +55,7 @@ class SprintService:
             await self.sprint_repository.delete_work_item(sprint_id)
         else:
             raise SprintException(SprintMessage.DELETE_NOT_MATCH_TYPE, SprintStatusCode.DELETE_NOT_MATCH_TYPE)
+        return ResponseModel()
 
     async def get_sprint_by_id(self, sprint_id:str):
         sprint = await self.sprint_repository.get_work_item_by_id(sprint_id)
@@ -82,5 +85,6 @@ class SprintService:
 
     async def _check_handler_of_project(self, project_id:str, handler_id:str):
         project = await self.sprint_repository.get_work_item_by_id(project_id)
+        logger.info('check_handler_of_project: %s', project.handler_id)
         if handler_id not in project.handler_id:
             raise SprintException(SprintMessage.NOT_HANDLER_PR0JECT, SprintStatusCode.NOT_HANDLER_PR0JECT)

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str
 
+    # WEBHOOK GG CHAT
+    GG_CHAT_API: str
+
     #FILE
     #REDIRECT
 

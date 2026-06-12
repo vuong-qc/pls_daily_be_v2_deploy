@@ -95,6 +95,17 @@ async def get_list_task(
 ):
     return await task_service.get_list_tasks(query)
 
+@router.get("/get-task/{task_id}",
+            status_code=status.HTTP_200_OK,
+            summary="Get task details",
+            )
+async def get_task(
+        task_id: str,
+        task_service: TaskService = Depends(get_task_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    return await task_service.get_task_by_id(task_id)
+
 @router.delete("/delete-task/{task_id}",
                status_code=status.HTTP_204_NO_CONTENT,
                dependencies=[Depends(RoleCheckerUtil([UserRole.HANDLER.value]))],

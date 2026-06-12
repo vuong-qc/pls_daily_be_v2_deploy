@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 from beanie import PydanticObjectId
 from datetime import datetime
-
+from src.models.user.response.user_response_model import UserResponse
 class SessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: PydanticObjectId
@@ -13,3 +13,4 @@ class SessionResponse(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     notes: str
+    user: Optional[UserResponse] = None

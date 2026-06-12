@@ -34,22 +34,24 @@ async def create_group(req: CreateGroupModel,
 @router.put("/update-group/{group_id}",
             status_code=status.HTTP_202_ACCEPTED,
             response_model=ResponseModel,
-            dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))]
+            # dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))]
             )
 async def update_group(group_id:str,
                        req: UpdateGroupModel,
                        user_data: dict = Depends(get_current_user_by_token),
                        service: GroupService = Depends(get_group_service)
                        ):
-    return await service.update_group(group_id, req)
+    user_id = user_data.get('sub')
+    return await service.update_group(group_id, req, user_id)
 @router.delete("/delete-group/{group_id}",
-                dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))],
+                # dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))],
                status_code=status.HTTP_204_NO_CONTENT,)
 async def delete_group(group_id:str,
                        user_data: dict = Depends(get_current_user_by_token),
                        service: GroupService = Depends(get_group_service)
                        ):
-    return await service.delete_group(group_id)
+    user_id = user_data.get('sub')
+    return await service.delete_group(group_id, user_id)
 
 @router.get("/list-groups",
             status_code=status.HTTP_200_OK,

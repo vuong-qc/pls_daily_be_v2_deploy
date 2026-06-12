@@ -56,7 +56,7 @@ class BeanieUserRepository(UserRepository):
                 )
             )
         if filters.get("status") is not None:
-            print("status:", filters["status"])
+            # print("status:", filters["status"])
             status = filters.pop("status")
             filters.update(In(UserDocument.status, [status]))
         else:
@@ -65,7 +65,7 @@ class BeanieUserRepository(UserRepository):
         count = await query.count()
         list_user_doc = await query.skip(offset).limit(limit).sort("-created_at").to_list()
         list_users = []
-        print("list_users:", list_user_doc)
+        # print("list_users:", list_user_doc)
         for user in list_user_doc:
             # user_response = user.model_dump(mode="json")
             # print("user_response:", user)

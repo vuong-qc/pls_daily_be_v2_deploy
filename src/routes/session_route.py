@@ -9,7 +9,7 @@ from src.services.session_service import SessionService
 from typing import Annotated
 
 from src.utils.proxy_util import get_current_user_by_token
-
+from src.repositories.chatbot_token.beanie_chatbot_token_repository import BeanieChatbotTokenRepository
 router = APIRouter(
     tags=['session'],
 )
@@ -17,7 +17,8 @@ router = APIRouter(
 def get_session_service():
     session_repo = BeanieSessionRepository()
     work_item_repo = BeanieWorkItemRepository()
-    return SessionService(session_repo, work_item_repo)
+    chatbot_token_repo = BeanieChatbotTokenRepository()
+    return SessionService(session_repo, work_item_repo, chatbot_token_repo)
 
 @router.post('/checkin',
              status_code=status.HTTP_201_CREATED,
@@ -42,6 +43,14 @@ async def update_session(session_id:str,
                          ):
     user_id = user_data.get('sub')
     return service.update_session(session_id, data, user_id)
+@router.get('/get-session/{session_id}',
+            status_code=status.HTTP_200_OK,
+            response_model=ResponseModel,)
+async def get_session(session_id:str,
+                      service: SessionService = Depends(get_session_service),
+                      user_data: dict = Depends(get_current_user_by_token),
+                      ):
+    return await service.get_session(session_id)
 
 @router.get('/get-list-sessions',
              status_code=status.HTTP_200_OK,

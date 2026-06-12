@@ -12,16 +12,38 @@ from src.enums.task_status_enum import TaskStatusEnum
 from src.models.task.request.update_task_model import UpdateTaskModel
 import asyncio
 from datetime import datetime
+from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
+from src.models.chatbot_token.request.filter_chatbot_token_model import FilterChatbotTokenModel
+from src.utils.google_chat_webhook_util import GgChatWebhookUtil
+from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
+import asyncio
 from src.enums.session_status_enum import SessionStatusEnum
+import logging
+logger = logging.getLogger(__name__)
 
 class SessionService:
-    def __init__(self, session_repository: SessionRepository, work_item_repository: WorkItemRepository):
+    def __init__(self, session_repository: SessionRepository, work_item_repository: WorkItemRepository, chatbot_token_repository: ChatbotTokenRepository):
         self.session_repository = session_repository
         self.work_item_repository = work_item_repository
+        self.chatbot_token_repository = chatbot_token_repository
 
     async def create_session(self, session_data: CreateSessionModel) -> ResponseModel:
         new_session = await self.session_repository.create_session(session_data.model_dump())
-        response = SessionResponse.model_validate(new_session)
+        logger.info('checkin success with data: %s',new_session)
+        created_session = await self.session_repository.get_session_by_id(str(new_session.id))
+        response = SessionResponse.model_validate(created_session)
+        # inject call webhook
+        # get token
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        if total > 0:
+            list_task = []
+            await asyncio.gather(*[
+                self.get_work_item_by_id(work_id, list_task)
+                for work_id in session_data.list_task
+            ])
+            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,)
+            GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return ResponseModel(data=response)
 
     async def update_session(self, session_id:str, session_data: UpdateSessionModel, user_id:str) -> ResponseModel:
@@ -34,6 +56,7 @@ class SessionService:
         return ResponseModel(data=response)
     async def delete_session(self, session_id:str):
         await self.session_repository.delete_session(session_id)
+        return ResponseModel()
 
     async def get_session(self, session_id:str):
         session = await self.session_repository.get_session_by_id(session_id)
@@ -51,6 +74,12 @@ class SessionService:
             list_sessions_response.append(response)
         return ResponsePaginatedModel(data=list_sessions_response, total=total, offset= filters.offset)
 
+    async def get_session_by_id(self, session_id:str):
+        session = await self.session_repository.get_session_by_id(session_id)
+        if not session:
+            raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
+        response = SessionResponse.model_validate(session)
+        return ResponseModel(data=response)
 
     async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel):
         session = await self.session_repository.get_session_by_id(session_id)
@@ -94,3 +123,8 @@ class SessionService:
         else:
             update_data = UpdateTaskModel(status=item.status)
             await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
+
+    async def get_work_item_by_id(self, work_item_id:str, list_data: list):
+        work_item = await self.work_item_repository.get_work_item_by_id(work_item_id)
+        if work_item:
+            list_data.append(work_item.title)
