@@ -90,7 +90,8 @@ jobs:
           printf 'APP_BLUE_HOST_PORT=%s\n' "$PROD_APP_BLUE_HOST_PORT" >> /tmp/backend_daily.production.env
           printf 'APP_GREEN_HOST_PORT=%s\n' "$PROD_APP_GREEN_HOST_PORT" >> /tmp/backend_daily.production.env
           printf 'COMPOSE_PROJECT_NAME=%s\n' "$PROD_COMPOSE_PROJECT_NAME" >> /tmp/backend_daily.production.env
-          printf 'ENABLE_DOCS=false\n' >> /tmp/backend_daily.production.env
+          printf 'ENABLE_DOCS=true\n' >> /tmp/backend_daily.production.env
+          printf 'GG_CHAT_API=https://chat.googleapis.com/v1/spaces\n' >> /tmp/backend_daily.production.env
 
           chmod 600 /tmp/backend_daily.production.env
 
@@ -180,30 +181,27 @@ jobs:
           echo "Backend healthcheck did not become ready in time." >&2
           exit 1
 
-      - name: Verify backend docs are blocked
+      - name: Verify backend docs are available
         run: |
           set -euo pipefail
 
-          expect_blocked() {
+          expect_available() {
             label="$1"
             url="$2"
 
             for attempt in $(seq 1 30); do
-              status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url" || true)"
-              case "$status_code" in
-                403|404)
-                  echo "${label} blocked with HTTP ${status_code}"
-                  return 0
-                  ;;
-              esac
+              if curl --fail --silent --show-error --output /dev/null "$url"; then
+                echo "${label} is available"
+                return 0
+              fi
 
-              echo "${label} returned HTTP ${status_code:-unknown}; waiting for block rule..."
+              echo "${label} is not available yet; waiting..."
               sleep 2
             done
 
-            echo "${label} was not blocked at ${url}." >&2
+            echo "${label} was not available at ${url}." >&2
             return 1
           }
 
-          expect_blocked "Backend docs" "$PROD_DOCS_URL"
-          expect_blocked "Backend OpenAPI" "$PROD_OPENAPI_URL"
+          expect_available "Backend docs" "$PROD_DOCS_URL"
+          expect_available "Backend OpenAPI" "$PROD_OPENAPI_URL"

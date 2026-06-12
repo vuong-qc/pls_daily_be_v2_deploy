@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
 
     # WEBHOOK GG CHAT
-    GG_CHAT_API: str
+    GG_CHAT_API: str = "https://chat.googleapis.com/v1/spaces"
 
     #FILE
     #REDIRECT
