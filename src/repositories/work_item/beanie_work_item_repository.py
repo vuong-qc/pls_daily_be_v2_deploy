@@ -10,7 +10,7 @@ from src.models.user.user_document import UserDocument
 class BeanieWorkItemRepository(WorkItemRepository):
     async def create_work_item(self, data: dict):
         project = WorkItemDocument(**data)
-        self._add_link_document(data, project)
+        await self._add_link_document(data, project)
         await project.insert()
         created_project = await WorkItemDocument.find_one(WorkItemDocument.id == PydanticObjectId(project.id),fetch_links=True)
         return created_project
@@ -20,7 +20,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if project:
             if project.type == WorkItemType.BACKLOG:
                 return await WorkItemDocument.find_one(WorkItemDocument.id == PydanticObjectId(project.id),fetch_links=True)
-            self._add_link_document(data, project)
+            await self._add_link_document(data, project)
             await project.save()
             await project.update(Set(data))
             # print("data", data)
@@ -125,7 +125,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         children = await query.to_list()
         return children
 
-    def _add_link_document(self, data: dict, project: WorkItemDocument):
+    async def _add_link_document(self, data: dict, project: WorkItemDocument):
         handler_id: list[str] | bool = data.get("handler_id", False)
         # print("handler_id",handler_id)
         # getattr(data,"owner_id", False)
@@ -133,7 +133,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         # print("assign_id",assigned_id)
         parent_id: str | bool = data.get('parent', False)
         if parent_id:
-            check_work_item = WorkItemDocument.get(parent_id)
+            check_work_item = await WorkItemDocument.get(parent_id)
             if check_work_item:
                 project.parent_model = WorkItemDocument.model_construct(id=PydanticObjectId(parent_id))
         if handler_id:

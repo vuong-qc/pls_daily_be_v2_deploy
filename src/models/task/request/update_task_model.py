@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from src.enums.task_status_enum import TaskStatusEnum
 from typing import Optional
-from src.utils.datetime_util import DateTimeUtil
 from src.enums.task_priority_enum import TaskPriorityEnum
 
 class UpdateUserTaskModel(BaseModel):
