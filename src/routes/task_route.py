@@ -5,8 +5,8 @@ from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.models.subtask.request.create_subtask_model import CreateSubtaskModel
 from src.models.subtask.request.update_subtask_model import UpdateSubtaskModel
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
+from src.models.task.request.filter_task_model import FilterTaskModel
 from src.models.task.request.update_task_model import UpdateTaskModel, UpdateUserTaskModel, UpdateStoryModel
-from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from fastapi import APIRouter, Query, Depends, status
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.services.task_service import TaskService
@@ -17,6 +17,7 @@ from src.services.project_service import ProjectService
 from src.services.user_service import UserService
 from src.routes.project_route import get_project_service
 from src.routes.user_route import get_user_service
+from src.repositories.order.beanie_order_repository import BeanieOrderRepository
 router = APIRouter(
     tags=["task"]
 )
@@ -26,7 +27,8 @@ def get_task_service(
     user_service: UserService = Depends(get_user_service),
 ):
     task_repo = BeanieWorkItemRepository()
-    return TaskService(task_repo, user_service, project_service)
+    order_repo = BeanieOrderRepository()
+    return TaskService(task_repo, user_service, project_service, order_repo)
 @router.post('/create-story',
             status_code=status.HTTP_201_CREATED,
              summary='Story create in backlog/project',
@@ -89,11 +91,12 @@ async def update_task(
             summary="Get task list with filter",
 )
 async def get_list_task(
-        query: Annotated[FilterWorkItemModel, Query()],
+        query: Annotated[FilterTaskModel, Query()],
         task_service: TaskService = Depends(get_task_service),
         user_data: dict = Depends(get_current_user_by_token),
 ):
-    return await task_service.get_list_tasks(query)
+    user_id = user_data.get("sub")
+    return await task_service.get_list_tasks(query, user_id)
 
 @router.get("/get-task/{task_id}",
             status_code=status.HTTP_200_OK,

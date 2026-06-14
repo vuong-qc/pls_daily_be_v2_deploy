@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, Any
+from pydantic import BaseModel, ConfigDict, field_validator
+from typing import Optional, Any, List
 from src.models.user.response.user_response_model import UserResponse
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, Link
+
 
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -27,5 +28,39 @@ class TaskResponse(BaseModel):
     created_at: int
     duration: Optional[int] = None
     parent_model: Optional['TaskResponse'] = None
+    order: Optional[str] = None
+
+    @field_validator(
+        'parent_model', mode='before'
+    )
+    @classmethod
+    def handle_link(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        return v
+
+    @field_validator(
+        'handler', mode='before'
+    )
+    @classmethod
+    def handle_handler(cls, v):
+
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'assignee', mode='before'
+    )
+    @classmethod
+    def handle_assignee(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
 
 TaskResponse.model_rebuild()

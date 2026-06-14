@@ -19,7 +19,10 @@ class UpdateUserTaskModel(BaseModel):
     files: Optional[list[str]] = None
     handler_id: Optional[list[str]] = None
     session_id: Optional[str] = None
-    is_in_sprint: Optional[bool]
+    is_in_sprint: Optional[bool] = None
+    order_type: Optional[str] = None
+    next_order: Optional[str] = None
+    prev_order: Optional[str] = None
 
 class UpdateTaskModel(UpdateUserTaskModel):
     deadline: Optional[int] = None

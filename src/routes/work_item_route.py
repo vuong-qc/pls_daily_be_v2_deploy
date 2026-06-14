@@ -65,6 +65,17 @@ async def delete_work_item_model(
 async def get_list_work_items(
         filters: Annotated[FilterWorkItemModel, Query()],
         service: WorkItemService = Depends(get_work_item_service),
-        user_data: dict = Depends(get_current_user_by_token)
+        # user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.list_work_item_model(filters)
+
+@router.post('/create-work-item-guest',
+             summary='Create a new work item for guest user',
+             description='Create a new work item by guest user',
+             status_code=status.HTTP_201_CREATED,
+             response_model=ResponseModel,
+             )
+async def create_work_item_model(work_item_model: CreateWorkItemModel,
+                           service: WorkItemService = Depends(get_work_item_service),
+                           ):
+    return await service.create_work_item_model(work_item_model)

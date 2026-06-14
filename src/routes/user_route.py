@@ -56,7 +56,7 @@ async def get_user(
 async def get_list_user(
         filters: Annotated[FilterUserModel, Query()],
         user_service: UserService = Depends(get_user_service),
-        user_data: dict = Depends(get_current_user_by_token)
+        # user_data: dict = Depends(get_current_user_by_token)
 ):
     return await user_service.get_list_user(filters)
 

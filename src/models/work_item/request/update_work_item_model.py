@@ -3,20 +3,20 @@ from typing import Optional
 from pydantic import BaseModel
 
 class UpdateWorkItemModel(BaseModel):
-    updated_at: Optional[int]
-    parent: Optional[str]
-    assigned_id: Optional[list[str]]
-    start: Optional[int]
-    end: Optional[int]
-    duration: Optional[int]
-    handler_id: Optional[list[str]]
-    priority: Optional[str]
-    deadline: Optional[int]
-    point: Optional[int]
-    files: Optional[list[str]]
-    note: Optional[str]
-    comment: Optional[str]
-    link: Optional[str]
-    review_status: Optional[str]
-    time_rush: Optional[int]
-    is_in_sprint: Optional[bool]
+    updated_at: Optional[int] = None
+    parent: Optional[str] = None
+    assigned_id: Optional[list[str]] = None
+    start: Optional[int] = None
+    end: Optional[int] = None
+    duration: Optional[int] = None
+    handler_id: Optional[list[str]] = None
+    priority: Optional[str] = None
+    deadline: Optional[int] = None
+    point: Optional[int] = None
+    files: Optional[list[str]] = None
+    note: Optional[str] = None
+    comment: Optional[str] = None
+    link: Optional[str] = None
+    review_status: Optional[str] = None
+    time_rush: Optional[int] = None
+    is_in_sprint: Optional[bool] = None

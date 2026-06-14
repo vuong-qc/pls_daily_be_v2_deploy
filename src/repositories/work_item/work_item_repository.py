@@ -32,3 +32,7 @@ class WorkItemRepository(ABC):
     @abstractmethod
     async def statistic_task(self, sprint_id:str, type:str, target_status:str)-> SprintTaskStatsResult | None:
         pass
+
+    @abstractmethod
+    async def filter_work_item_for_order(self, filters: FilterWorkItemModel)->list[WorkItemDocument]:
+        pass

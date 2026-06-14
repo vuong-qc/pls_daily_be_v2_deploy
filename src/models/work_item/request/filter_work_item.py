@@ -15,3 +15,5 @@ class FilterWorkItemModel(BaseModel):
     type: Optional[list[WorkItemType]] = None
     is_in_sprint: Optional[bool] = None
     priority: Optional[list[TaskPriorityEnum]] = None
+    type_order: Optional[str] = None
+    list_ids: Optional[list[str]] = None
