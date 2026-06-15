@@ -1,5 +1,7 @@
+from src.configs import settings
+from zoneinfo import ZoneInfo
 from src.repositories.session.session_repository import SessionRepository
-from src.models.session.request.filter_session_model import FilterSessionModel
+from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
 from src.models.session.request.create_session_model import CreateSessionModel
 from src.models.session.response.session_response_model import SessionResponse
@@ -10,8 +12,8 @@ from src.exception.task_exception import TaskException, TaskStatusCode, TaskMess
 from src.enums.work_item_type import WorkItemType
 from src.enums.task_status_enum import TaskStatusEnum
 from src.models.task.request.update_task_model import UpdateTaskModel
-import asyncio
-from datetime import datetime
+from datetime import datetime, time
+from src.repositories.user.user_repository import UserRepository
 from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
 from src.models.chatbot_token.request.filter_chatbot_token_model import FilterChatbotTokenModel
 from src.utils.google_chat_webhook_util import GgChatWebhookUtil
@@ -22,10 +24,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SessionService:
-    def __init__(self, session_repository: SessionRepository, work_item_repository: WorkItemRepository, chatbot_token_repository: ChatbotTokenRepository):
+    def __init__(self, session_repository: SessionRepository, work_item_repository: WorkItemRepository,
+                 chatbot_token_repository: ChatbotTokenRepository, user_repository: UserRepository,):
         self.session_repository = session_repository
         self.work_item_repository = work_item_repository
         self.chatbot_token_repository = chatbot_token_repository
+        self.user_repository = user_repository
 
     async def create_session(self, session_data: CreateSessionModel) -> ResponseModel:
         new_session = await self.session_repository.create_session(session_data.model_dump())
@@ -128,3 +132,27 @@ class SessionService:
         work_item = await self.work_item_repository.get_work_item_by_id(work_item_id)
         if work_item:
             list_data.append(work_item.title)
+
+    async def remind_checkin(self):
+        # get list session -> list user_id distinct checkin today
+        # get list user not in list user_id
+        # call api to remind
+        tz_vn = ZoneInfo(settings.TZ)
+        now_vn = datetime.now(tz_vn)
+        start_of_today_vn = datetime.combine(now_vn.date(), time.min, tzinfo=tz_vn)
+        filters = FilterCheckInSessionModel(start_time=start_of_today_vn)
+        list_user_id = await self.session_repository.get_all_sessions_checkin(filters)
+        logger.info(f"list_user_id: %s{list_user_id}")
+        list_user_not_checkin = await self.user_repository.get_all_user_not_match_id(list_user_id)
+        logger.info(f"list_user_not_checkin: %s{list_user_not_checkin}")
+        for user in list_user_not_checkin:
+            filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+            chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+            if total > 0:
+                content = FormatContentGgChatAPI.format_content_remind_checkin(user.name)
+                GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+        return
+
+    async def remind_checkout(self):
+        # get list session with end_time = None in today
+        return

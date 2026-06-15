@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libreoffice-writer-nogui \
     libreoffice-calc-nogui \
+    tzdata \
     poppler-utils \
     fonts-dejavu-core \
     libreoffice-impress-nogui \

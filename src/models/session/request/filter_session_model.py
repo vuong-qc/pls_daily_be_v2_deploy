@@ -4,6 +4,11 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from src.enums.session_status_enum import SessionStatusEnum
 
+
+class FilterCheckInSessionModel(BaseModel):
+    start_time: datetime
+    status: Optional[SessionStatusEnum] = None
+
 class FilterSessionModel(BaseModel):
     status: Optional[list[SessionStatusEnum]] = None
     start_time: Optional[datetime] = None

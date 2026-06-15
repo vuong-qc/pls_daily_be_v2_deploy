@@ -15,3 +15,11 @@ class FormatContentGgChatAPI:
             TextFormatEnum.TASK_HEADER,
             task_lines,
         ])
+    @staticmethod
+    def format_content_remind_checkin(user_name):
+        content = TextFormatEnum.REMIND_CHECK_IN.format(user=user_name)
+        return content
+    @staticmethod
+    def format_content_remind_checkout(user_name):
+        content = TextFormatEnum.REMIND_CHECK_OUT.format(user=user_name)
+        return content

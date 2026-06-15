@@ -3,7 +3,10 @@ from src.repositories.work_item.beanie_work_item_repository import BeanieWorkIte
 from src.models.session.request.create_session_model import CreateSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel
 from src.models.session.request.filter_session_model import FilterSessionModel
-from fastapi import APIRouter, Query, Depends, status
+from fastapi import APIRouter, Query, Depends, status, Header, HTTPException
+from src.configs import settings
+from src.repositories.user.beanie_user_repository import BeanieUserRepository
+from src.constant.session_url_constant import SessionUrlEnum
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.services.session_service import SessionService
 from typing import Annotated
@@ -18,7 +21,8 @@ def get_session_service():
     session_repo = BeanieSessionRepository()
     work_item_repo = BeanieWorkItemRepository()
     chatbot_token_repo = BeanieChatbotTokenRepository()
-    return SessionService(session_repo, work_item_repo, chatbot_token_repo)
+    user_repo = BeanieUserRepository()
+    return SessionService(session_repo, work_item_repo, chatbot_token_repo, user_repo)
 
 @router.post('/checkin',
              status_code=status.HTTP_201_CREATED,
@@ -83,3 +87,29 @@ async def checkout(session_id:str,
                    ):
     user_id = user_data.get('sub')
     return await service.checkout(user_id, session_id, data)
+
+@router.post(f'/{SessionUrlEnum.REMIND_CHECKOUT.value}',
+            include_in_schema=False
+            )
+async def not_checkout(
+        x_internal_key: str = Header(),
+        service: SessionService = Depends(get_session_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,)
+    # call service
+    print('call success')
+    return await service.remind_checkout()
+
+@router.post(f'/{SessionUrlEnum.REMIND_CHECKIN.value}',
+            include_in_schema=False
+            )
+async def not_checkin(
+        x_internal_key: str = Header(),
+        service: SessionService = Depends(get_session_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,)
+    # call service
+    print('call success')
+    return await service.remind_checkin()

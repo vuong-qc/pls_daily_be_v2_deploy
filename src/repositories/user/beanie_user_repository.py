@@ -1,9 +1,11 @@
+from src.models.user.response.project_user_model import ProjectUsername
 from src.repositories.user.user_repository import UserRepository
 from src.models.user.user_document import UserDocument
 from src.utils.security_password_util import SecurityPasswordUtil
 from src.enums.user_status_enum import UserStatusEnum
-from beanie.operators import Set, RegEx, In, Or
+from beanie.operators import Set, RegEx, In, Or, NotIn
 from bson import ObjectId
+from beanie import PydanticObjectId
 from src.models.user.response.user_response_model import UserResponse, UserDetails
 class BeanieUserRepository(UserRepository):
     async def create_user(self, user_data: dict):
@@ -81,3 +83,7 @@ class BeanieUserRepository(UserRepository):
             )
             return is_valid
         return False
+    async def get_all_user_not_match_id(self, list_id: list[str])->list[ProjectUsername]:
+        list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
+        list_user = await UserDocument.find(NotIn(UserDocument.id, list_object_id)).project(ProjectUsername).to_list()
+        return list_user

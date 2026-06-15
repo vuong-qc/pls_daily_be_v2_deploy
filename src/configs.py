@@ -45,6 +45,24 @@ class Settings(BaseSettings):
 
     #FILE
     #REDIRECT
+    #Redis
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+
+    #internal api key
+    INTERNAL_API_KEY:str
+
+    #
+    INTERNAL_API_URL: str
+
+    HOUR_CHECKIN_REMIND:int = 9
+    MINUTE_CHECKIN_REMIND:int = 30
+    WEEKDAY_REMIND: set[int] = {1, 2, 3, 4, 5}
+
+    HOUR_CHECKOUT_REMIND:int = 23
+    MINUTE_CHECKOUT_REMIND:int = 0
+
+    TZ:str='Asia/Ho_Chi_Minh'
 
     model_config = SettingsConfigDict(
         env_file="../.env",

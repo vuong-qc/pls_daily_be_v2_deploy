@@ -38,5 +38,30 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [ "redis-server", "--appendonly", "yes" ]
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - redis_data:/data
+
+  worker:
+    <<: *app-common
+    container_name: checkin_worker
+    command: arq src.worker.WorkerSettings
+    depends_on:
+      - redis
+      - app # Đảm bảo container api được khởi động trước worker
+    env_file:
+      - .env
+
 volumes:
   mongo_data:
+  redis_data:
+
