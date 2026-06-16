@@ -1,5 +1,3 @@
-from src.configs import settings
-from zoneinfo import ZoneInfo
 from src.repositories.session.session_repository import SessionRepository
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
@@ -12,7 +10,8 @@ from src.exception.task_exception import TaskException, TaskStatusCode, TaskMess
 from src.enums.work_item_type import WorkItemType
 from src.enums.task_status_enum import TaskStatusEnum
 from src.models.task.request.update_task_model import UpdateTaskModel
-from datetime import datetime, time
+from datetime import datetime
+from src.utils.datetime_util import DateTimeUtil
 from src.repositories.user.user_repository import UserRepository
 from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
 from src.models.chatbot_token.request.filter_chatbot_token_model import FilterChatbotTokenModel
@@ -46,7 +45,7 @@ class SessionService:
                 self.get_work_item_by_id(work_id, list_task)
                 for work_id in session_data.list_task
             ])
-            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,)
+            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return ResponseModel(data=response)
 
@@ -56,6 +55,7 @@ class SessionService:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         if user_id != updated_session.user_id:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
+        logger.info('session update success with data: %s',updated_session)
         response = SessionResponse.model_validate(updated_session)
         return ResponseModel(data=response)
     async def delete_session(self, session_id:str):
@@ -137,17 +137,18 @@ class SessionService:
         # get list session -> list user_id distinct checkin today
         # get list user not in list user_id
         # call api to remind
-        tz_vn = ZoneInfo(settings.TZ)
-        now_vn = datetime.now(tz_vn)
-        start_of_today_vn = datetime.combine(now_vn.date(), time.min, tzinfo=tz_vn)
+        start_of_today_vn = DateTimeUtil.get_start_time_today()
+        logger.info(f"start_of_today_vn: %s{start_of_today_vn}")
         filters = FilterCheckInSessionModel(start_time=start_of_today_vn)
         list_user_id = await self.session_repository.get_all_sessions_checkin(filters)
         logger.info(f"list_user_id: %s{list_user_id}")
+
         list_user_not_checkin = await self.user_repository.get_all_user_not_match_id(list_user_id)
+
         logger.info(f"list_user_not_checkin: %s{list_user_not_checkin}")
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         for user in list_user_not_checkin:
-            filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
-            chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
             if total > 0:
                 content = FormatContentGgChatAPI.format_content_remind_checkin(user.name)
                 GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
@@ -155,4 +156,20 @@ class SessionService:
 
     async def remind_checkout(self):
         # get list session with end_time = None in today
+        start_of_today_vn = DateTimeUtil.get_start_time_today()
+        logger.info(f"start_of_today_vn: %s{start_of_today_vn}")
+
+        filters = FilterCheckInSessionModel(start_time=start_of_today_vn, status=[SessionStatusEnum.NEW, SessionStatusEnum.IN_PROGRESS])
+
+        list_user_id = await self.session_repository.get_all_sessions_checkin(filters)
+        logger.info(f"list_user_id: %s{list_user_id}")
+
+
+        list_user_name = await self.user_repository.get_all_user_match_id(list_user_id)
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        for user in list_user_name:
+            if total > 0:
+                content = FormatContentGgChatAPI.format_content_remind_checkout(user.name)
+                GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return

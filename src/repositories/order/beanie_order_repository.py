@@ -23,7 +23,7 @@ class BeanieOrderRepository(OrderRepository):
 
         query = OrderDocument.find(filters)
         count = await query.count()
-        list_orders = await query.skip(offset).limit(limit).sort(+OrderDocument.order).to_list()
+        list_orders = await query.skip(offset).limit(limit).sort(f'+{OrderDocument.order}').to_list()
         return list_orders, count
 
     async def update_order(self, order_id: str, data: dict, prev_order: str | None, next_order: str | None) -> OrderDocument|None:

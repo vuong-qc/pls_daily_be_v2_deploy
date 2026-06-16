@@ -46,7 +46,7 @@ class BeanieSessionRepository(SessionRepository):
         return new_session
 
     async def update_session(self, session_id:str, session_data: dict) -> SessionDocument | None:
-        session = await SessionDocument.get(session_id)
+        session = await SessionDocument.find_one(SessionDocument.id==PydanticObjectId(session_id), fetch_links=True)
         if session:
             await session.update(Set(session_data))
             return session
@@ -66,5 +66,9 @@ class BeanieSessionRepository(SessionRepository):
         filter_dump.update(
             GTE(SessionDocument.start_time,filter_dump.pop("start_time"))
         )
+        if filters.status:
+            filter_dump.update(
+                In(SessionDocument.status, filter_dump.pop("status")),
+            )
         query = SessionDocument.distinct(SessionDocument.user_id, filter_dump)
         return await query

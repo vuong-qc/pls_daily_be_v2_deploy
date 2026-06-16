@@ -132,7 +132,8 @@ async def create_user_task(
         task_service: TaskService = Depends(get_task_service),
         user_data: dict = Depends(get_current_user_by_token),
 ):
-    return await task_service.create_user_task(req)
+    user_id = user_data.get("sub")
+    return await task_service.create_user_task(req, user_id)
 
 
 @router.put('/update-user-task/{task_id}',
@@ -142,9 +143,11 @@ async def create_user_task(
 async def update_user_task(
         task_id: str,
         data: UpdateUserTaskModel,
+        user_data: dict = Depends(get_current_user_by_token),
         task_service: TaskService = Depends(get_task_service),
 ):
-    return await task_service.update_user_task(task_id, data)
+    user_id = user_data.get('sub')
+    return await task_service.update_user_task(task_id, data, user_id)
 
 @router.post('/create-subtask',
             status_code=status.HTTP_201_CREATED,

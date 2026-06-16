@@ -132,13 +132,13 @@ class BeanieWorkItemRepository(WorkItemRepository):
         # print("handler_id",handler_id)
         # getattr(data,"owner_id", False)
         assigned_id: list[str] | bool =  data.get("assigned_id", False)
-        # print("assign_id",assigned_id)
+        print("assign_id",assigned_id)
         parent_id: str | bool = data.get('parent', False)
         if parent_id:
             check_work_item = await WorkItemDocument.get(parent_id)
             if check_work_item:
                 project.parent_model = WorkItemDocument.model_construct(id=PydanticObjectId(parent_id))
-        if handler_id:
+        if type(handler_id) is not bool:
             if handler_id == []:
                 project.handler = []
             else:
@@ -150,7 +150,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if data.get("owner_id"):
             project.owner = UserDocument.model_construct(id=PydanticObjectId(data['owner_id']))
 
-        if assigned_id:
+        if type(assigned_id) is not bool:
             if assigned_id == []:
                 project.assignee = []
             else:

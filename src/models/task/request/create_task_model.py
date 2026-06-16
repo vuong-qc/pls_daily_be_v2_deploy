@@ -20,6 +20,9 @@ class CreateUserTaskModel(BaseModel):
     review_status: Optional[str] = None
     is_in_sprint: bool = True
     duration: Optional[int] = None
+    order_type: Optional[str] = None
+    next_order: Optional[str] = None
+    prev_order: Optional[str] = None
 
     @field_validator("type", mode="before")
     @classmethod

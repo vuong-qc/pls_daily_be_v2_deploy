@@ -7,7 +7,7 @@ from src.enums.session_status_enum import SessionStatusEnum
 
 class FilterCheckInSessionModel(BaseModel):
     start_time: datetime
-    status: Optional[SessionStatusEnum] = None
+    status: Optional[list[SessionStatusEnum]] = None
 
 class FilterSessionModel(BaseModel):
     status: Optional[list[SessionStatusEnum]] = None

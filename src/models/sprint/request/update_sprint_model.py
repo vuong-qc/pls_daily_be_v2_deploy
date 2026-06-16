@@ -10,3 +10,7 @@ class UpdateSprintModel(BaseModel):
     des: Optional[str] = None
     status: Optional[SprintStatusEnum] = None
     assigned_id: Optional[list[str]] = None
+
+    order_type: Optional[str] = None
+    next_order: Optional[str] = None
+    prev_order: Optional[str] = None

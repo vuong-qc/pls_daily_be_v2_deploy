@@ -46,7 +46,7 @@ async def update_session(session_id:str,
                          user_data: dict = Depends(get_current_user_by_token),
                          ):
     user_id = user_data.get('sub')
-    return service.update_session(session_id, data, user_id)
+    return await service.update_session(session_id, data, user_id)
 @router.get('/get-session/{session_id}',
             status_code=status.HTTP_200_OK,
             response_model=ResponseModel,)

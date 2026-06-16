@@ -49,7 +49,27 @@ class TaskService:
                     await self._check_handler_of_project(parent.parent, handler_id)
 
         task = await self.task_repository.create_work_item(task_data.model_dump())
-        return ResponseModel(data=TaskResponse.model_validate(task))
+        response = TaskResponse.model_validate(task)
+        if task_data.order_type:
+            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id, type=task_data.order_type,
+                                            object_id=str(task.id))
+            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
+
+            if not order_model:
+                raise
+
+            parent_id = task_data.parent if task_data.parent else task.parent
+            update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
+            updated_order = await self.order_repository.update_order(str(order_model.id),
+                                                                     update_data_order.model_dump(exclude_unset=True),
+                                                                     task_data.prev_order, task_data.next_order)
+            response.order = updated_order.order if updated_order else updated_order
+        else:
+            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id,
+                                            object_id=str(task.id))
+            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
+            response.order = order_model.order if order_model else order_model
+        return ResponseModel(data=response)
 
     async def update_task(self, task_id:str, task_data: UpdateTaskModel, handler_id:str = None):
         if task_data.assigned_id:
@@ -75,7 +95,7 @@ class TaskService:
         # check task has subtask, if update type != task => raise error
         if task_data.type and task_data.type != WorkItemType.TASK:
             # count children
-            filters = FilterWorkItemModel(parent=task_id, offset=0, limit=1,type=[WorkItemType.SUBTASK])
+            filters = FilterWorkItemModel(parent=task_id, offset=0, limit=1,type=[WorkItemType.SUBTASK, WorkItemType.TASK])
             count = await self.task_repository.count_work_item(filters)
             if count > 0:
                 raise TaskException(TaskMessage.NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN, TaskStatusCode.NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN)
@@ -131,16 +151,16 @@ class TaskService:
 
     async def get_list_tasks(self, filters: FilterTaskModel, user_id: str):
         filter_order = FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=filters.parent)
+        list_response = []
 
         # case task
         if filters.type_order:
-            list_response, total = await self._auto_gen_order(filter_order, filters)
-            return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
-
-        list_response = []
-        list_tasks, total = await self.task_repository.get_list_work_items(filters)
-        for task in list_tasks:
-            list_response.append(TaskResponse.model_validate(task))
+            # list_response, total = await self._auto_gen_order(filter_order, filters)
+            list_response, total = await LexorankUtil.auto_gen_order(filter_order, filters, TaskResponse, self.task_repository, self.order_repository)
+        else:
+            list_tasks, total = await self.task_repository.get_list_work_items(filters)
+            for task in list_tasks:
+                list_response.append(TaskResponse.model_validate(task))
         if filters.type and (WorkItemType.STORY in filters.type or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
                 self._get_task_story(
@@ -173,24 +193,67 @@ class TaskService:
             return ResponseModel(data=TaskResponse.model_validate(update_task))
         raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
 
-    async def create_user_task(self, data: CreateUserTaskModel):
-        sprint = await self.task_repository.get_work_item_by_id(data.parent)
+    async def create_user_task(self, task_data: CreateUserTaskModel, user_id:str):
+        sprint = await self.task_repository.get_work_item_by_id(task_data.parent)
         if not sprint:
             raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
         else:
             if sprint.type != WorkItemType.BACKLOG and sprint.type != WorkItemType.STORY:
                 raise TaskException(TaskMessage.USER_TASK_PARENT_NOT_MATCH, TaskStatusCode.USER_TASK_PARENT_NOT_MATCH_TYPE)
-        task = await self.task_repository.create_work_item(data.model_dump())
-        return ResponseModel(data=TaskResponse.model_validate(task))
+        task = await self.task_repository.create_work_item(task_data.model_dump())
+        response = TaskResponse.model_validate(task)
+        if task_data.order_type:
+            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id, type=task_data.order_type,
+                                            object_id=str(task.id))
+            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
 
-    async def update_user_task(self, task_id:str, data: UpdateUserTaskModel):
+            if not order_model:
+                raise
+
+            parent_id = task_data.parent if task_data.parent else task.parent
+            update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
+            updated_order = await self.order_repository.update_order(str(order_model.id),
+                                                                     update_data_order.model_dump(exclude_unset=True),
+                                                                     task_data.prev_order, task_data.next_order)
+            response.order = updated_order.order if updated_order else updated_order
+        else:
+            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id,
+                                            object_id=str(task.id))
+            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
+            response.order = order_model.order if order_model else order_model
+        return ResponseModel(data=response)
+
+    async def update_user_task(self, task_id:str, task_data: UpdateUserTaskModel, user_id:str):
         task = await self.task_repository.get_work_item_by_id(task_id)
 
         if not task:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
-        update_task = await self.task_repository.update_work_item(task_id, data.model_dump(exclude_unset=True))
+        update_task = await self.task_repository.update_work_item(task_id, task_data.model_dump(exclude_unset=True))
         if update_task:
-            return ResponseModel(data=TaskResponse.model_validate(update_task))
+            response = TaskResponse.model_validate(update_task)
+
+            if task_data.order_type:
+                filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id, type=task_data.order_type,
+                                                object_id=task_id)
+                order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
+
+                if not order_model:
+                    raise
+
+                parent_id = task_data.parent if task_data.parent else task.parent
+                update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
+                updated_order = await self.order_repository.update_order(str(order_model.id),
+                                                                         update_data_order.model_dump(
+                                                                             exclude_unset=True),
+                                                                         task_data.prev_order, task_data.next_order)
+                response.order = updated_order.order if updated_order else updated_order
+            else:
+                filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id,
+                                                object_id=task_id)
+                order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
+                response.order = order_model.order if order_model else order_model
+
+            return ResponseModel(data=response)
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
     async def create_story(self, task_data: CreateStoryModel, handler_id: str):
         if task_data.assigned_id:
@@ -250,73 +313,6 @@ class TaskService:
             raise ProjectException(ProjectMessage.NOT_HAVE_HANDLER, ProjectStatusCode.NOT_HAVE_HANDLER)
         if user_id not in project.handler_id and user_id not in project.assigned_id:
             raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
-
-    async def _auto_gen_order(self, filters: FilterOrderModel, filter_item: FilterWorkItemModel)->tuple[list[TaskResponse], int]:
-        # check has any order
-        logger.info('check gen order')
-        filters.offset = filter_item.offset
-        filters.limit = filter_item.limit
-        total = await self.order_repository.count_orders(filters.model_dump(exclude_unset=True))
-        count_task = await self.task_repository.count_work_item(filter_item)
-        list_response = []
-        logger.info('total order: %s', total)
-        logger.info('total task: %s', count_task)
-        if total != count_task:
-            logger.info('total task not equal total order')
-            list_task = await self.task_repository.filter_work_item_for_order(
-                filter_item)
-            list_order = await self.order_repository.get_all_orders(filters.model_dump(exclude_unset=True))
-            # use map to check miss order in case new task
-            order_map = {o.object_id: o.order for o in list_order}
-            list_new_order = []
-            task_map = {}
-            # get miss tasks and map
-            missing_tasks = []
-            for task in list_task:
-                if str(task.id) not in order_map:
-                    missing_tasks.append(task)
-                task_map[str(task.id)]=task
-                logger.info('debug task: %s', task)
-
-            missing_tasks = [task for task in list_task if str(task.id) not in order_map]
-            current_position = list_order[0].order if total > 0 else None
-
-            for miss_task in missing_tasks:
-                lexorank_position = LexorankUtil.get_lexorank_between(current_position, None)
-                new_order = CreateOrderModel(object_id=str(miss_task.id), parent_id= miss_task.parent, owner_id= filters.owner_id, type= filter_item.type_order, order= lexorank_position)
-                current_position = lexorank_position
-                # add new order to list order
-                list_order = [new_order] + list_order
-                list_new_order.append(new_order.model_dump())
-
-            await self.order_repository.insert_many_orders(list_new_order)
-            for order in list_order:
-                task_doc = task_map[order.object_id]
-                validate_task = TaskResponse.model_validate(task_doc)
-                validate_task.order = order.order
-                list_response.append(validate_task)
-            logger.info('list response with order: %s', list_response)
-            list_response[:] = list_response[filter_item.offset:filter_item.offset+ filter_item.limit]
-        else:
-            # list order ->task
-            # use map to sort order task
-            list_order, total = await self.order_repository.get_list_orders(filters.model_dump(exclude_unset=True))
-
-            list_task_id = [order.object_id for order in list_order]
-            filter_item.list_ids = list_task_id
-            list_task, total_task = await self.task_repository.get_list_work_items(filter_item)
-            task_map = {str(task.id): task for task in list_task}
-
-            for order in list_order:
-                task_doc = task_map[order.object_id]
-                validate_task = TaskResponse.model_validate(task_doc)
-                validate_task.order = order.order
-                list_response.append(validate_task)
-            logger.info('list response with order: %s', list_response)
-        # check offset, limit
-        return list_response, count_task
-
-
 
     async def check_parent_type(self, parent_type):
         pass

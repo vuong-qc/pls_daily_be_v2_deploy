@@ -6,6 +6,7 @@ from src.enums.user_status_enum import UserStatusEnum
 from beanie.operators import Set, RegEx, In, Or, NotIn
 from bson import ObjectId
 from beanie import PydanticObjectId
+from src.utils.datetime_util import DateTimeUtil
 from src.models.user.response.user_response_model import UserResponse, UserDetails
 class BeanieUserRepository(UserRepository):
     async def create_user(self, user_data: dict):
@@ -37,6 +38,7 @@ class BeanieUserRepository(UserRepository):
         user_doc = await UserDocument.get(user_id)
         if user_doc:
             if user_data.get("password"):
+                user_data['updated_at'] = DateTimeUtil.current_milli_time()
                 user_data["password"] = SecurityPasswordUtil.hash_password(user_data.pop("password"))
             await user_doc.update(Set(user_data))
             user_response = user_doc.model_dump(mode="json")
@@ -86,4 +88,8 @@ class BeanieUserRepository(UserRepository):
     async def get_all_user_not_match_id(self, list_id: list[str])->list[ProjectUsername]:
         list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
         list_user = await UserDocument.find(NotIn(UserDocument.id, list_object_id)).project(ProjectUsername).to_list()
+        return list_user
+    async def get_all_user_match_id(self, list_id: list[str]) -> list[ProjectUsername]:
+        list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
+        list_user = await UserDocument.find(In(UserDocument.id, list_object_id)).project(ProjectUsername).to_list()
         return list_user

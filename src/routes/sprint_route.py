@@ -4,6 +4,7 @@ from src.models.sprint.request.create_sprint_model import CreateSprintModel
 from src.models.sprint.request.update_sprint_model import UpdateSprintModel
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.services.project_service import ProjectService
+from src.repositories.order.beanie_order_repository import BeanieOrderRepository
 from src.services.user_service import UserService
 from src.routes.project_route import get_project_service
 from src.routes.user_route import get_user_service
@@ -23,7 +24,8 @@ def get_sprint_service(
         project_service: ProjectService = Depends(get_project_service),
 ):
     sprint_repo = BeanieWorkItemRepository()
-    return SprintService(sprint_repo, user_service, project_service)
+    order_repo = BeanieOrderRepository()
+    return SprintService(sprint_repo, user_service, project_service, order_repo)
 
 @router.post('/create-sprint',
              status_code=status.HTTP_201_CREATED,
@@ -72,4 +74,5 @@ async def get_list_sprints(
         sprint_service: SprintService = Depends(get_sprint_service),
         user_data: dict = Depends(get_current_user_by_token),
 ):
-    return await sprint_service.get_list_sprints(query)
+    user_id = user_data.get('sub')
+    return await sprint_service.get_list_sprints(query, user_id)

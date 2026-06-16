@@ -21,3 +21,4 @@ class SprintResponse(BaseModel):
     parent: Optional[str] = None
     total_tasks: Optional[int] = None
     done_tasks: Optional[int] = None
+    order: Optional[str] = None

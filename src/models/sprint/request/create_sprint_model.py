@@ -17,6 +17,10 @@ class CreateSprintModel(BaseModel):
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
 
+    order_type: Optional[str] = None
+    next_order: Optional[str] = None
+    prev_order: Optional[str] = None
+
     @field_validator("status",mode="before")
     @classmethod
     def status_validator(cls, v):
