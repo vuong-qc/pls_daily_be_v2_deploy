@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, Any
 from src.models.user.response.user_response_model import UserResponse
 from beanie import PydanticObjectId
-
+from src.models.group.response.group_reponse_model import GroupResponse
 class WorkItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: PydanticObjectId
@@ -36,5 +36,15 @@ class WorkItemResponse(BaseModel):
     link: Optional[str] = None
     owner: Optional[UserResponse] = None
     session_id: Optional[str] = None
+
+    project: Optional[str] = None
+    group: Optional[str] = None
+    sprint: Optional[str] = None
+    task: Optional[str] = None
+
+    project_model: Optional['WorkItemResponse'] = None
+    group_model: Optional['GroupResponse'] = None
+    sprint_model: Optional['WorkItemResponse'] = None
+    task_model: Optional['WorkItemResponse'] = None
 
 WorkItemResponse.model_rebuild()

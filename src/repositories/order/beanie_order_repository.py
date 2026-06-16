@@ -4,12 +4,11 @@ from src.utils.lexorank_util import LexorankUtil
 from beanie.operators import Set
 import logging
 logger = logging.getLogger(__name__)
+from pymongo import UpdateOne
 
 class BeanieOrderRepository(OrderRepository):
-    async def create_order(self, order: dict, prev_order_id:str | None, next_order_id:str | None) -> OrderDocument:
+    async def create_order(self, order: dict, prev_order:str | None, next_order:str | None) -> OrderDocument:
         order = OrderDocument(**order)
-        prev_order = await OrderDocument.get(prev_order_id) if prev_order_id else None
-        next_order = await OrderDocument.get(next_order_id) if next_order_id else None
         position = LexorankUtil.get_lexorank_between(prev_order, next_order)
         order.order = position
         await order.insert()
@@ -42,8 +41,7 @@ class BeanieOrderRepository(OrderRepository):
         limit = filters.pop('limit', 10)
         offset = filters.pop('offset', 0)
         query = OrderDocument.find(filters)
-        count = await query.count()
-        orders = await query.sort(+OrderDocument.order).to_list()
+        orders = await query.sort(f'+{OrderDocument.order}').to_list()
         return orders
 
     async def count_orders(self, filters: dict) -> int:
@@ -56,6 +54,24 @@ class BeanieOrderRepository(OrderRepository):
     async def insert_many_orders(self, list_orders: list[dict]):
         list_doc_order = [OrderDocument(**order) for order in list_orders]
         await OrderDocument.insert_many(list_doc_order)
+        if not list_doc_order:
+            return None
+        operations = []
+        for order in list_orders:
+            # Condition to find document
+            filter_query = {
+                f'{OrderDocument.owner_id}': {order['owner_id']},
+                f'{OrderDocument.object_id}': {order['object_id']},
+            }
+
+            update_query = Set(order)
+
+            operations.append(UpdateOne(filter_query, update_query, upsert=True))
+
+        collection = OrderDocument.get_pymongo_collection()
+
+        result = await collection.bulk_write(operations)
+        return result
 
     async def find_one_order(self, filters: dict) -> OrderDocument | None:
         logger.info(f"Getting 1 order for filters: %s", filters)

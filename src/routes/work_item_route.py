@@ -1,4 +1,5 @@
 from src.services.work_item_service import WorkItemService
+from src.repositories.group.beanie_group_repository import BeanieGroupRepository
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.models.work_item.request.create_work_item_model import CreateWorkItemModel
 from src.models.work_item.request.update_work_item_model import UpdateWorkItemModel
@@ -14,7 +15,8 @@ router = APIRouter(
 
 def get_work_item_service():
     beanie_work_item_repository = BeanieWorkItemRepository()
-    return WorkItemService(beanie_work_item_repository)
+    group_repository = BeanieGroupRepository()
+    return WorkItemService(beanie_work_item_repository, group_repository)
 
 @router.post('/create-work-item',
              summary='Create a new work item',

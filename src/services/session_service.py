@@ -1,3 +1,6 @@
+from src.models.task.response.task_response_model import TaskResponse
+from src.models.work_item.request import filter_work_item
+from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
@@ -57,6 +60,7 @@ class SessionService:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
         logger.info('session update success with data: %s',updated_session)
         response = SessionResponse.model_validate(updated_session)
+        await self._handle_response(response)
         return ResponseModel(data=response)
     async def delete_session(self, session_id:str):
         await self.session_repository.delete_session(session_id)
@@ -75,6 +79,7 @@ class SessionService:
         list_sessions_response = []
         for session in list_sessions:
             response = SessionResponse.model_validate(session)
+            await self._handle_response(response)
             list_sessions_response.append(response)
         return ResponsePaginatedModel(data=list_sessions_response, total=total, offset= filters.offset)
 
@@ -84,6 +89,16 @@ class SessionService:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         response = SessionResponse.model_validate(session)
         return ResponseModel(data=response)
+
+    async def _handle_response(self, response:SessionResponse):
+        # logger.info(f'response {response}')
+        filter_task = FilterWorkItemModel(limit=10, offset=0,list_ids=response.list_task)
+        # logger.info(f'filter_task: {filter_task}')
+        list_tasks = await self.work_item_repository.filter_work_item_for_order(filter_task)
+        list_task_res = []
+        for task in list_tasks:
+            list_task_res.append(TaskResponse.model_validate(task))
+        response.list_tasks_data = list_task_res
 
     async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel):
         session = await self.session_repository.get_session_by_id(session_id)

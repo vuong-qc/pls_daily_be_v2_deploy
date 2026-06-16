@@ -32,7 +32,7 @@ class LexorankUtil:
         list_response = []
         logger.info('total order: %s', total)
         logger.info('total task: %s', count_task)
-        if total != count_task:
+        if total < count_task:
             logger.info('total task not equal total order')
             list_task = await task_repository.filter_work_item_for_order(
                 filter_item)
@@ -70,7 +70,7 @@ class LexorankUtil:
                 list_response.append(validate_task)
             logger.info('list response with order: %s', list_response)
             list_response[:] = list_response[filter_item.offset:filter_item.offset+ filter_item.limit]
-        else:
+        elif total == count_task:
             # list order ->task
             # use map to sort order task
             list_order, total = await order_repository.get_list_orders(filters.model_dump(exclude_unset=True))

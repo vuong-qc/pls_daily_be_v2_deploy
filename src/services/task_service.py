@@ -51,19 +51,10 @@ class TaskService:
         task = await self.task_repository.create_work_item(task_data.model_dump())
         response = TaskResponse.model_validate(task)
         if task_data.order_type:
-            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id, type=task_data.order_type,
-                                            object_id=str(task.id))
-            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
 
-            if not order_model:
-                raise
-
-            parent_id = task_data.parent if task_data.parent else task.parent
-            update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
-            updated_order = await self.order_repository.update_order(str(order_model.id),
-                                                                     update_data_order.model_dump(exclude_unset=True),
-                                                                     task_data.prev_order, task_data.next_order)
-            response.order = updated_order.order if updated_order else updated_order
+            order_data = CreateOrderModel(parent_id=task_data.parent, owner_id=handler_id, type=task_data.order_type, object_id=str(response.id), order='')
+            order_model = await self.order_repository.create_order(order_data.model_dump(), task_data.prev_order, task_data.next_order)
+            response.order = order_model.order
         else:
             filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id,
                                             object_id=str(task.id))
@@ -80,18 +71,20 @@ class TaskService:
         if not task:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
         if handler_id:
-            sprint = await self.task_repository.get_work_item_by_id(task.parent)
-            if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
-                await self._check_handler_of_project(sprint.parent, handler_id)
-            # case story
-            if sprint.type == WorkItemType.STORY:
-                # get sprint/backlog
-                # check param type exist => raise error
-                if task_data.type and task_data.type != WorkItemType.TASK:
-                    raise TaskException(TaskMessage.NOT_UPDATE_TASK_TYPE_IN_STORY, TaskStatusCode.NOT_UPDATE_TASK_TYPE_IN_STORY)
-                parent = await self.task_repository.get_work_item_by_id(sprint.parent)
-                if parent:
-                    await self._check_handler_of_project(parent.parent, handler_id)
+            # if user_id not in user assign => check role
+            if handler_id not in task.assigned_id:
+                sprint = await self.task_repository.get_work_item_by_id(task.parent)
+                if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
+                    await self._check_handler_of_project(sprint.parent, handler_id)
+                # case story
+                if sprint.type == WorkItemType.STORY:
+                    # get sprint/backlog
+                    # check param type exist => raise error
+                    if task_data.type and task_data.type != WorkItemType.TASK:
+                        raise TaskException(TaskMessage.NOT_UPDATE_TASK_TYPE_IN_STORY, TaskStatusCode.NOT_UPDATE_TASK_TYPE_IN_STORY)
+                    parent = await self.task_repository.get_work_item_by_id(sprint.parent)
+                    if parent:
+                        await self._check_handler_of_project(parent.parent, handler_id)
         # check task has subtask, if update type != task => raise error
         if task_data.type and task_data.type != WorkItemType.TASK:
             # count children
@@ -203,19 +196,11 @@ class TaskService:
         task = await self.task_repository.create_work_item(task_data.model_dump())
         response = TaskResponse.model_validate(task)
         if task_data.order_type:
-            filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id, type=task_data.order_type,
-                                            object_id=str(task.id))
-            order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
-
-            if not order_model:
-                raise
-
-            parent_id = task_data.parent if task_data.parent else task.parent
-            update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
-            updated_order = await self.order_repository.update_order(str(order_model.id),
-                                                                     update_data_order.model_dump(exclude_unset=True),
-                                                                     task_data.prev_order, task_data.next_order)
-            response.order = updated_order.order if updated_order else updated_order
+            order_data = CreateOrderModel(parent_id=task_data.parent, owner_id=user_id, type=task_data.order_type,
+                                          object_id=str(response.id), order='')
+            order_model = await self.order_repository.create_order(order_data.model_dump(), task_data.prev_order,
+                                                                   task_data.next_order)
+            response.order = order_model.order
         else:
             filter_order = FilterOrderModel(parent_id=task.parent, owner_id=user_id,
                                             object_id=str(task.id))
@@ -267,7 +252,14 @@ class TaskService:
         if not (sprint.type == WorkItemType.BACKLOG and sprint.parent == handler_id):
             await self._check_handler_of_project(sprint.parent, handler_id)
         story = await self.task_repository.create_work_item(task_data.model_dump())
-        return ResponseModel(data=TaskResponse.model_validate(story))
+        response = TaskResponse.model_validate(story)
+        if task_data.order_type:
+            order_data = CreateOrderModel(parent_id=task_data.parent, owner_id=handler_id, type=task_data.order_type,
+                                          object_id=str(response.id), order='')
+            order_model = await self.order_repository.create_order(order_data.model_dump(), task_data.prev_order,
+                                                                   task_data.next_order)
+            response.order = order_model.order
+        return ResponseModel(data=response)
     async def update_story(self, story_id: str, task_data: UpdateStoryModel, handler_id: str):
         if task_data.assigned_id:
             for tasker in task_data.assigned_id:

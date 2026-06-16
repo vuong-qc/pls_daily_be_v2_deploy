@@ -20,3 +20,7 @@ class UpdateWorkItemModel(BaseModel):
     review_status: Optional[str] = None
     time_rush: Optional[int] = None
     is_in_sprint: Optional[bool] = None
+    project: Optional[str] = None
+    group: Optional[str] = None
+    sprint: Optional[str] = None
+    task: Optional[str] = None

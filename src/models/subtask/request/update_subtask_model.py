@@ -3,10 +3,10 @@ from src.enums.task_status_enum import TaskStatusEnum
 from typing import Optional
 
 class UpdateSubtaskModel(BaseModel):
-    title: Optional[str]
+    title: Optional[str] =None
     type: Optional[str] = None
-    des: Optional[str]
-    status: Optional[TaskStatusEnum] = TaskStatusEnum.NEW
+    des: Optional[str] =None
+    status: Optional[TaskStatusEnum] = None
     duration: Optional[int] = None
     time_rush: Optional[int] = None
     review_status: Optional[str] = None

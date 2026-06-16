@@ -8,7 +8,7 @@ class FormatContentGgChatAPI:
     def format_content_checkin(user_name:str, tasks: list[str], note:str):
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
-        content = TextFormatEnum.CHECKIN.format(time=now_vn.strftime("%Y-%m-%d %H:%M:%S"), user=user_name)
+        content = TextFormatEnum.CHECKIN.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name)
 
         task_lines = '\n'.join(
             f'\t{TextFormatEnum.TASK_PREFIX}{task}'

@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 from beanie import PydanticObjectId
 from datetime import datetime
 from src.models.user.response.user_response_model import UserResponse
+from src.models.task.response.task_response_model import TaskResponse
 class SessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: PydanticObjectId
@@ -14,3 +15,4 @@ class SessionResponse(BaseModel):
     end_time: Optional[datetime] = None
     notes: str
     user: Optional[UserResponse] = None
+    list_tasks_data: Optional[list[TaskResponse]] = None

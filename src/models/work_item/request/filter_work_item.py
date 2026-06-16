@@ -17,3 +17,7 @@ class FilterWorkItemModel(BaseModel):
     priority: Optional[list[TaskPriorityEnum]] = None
     type_order: Optional[str] = None
     list_ids: Optional[list[str]] = None
+    project: Optional[list[str]] = None
+    group: Optional[list[str]] = None
+    # sprint: Optional[list[str]] = None
+    # task: Optional[str] = None

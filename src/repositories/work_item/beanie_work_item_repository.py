@@ -125,6 +125,14 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filter_dump.update(
                 In(WorkItemDocument.priority, filters.priority)
             )
+        if filters.group:
+            filter_dump.update(
+                In(WorkItemDocument.group,filters.group)
+            )
+        if filters.project:
+            filter_dump.update(
+                In(WorkItemDocument.project,filters.project)
+            )
 
 
     async def _add_link_document(self, data: dict, project: WorkItemDocument):

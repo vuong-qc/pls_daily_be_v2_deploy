@@ -37,6 +37,10 @@ class WorkItemDocument(DocumentWithSoftDelete):
     time_rush: Optional[int] = None
     is_in_sprint: Optional[bool] = None
     parent_model: Optional[Link[WorkItemDocument]] = None
+    project: Optional[str] = None
+    group: Optional[str] = None
+    sprint: Optional[str] = None
+    task: Optional[str] = None
 
     class Settings:
         name = "work_items"

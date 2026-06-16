@@ -38,7 +38,14 @@ class SprintService:
         else:
             await self.project_service.get_project_by_id(sprint_data.parent)
         sprint = await self.sprint_repository.create_work_item(sprint_data.model_dump())
-        return ResponseModel(data=SprintResponse.model_validate(sprint))
+        response = SprintResponse.model_validate(sprint)
+        if sprint_data.order_type:
+            order_data = CreateOrderModel(parent_id=sprint.parent, owner_id=handler_id, type=sprint_data.order_type,
+                                          object_id=str(response.id), order='')
+            order_model = await self.order_repository.create_order(order_data.model_dump(), sprint_data.prev_order,
+                                                                   sprint_data.next_order)
+            response.order = order_model.order
+        return ResponseModel(data=response)
 
     async def update_sprint(self, sprint_id:str, sprint_data: UpdateSprintModel, handler_id:str = None):
         if sprint_data.assigned_id:
