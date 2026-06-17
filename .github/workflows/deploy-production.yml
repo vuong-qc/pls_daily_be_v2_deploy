@@ -86,12 +86,48 @@ jobs:
           ${{ secrets.PROD_APP_ENV_FILE }}
           EOF_ENV
 
-          printf '\nAPP_IMAGE=%s\n' "$PROD_APP_IMAGE" >> /tmp/backend_daily.production.env
-          printf 'APP_BLUE_HOST_PORT=%s\n' "$PROD_APP_BLUE_HOST_PORT" >> /tmp/backend_daily.production.env
-          printf 'APP_GREEN_HOST_PORT=%s\n' "$PROD_APP_GREEN_HOST_PORT" >> /tmp/backend_daily.production.env
-          printf 'COMPOSE_PROJECT_NAME=%s\n' "$PROD_COMPOSE_PROJECT_NAME" >> /tmp/backend_daily.production.env
-          printf 'ENABLE_DOCS=true\n' >> /tmp/backend_daily.production.env
-          printf 'GG_CHAT_API=https://chat.googleapis.com/v1/spaces\n' >> /tmp/backend_daily.production.env
+          normalize_env_file() {
+            tmp_file="$(mktemp)"
+            awk '
+              /^[A-Za-z_][A-Za-z0-9_]*=/ {
+                key = $0
+                sub(/=.*/, "", key)
+                lines[NR] = $0
+                keys[NR] = key
+                last[key] = NR
+                next
+              }
+              {
+                lines[NR] = $0
+                keys[NR] = ""
+              }
+              END {
+                for (i = 1; i <= NR; i++) {
+                  if (keys[i] == "" || last[keys[i]] == i) {
+                    print lines[i]
+                  }
+                }
+              }
+            ' /tmp/backend_daily.production.env > "$tmp_file"
+            mv "$tmp_file" /tmp/backend_daily.production.env
+          }
+
+          set_env_key() {
+            key="$1"
+            value="$2"
+            tmp_file="$(mktemp)"
+            grep -vE "^${key}=" /tmp/backend_daily.production.env > "$tmp_file" || true
+            mv "$tmp_file" /tmp/backend_daily.production.env
+            printf '%s=%s\n' "$key" "$value" >> /tmp/backend_daily.production.env
+          }
+
+          normalize_env_file
+          set_env_key APP_IMAGE "$PROD_APP_IMAGE"
+          set_env_key APP_BLUE_HOST_PORT "$PROD_APP_BLUE_HOST_PORT"
+          set_env_key APP_GREEN_HOST_PORT "$PROD_APP_GREEN_HOST_PORT"
+          set_env_key COMPOSE_PROJECT_NAME "$PROD_COMPOSE_PROJECT_NAME"
+          set_env_key ENABLE_DOCS true
+          set_env_key GG_CHAT_API https://chat.googleapis.com/v1/spaces
 
           chmod 600 /tmp/backend_daily.production.env
 
