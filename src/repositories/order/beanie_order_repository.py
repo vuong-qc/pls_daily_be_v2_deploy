@@ -60,8 +60,8 @@ class BeanieOrderRepository(OrderRepository):
         for order in list_orders:
             # Condition to find document
             filter_query = {
-                f'{OrderDocument.owner_id}': {order['owner_id']},
-                f'{OrderDocument.object_id}': {order['object_id']},
+                f'{OrderDocument.owner_id}': order['owner_id'],
+                f'{OrderDocument.object_id}': order['object_id'],
             }
 
             update_query = Set(order)
