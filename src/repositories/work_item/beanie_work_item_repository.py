@@ -92,6 +92,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
     def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
+        filter_dump.pop('is_today', None)
         list_ids = filter_dump.pop('list_ids',[])
         if filters.list_ids:
             filter_dump.update(

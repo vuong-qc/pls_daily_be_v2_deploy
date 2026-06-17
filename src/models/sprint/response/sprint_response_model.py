@@ -1,10 +1,10 @@
 from typing import Optional, List
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
-from src.models.task.response.task_response_model import TaskResponse
 from src.models.user.response.user_response_model import UserResponse
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, BackLink, Link
+
 
 class SprintResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -22,3 +22,17 @@ class SprintResponse(BaseModel):
     total_tasks: Optional[int] = None
     done_tasks: Optional[int] = None
     order: Optional[str] = None
+
+
+    @field_validator(
+        'assignee', mode='before'
+    )
+    @classmethod
+    def handle_assignee(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+

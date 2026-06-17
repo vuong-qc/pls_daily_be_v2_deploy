@@ -1,7 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, Any
 from src.models.user.response.user_response_model import UserResponse
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, BackLink, Link
 from src.models.group.response.group_reponse_model import GroupResponse
 class WorkItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -10,7 +10,7 @@ class WorkItemResponse(BaseModel):
     title: str
     des: Optional[str] = None
     status: str
-    parent: str
+    parent: Optional[str] = None
     deadline: Optional[int] = None
     point: Optional[int] = None
     files: Optional[list[str]] = None
@@ -46,5 +46,37 @@ class WorkItemResponse(BaseModel):
     group_model: Optional['GroupResponse'] = None
     sprint_model: Optional['WorkItemResponse'] = None
     task_model: Optional['WorkItemResponse'] = None
+
+    @field_validator(
+        'parent_model', mode='before'
+    )
+    @classmethod
+    def handle_link(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        return v
+
+    @field_validator(
+        'handler', mode='before'
+    )
+    @classmethod
+    def handle_handler(cls, v):
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'assignee', mode='before'
+    )
+    @classmethod
+    def handle_assignee(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
 
 WorkItemResponse.model_rebuild()

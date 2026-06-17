@@ -11,7 +11,7 @@ class TaskResponse(BaseModel):
     title: str
     des: Optional[str] = None
     status: str
-    parent: str
+    parent: Optional[str] = None
     deadline: Optional[int] = None
     point: Optional[int] = None
     files: Optional[list[str]] = None
@@ -45,8 +45,6 @@ class TaskResponse(BaseModel):
     )
     @classmethod
     def handle_handler(cls, v):
-
-
         if isinstance(v, list) and all(isinstance(item, Link) for item in v):
             return None
         return v
