@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     #
     INTERNAL_API_URL: str
 
+    SUB_DOMAIN_AUTO_UPDATE_TASK: str
+
     HOUR_CHECKIN_REMIND:int = 9
     MINUTE_CHECKIN_REMIND:int = 30
     WEEKDAY_REMIND: set[int] = {1, 2, 3, 4, 5}

@@ -16,3 +16,5 @@ class SessionResponse(BaseModel):
     notes: str
     user: Optional[UserResponse] = None
     list_tasks_data: Optional[list[TaskResponse]] = None
+    checkin: bool
+    checkout:bool

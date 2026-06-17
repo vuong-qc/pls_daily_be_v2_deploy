@@ -1,13 +1,13 @@
 from typing import Annotated
 
-
+from src.configs import settings
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.models.subtask.request.create_subtask_model import CreateSubtaskModel
 from src.models.subtask.request.update_subtask_model import UpdateSubtaskModel
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
 from src.models.task.request.filter_task_model import FilterTaskModel
 from src.models.task.request.update_task_model import UpdateTaskModel, UpdateUserTaskModel, UpdateStoryModel
-from fastapi import APIRouter, Query, Depends, status
+from fastapi import APIRouter, Query, Depends, status, Header, HTTPException
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.services.task_service import TaskService
 from src.utils.role_checker_util import RoleCheckerUtil
@@ -175,6 +175,16 @@ async def update_subtask(
 ):
     user_id = user_data.get("sub")
     return await task_service.update_subtask(task_id, data, user_id)
+
+@router.post(f'{settings.SUB_DOMAIN_AUTO_UPDATE_TASK}',
+            status_code=status.HTTP_202_ACCEPTED, )
+async def auto_update_status_task(
+        x_internal_key: str = Header(),
+        task_service: TaskService = Depends(get_task_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,)
+    return await task_service.auto_update_late_dl_task()
 
 
 

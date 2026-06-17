@@ -20,5 +20,6 @@ class FilterWorkItemModel(BaseModel):
     project: Optional[list[str]] = None
     group: Optional[list[str]] = None
     is_today: Optional[bool] = False
+    deadline: Optional[int] = None
     # sprint: Optional[list[str]] = None
     # task: Optional[str] = None

@@ -36,3 +36,7 @@ class WorkItemRepository(ABC):
     @abstractmethod
     async def filter_work_item_for_order(self, filters: FilterWorkItemModel)->list[WorkItemDocument]:
         pass
+
+    @abstractmethod
+    async def update_many(self, list_ids: list[str], data: dict):
+        pass

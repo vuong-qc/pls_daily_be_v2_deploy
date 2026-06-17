@@ -20,6 +20,9 @@ from src.models.order.request.filter_order_model import FilterOrderModel
 from src.repositories.order.order_repository import OrderRepository
 import asyncio
 import logging
+from src.enums.task_status_enum import TaskStatusEnum
+from src.enums.work_item_type import WorkItemType
+from src.utils.datetime_util import DateTimeUtil
 logger = logging.getLogger(__name__)
 
 class TaskService:
@@ -305,6 +308,18 @@ class TaskService:
             raise ProjectException(ProjectMessage.NOT_HAVE_HANDLER, ProjectStatusCode.NOT_HAVE_HANDLER)
         if user_id not in project.handler_id and user_id not in project.assigned_id:
             raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
+
+    async def auto_update_late_dl_task(self):
+        filters = FilterWorkItemModel(offset=0, limit=1, deadline=DateTimeUtil.current_milli_time(),
+                                      type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
+        list_task = await self.task_repository.filter_work_item_for_order(filters)
+        list_ids = [str(task.id) for task in list_task]
+        update_data = UpdateTaskModel(status=TaskStatusEnum.LATE)
+        if list_ids:
+            logger.info('list ids: %s', list_ids)
+            logger.info('list task: %s', list_task)
+            await self.task_repository.update_many(list_ids, update_data.model_dump(exclude_unset=True))
+
 
     async def check_parent_type(self, parent_type):
         pass

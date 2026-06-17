@@ -1,11 +1,12 @@
 from beanie import PydanticObjectId
-
+from zoneinfo import ZoneInfo
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
 from src.models.session.session_document import SessionDocument
 from src.models.user.user_document import UserDocument
 from src.repositories.session.session_repository import SessionRepository
 from beanie.operators import Set, In, LTE, GTE
-from src.models.session.response.project_session_model import UserIdOnly
+from src.configs import settings
+from datetime import datetime
 
 class BeanieSessionRepository(SessionRepository):
     async def get_session_by_id(self, session_id: str) ->SessionDocument|None:
@@ -41,13 +42,20 @@ class BeanieSessionRepository(SessionRepository):
     async def create_session(self, session: dict) -> SessionDocument:
         new_session = SessionDocument(**session)
         self._add_link_data(session, new_session)
-
+        tz_vn = ZoneInfo(settings.TZ)
+        now_vn = datetime.now(tz_vn)
+        new_session.checkin = now_vn > new_session.start_time
         await new_session.insert()
         return new_session
 
     async def update_session(self, session_id:str, session_data: dict) -> SessionDocument | None:
         session = await SessionDocument.find_one(SessionDocument.id==PydanticObjectId(session_id), fetch_links=True)
         if session:
+            if session_data.get('end_time'):
+                end_time = session_data.get('end_time')
+                tz_vn = ZoneInfo(settings.TZ)
+                now_vn = datetime.now(tz_vn)
+                session_data['checkout'] = now_vn > end_time
             await session.update(Set(session_data))
             return session
         return None

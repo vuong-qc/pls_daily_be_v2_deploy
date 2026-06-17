@@ -46,6 +46,7 @@ class WorkItemResponse(BaseModel):
     group_model: Optional['GroupResponse'] = None
     sprint_model: Optional['WorkItemResponse'] = None
     task_model: Optional['WorkItemResponse'] = None
+    explanation: Optional[str] = None
 
     @field_validator(
         'parent_model', mode='before'

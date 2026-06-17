@@ -97,6 +97,13 @@ class SessionService:
         list_tasks = await self.work_item_repository.filter_work_item_for_order(filter_task)
         list_task_res = []
         for task in list_tasks:
+            # count subtask done/ total =process_percent
+            filter_subtask_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(task.id), offset=0, limit=1)
+            count_sub_task_done = await self.work_item_repository.count_work_item(filter_subtask_done.model_dump(exclude_unset=True))
+
+            filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING], parent=str(task.id), offset=0, limit=1)
+            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask.model_dump(exclude_unset=True))
+
             list_task_res.append(TaskResponse.model_validate(task))
         response.list_tasks_data = list_task_res
 

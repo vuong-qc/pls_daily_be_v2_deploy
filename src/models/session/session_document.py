@@ -12,3 +12,5 @@ class SessionDocument(DocumentWithSoftDelete):
     end_time: Optional[datetime] = None
     notes: str
     user: Optional[Link[UserDocument]] = None
+    checkin: Optional[bool] = None
+    checkout: Optional[bool] = None

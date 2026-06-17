@@ -5,3 +5,4 @@ class TaskStatusEnum(StrEnum):
     CANCELED = 'CANCELED'
     NEW = 'NEW'
     PROCESSING = 'PROCESSING'
+    LATE = 'LATE'

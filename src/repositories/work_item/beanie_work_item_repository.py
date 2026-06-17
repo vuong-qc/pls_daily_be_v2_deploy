@@ -3,7 +3,7 @@ from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.models.project.response.project_response_model import ProjectResponse
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
-from beanie.operators import Set, In, RegEx
+from beanie.operators import Set, In, RegEx, LTE
 from beanie import PydanticObjectId
 from src.models.user.user_document import UserDocument
 import logging
@@ -133,6 +133,10 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if filters.project:
             filter_dump.update(
                 In(WorkItemDocument.project,filters.project)
+            )
+        if filters.deadline:
+            filter_dump.update(
+                LTE(WorkItemDocument.deadline,filter_dump.pop('deadline'))
             )
 
 
@@ -274,3 +278,8 @@ class BeanieWorkItemRepository(WorkItemRepository):
         query = WorkItemDocument.find(filter_dump, fetch_links=True)
         list_work_item = await query.to_list()
         return list_work_item
+    async def update_many(self, list_ids:list[str], data: dict):
+        list_object_id = [ PydanticObjectId(id) for id in list_ids ]
+        query = In(WorkItemDocument.id, list_object_id)
+        await WorkItemDocument.find(query).update(Set(data))
+        return

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
+
+import pymongo
 from beanie import DocumentWithSoftDelete, Link
 from beanie import PydanticObjectId
 from pydantic import BaseModel, Field
+from pymongo import IndexModel
 
 if TYPE_CHECKING:
     from src.models.user.user_document import UserDocument
@@ -41,9 +44,18 @@ class WorkItemDocument(DocumentWithSoftDelete):
     group: Optional[str] = None
     sprint: Optional[str] = None
     task: Optional[str] = None
+    explanation: Optional[str] = None
 
     class Settings:
         name = "work_items"
+        indexes = [
+            "project",
+            "assigned_id",
+            "parent",
+            "type",
+            IndexModel([("project", pymongo.ASCENDING), ("status", pymongo.ASCENDING)]),
+            IndexModel([("status", pymongo.ASCENDING),("deadline", pymongo.ASCENDING)]),
+        ]
 
 
 class SprintTaskStatsResult(BaseModel):

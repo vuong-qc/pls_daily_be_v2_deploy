@@ -51,7 +51,7 @@ class WorkItemService:
     async def _format_work_item_response(self, work_item_response: WorkItemResponse):
         if work_item_response.group:
             group =  await self.group_repository.get_group_by_id(work_item_response.group)
-            work_item_response.group = GroupResponse.model_validate(group) if group else None
+            work_item_response.group_model = GroupResponse.model_validate(group) if group else None
 
         if work_item_response.sprint:
             sprint = await self.work_item_repository.get_work_item_by_id(work_item_response.sprint)
