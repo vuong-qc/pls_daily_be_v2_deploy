@@ -24,3 +24,5 @@ class UpdateWorkItemModel(BaseModel):
     group: Optional[str] = None
     sprint: Optional[str] = None
     task: Optional[str] = None
+    des: Optional[str] = None
+    status: Optional[str] = None

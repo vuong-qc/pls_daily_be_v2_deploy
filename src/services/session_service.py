@@ -50,6 +50,7 @@ class SessionService:
             ])
             content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+            response.list_tasks_data = list_task
         return ResponseModel(data=response)
 
     async def update_session(self, session_id:str, session_data: UpdateSessionModel, user_id:str) -> ResponseModel:
@@ -99,12 +100,14 @@ class SessionService:
         for task in list_tasks:
             # count subtask done/ total =process_percent
             filter_subtask_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(task.id), offset=0, limit=1)
-            count_sub_task_done = await self.work_item_repository.count_work_item(filter_subtask_done.model_dump(exclude_unset=True))
+            count_sub_task_done = await self.work_item_repository.count_work_item(filter_subtask_done)
 
             filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING], parent=str(task.id), offset=0, limit=1)
-            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask.model_dump(exclude_unset=True))
+            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask)
+            task_response = TaskResponse.model_validate(task)
 
-            list_task_res.append(TaskResponse.model_validate(task))
+            task_response.percent_process = count_sub_task_done/count_total_subtask if count_total_subtask else 0
+            list_task_res.append(task_response)
         response.list_tasks_data = list_task_res
 
     async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel):
@@ -126,6 +129,8 @@ class SessionService:
         update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time)
         if not update_session_data.end_time:
             update_session_data.end_time = datetime.now()
+        if update_session_data.end_time and update_session_data.end_time <= session.start_time:
+            raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
         data_dump = update_session_data.model_dump(exclude_unset=True)
         updated_session = await self.session_repository.update_session(session_id, data_dump)
         if not updated_session:

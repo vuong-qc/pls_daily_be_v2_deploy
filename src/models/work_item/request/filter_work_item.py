@@ -21,5 +21,5 @@ class FilterWorkItemModel(BaseModel):
     group: Optional[list[str]] = None
     is_today: Optional[bool] = False
     deadline: Optional[int] = None
-    # sprint: Optional[list[str]] = None
-    # task: Optional[str] = None
+    sprint: Optional[list[str]] = None
+    task: Optional[str] = None

@@ -12,3 +12,4 @@ class CreateSessionModel(BaseModel):
     list_task: list[str]
     start_time: datetime
     notes: str
+    work_form: Optional[str] = None

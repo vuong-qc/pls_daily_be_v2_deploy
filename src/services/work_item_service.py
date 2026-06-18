@@ -49,6 +49,7 @@ class WorkItemService:
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
     async def _format_work_item_response(self, work_item_response: WorkItemResponse):
+        logger.debug(f"DEBUG work_item_response: {work_item_response}")
         if work_item_response.group:
             group =  await self.group_repository.get_group_by_id(work_item_response.group)
             work_item_response.group_model = GroupResponse.model_validate(group) if group else None

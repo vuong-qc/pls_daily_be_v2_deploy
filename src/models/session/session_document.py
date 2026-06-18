@@ -14,3 +14,5 @@ class SessionDocument(DocumentWithSoftDelete):
     user: Optional[Link[UserDocument]] = None
     checkin: Optional[bool] = None
     checkout: Optional[bool] = None
+    note_result: Optional[str] = None
+    work_form: Optional[str] = None

@@ -32,7 +32,7 @@ async def create_work_item_model(work_item_model: CreateWorkItemModel,
     work_item_model.owner_id = user_id
     return await service.create_work_item_model(work_item_model)
 
-@router.put('/update-work-item/{id}',
+@router.put('/update-work-item/{work_item_id}',
              summary='Update a work item',
              description='Update a work item',
              status_code=status.HTTP_202_ACCEPTED,

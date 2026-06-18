@@ -10,6 +10,7 @@ class UpdateSessionModel(BaseModel):
     list_task: Optional[list[str]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    work_form: Optional[str] = None
 
 class UpdateSubTaskModel(BaseModel):
     status: TaskStatusEnum
@@ -18,3 +19,4 @@ class UpdateSubTaskModel(BaseModel):
 class CheckoutModel(BaseModel):
     list_subtasks: list[UpdateSubTaskModel]
     end_time: Optional[datetime] = None
+    note_result: Optional[str] = None

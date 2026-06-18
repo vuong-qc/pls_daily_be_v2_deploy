@@ -134,6 +134,14 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filter_dump.update(
                 In(WorkItemDocument.project,filters.project)
             )
+        if filters.sprint:
+            filter_dump.update(
+                In(WorkItemDocument.sprint,filters.sprint)
+            )
+        if filters.task:
+            filter_dump.update(
+                In(WorkItemDocument.task,filters.task)
+            )
         if filters.deadline:
             filter_dump.update(
                 LTE(WorkItemDocument.deadline,filter_dump.pop('deadline'))
