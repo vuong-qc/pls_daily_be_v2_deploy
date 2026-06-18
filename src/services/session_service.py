@@ -1,5 +1,4 @@
 from src.models.task.response.task_response_model import TaskResponse
-from src.models.work_item.request import filter_work_item
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
@@ -92,11 +91,12 @@ class SessionService:
         return ResponseModel(data=response)
 
     async def _handle_response(self, response:SessionResponse):
-        # logger.info(f'response {response}')
+        logger.info(f'response {response}')
         filter_task = FilterWorkItemModel(limit=10, offset=0,list_ids=response.list_task)
-        # logger.info(f'filter_task: {filter_task}')
+        logger.info(f'filter_task: {filter_task}')
         list_tasks = await self.work_item_repository.filter_work_item_for_order(filter_task)
         list_task_res = []
+        # logger.info(f'list_tasks: {list_tasks}')
         for task in list_tasks:
             # count subtask done/ total =process_percent
             filter_subtask_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(task.id), offset=0, limit=1)
@@ -131,6 +131,7 @@ class SessionService:
             update_session_data.end_time = datetime.now()
         if update_session_data.end_time and update_session_data.end_time <= session.start_time:
             raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
+        # check case end_time has diff date with start time
         data_dump = update_session_data.model_dump(exclude_unset=True)
         updated_session = await self.session_repository.update_session(session_id, data_dump)
         if not updated_session:

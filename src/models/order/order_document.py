@@ -21,5 +21,13 @@ class OrderDocument(DocumentWithSoftDelete):
                     ('type', pymongo.ASCENDING),
                 ],
                 name='idx_owner_type_order'
+            ),
+            IndexModel(
+                [
+                    ('owner_id', pymongo.ASCENDING),
+                    ('object_id', pymongo.ASCENDING),
+                ],
+                unique=True,  # Kích hoạt tính năng duy nhất
+                partialFilterExpression={"deleted_at": None},
             )
         ]

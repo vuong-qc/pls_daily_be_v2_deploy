@@ -53,7 +53,6 @@ class BeanieOrderRepository(OrderRepository):
         return count
     async def insert_many_orders(self, list_orders: list[dict]):
         list_doc_order = [OrderDocument(**order) for order in list_orders]
-        await OrderDocument.insert_many(list_doc_order)
         if not list_doc_order:
             return None
         operations = []

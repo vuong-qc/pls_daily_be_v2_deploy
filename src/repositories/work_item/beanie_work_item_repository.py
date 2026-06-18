@@ -93,10 +93,10 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if filters.type_order:
             filter_dump.pop("type_order")
         filter_dump.pop('is_today', None)
-        list_ids = filter_dump.pop('list_ids',[])
+        # list_ids = filter_dump.pop('list_ids',[])
         if filters.list_ids:
             filter_dump.update(
-                In(WorkItemDocument.id, [PydanticObjectId(id) for id in list_ids]),
+                In(WorkItemDocument.id, [PydanticObjectId(id) for id in filter_dump.pop('list_ids',[])]),
             )
         if filters.search:
             filter_dump.update(
