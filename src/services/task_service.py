@@ -285,7 +285,10 @@ class TaskService:
 
         updated_story = await self.task_repository.update_work_item(story_id,task_data.model_dump(exclude_unset=True))
         if updated_story:
-            return ResponseModel(data=TaskResponse.model_validate(updated_story))
+            # add list task to story
+            response = TaskResponse.model_validate(updated_story)
+            await self._get_task_story(response)
+            return ResponseModel(data=response)
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
     async def _get_task_story(self, response:TaskResponse):
