@@ -176,7 +176,7 @@ async def update_subtask(
     user_id = user_data.get("sub")
     return await task_service.update_subtask(task_id, data, user_id)
 
-@router.post(f'{settings.SUB_DOMAIN_AUTO_UPDATE_TASK}',
+@router.post(f'/{settings.SUB_DOMAIN_AUTO_UPDATE_TASK}',
             status_code=status.HTTP_202_ACCEPTED, )
 async def auto_update_status_task(
         x_internal_key: str = Header(),

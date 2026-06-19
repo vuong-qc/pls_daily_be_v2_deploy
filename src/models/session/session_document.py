@@ -24,10 +24,14 @@ class SessionDocument(DocumentWithSoftDelete):
     def validate_start_time(cls, v: Optional[datetime]) -> Optional[datetime]:
         if v is None:
             return v
-        # Nếu chuỗi truyền lên có Z, Pydantic v2 sẽ nhận diện được v.tzinfo
-        # Nếu chưa có múi giờ, ta ép nó về UTC (vì chữ Z đại diện cho UTC)
-        if v.tzinfo is None:
-            v = v.replace(tzinfo=ZoneInfo("UTC"))
 
-        # Hoặc bạn có thể chuyển hẳn nó sang múi giờ Asia/Ho_Chi_Minh tại đây:
+        # chuyển sang múi giờ Asia/Ho_Chi_Minh
+        return v.astimezone(ZoneInfo(settings.TZ))
+
+    @field_validator('end_time', mode='after')
+    @classmethod
+    def validate_end_time(cls, v: Optional[datetime]) -> Optional[datetime]:
+        if v is None:
+            return v
+
         return v.astimezone(ZoneInfo(settings.TZ))

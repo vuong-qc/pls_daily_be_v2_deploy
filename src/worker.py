@@ -67,5 +67,5 @@ class WorkerSettings:
         cron(remind_forgot_checkout_task, hour=settings.HOUR_CHECKOUT_REMIND, minute=settings.MINUTE_CHECKOUT_REMIND, weekday=settings.WEEKDAY_REMIND),
         # cron(remind_forgot_checkout_task, second=0)
 
-        cron(check_n_update_task,hour=0)
+        cron(check_n_update_task,hour=0, minute=0)
     ]

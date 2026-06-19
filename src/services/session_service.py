@@ -1,3 +1,4 @@
+from src.configs import settings
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
@@ -20,6 +21,7 @@ from src.models.chatbot_token.request.filter_chatbot_token_model import FilterCh
 from src.utils.google_chat_webhook_util import GgChatWebhookUtil
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 import asyncio
+from zoneinfo import ZoneInfo
 from src.enums.session_status_enum import SessionStatusEnum
 import logging
 logger = logging.getLogger(__name__)
@@ -33,6 +35,14 @@ class SessionService:
         self.user_repository = user_repository
 
     async def create_session(self, session_data: CreateSessionModel) -> ResponseModel:
+        # check has session in today has not done
+
+        filters_in_session = FilterCheckInSessionModel(start_time=DateTimeUtil.get_start_time_today(),status=[SessionStatusEnum.NEW, SessionStatusEnum.IN_PROGRESS])
+        list_user_checkin = await self.session_repository.get_all_sessions_checkin(filters_in_session)
+        logger.info('session today: %s',list_user_checkin)
+        if list_user_checkin:
+            if session_data.user_id in list_user_checkin:
+                raise SessionException(SessionMessage.SESSION_CHECKED_IN, SessionStatusCode.SESSION_CHECKED_IN)
         new_session = await self.session_repository.create_session(session_data.model_dump())
         logger.info('checkin success with data: %s',new_session)
         created_session = await self.session_repository.get_session_by_id(str(new_session.id))
@@ -43,21 +53,28 @@ class SessionService:
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         if total > 0:
             list_task = []
+            list_task_data = []
             await asyncio.gather(*[
-                self.get_work_item_by_id(work_id, list_task)
+                self.get_work_item_by_id(work_id, list_task, list_task_data)
                 for work_id in session_data.list_task
             ])
             content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
-            response.list_tasks_data = list_task
+            response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
 
     async def update_session(self, session_id:str, session_data: UpdateSessionModel, user_id:str) -> ResponseModel:
-        updated_session = await self.session_repository.update_session(session_id, session_data.model_dump(exclude_unset=True))
-        if not updated_session:
+        session = await self.session_repository.get_session_by_id(session_id)
+        if not session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
-        if user_id != updated_session.user_id:
+        if session_data.end_time and session.start_time is not None and session_data.end_time <= session.start_time:
+            raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
+        if user_id != session.user_id:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
+        await self._check_dif_date(session.start_time , session_data.end_time)
+
+        updated_session = await self.session_repository.update_session(session_id, session_data.model_dump(exclude_unset=True))
+
         logger.info('session update success with data: %s',updated_session)
         response = SessionResponse.model_validate(updated_session)
         await self._handle_response(response)
@@ -132,6 +149,8 @@ class SessionService:
         if update_session_data.end_time and update_session_data.end_time <= session.start_time:
             raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
         # check case end_time has diff date with start time
+        await self._check_dif_date(session.start_time ,update_session_data.end_time)
+
         data_dump = update_session_data.model_dump(exclude_unset=True)
         updated_session = await self.session_repository.update_session(session_id, data_dump)
         if not updated_session:
@@ -156,10 +175,11 @@ class SessionService:
             update_data = UpdateTaskModel(status=item.status)
             await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
 
-    async def get_work_item_by_id(self, work_item_id:str, list_data: list):
+    async def get_work_item_by_id(self, work_item_id:str, list_title: list, list_data: list):
         work_item = await self.work_item_repository.get_work_item_by_id(work_item_id)
         if work_item:
-            list_data.append(work_item.title)
+            list_title.append(work_item.title)
+            list_data.append(TaskResponse.model_validate(work_item))
 
     async def remind_checkin(self):
         # get list session -> list user_id distinct checkin today
@@ -201,3 +221,17 @@ class SessionService:
                 content = FormatContentGgChatAPI.format_content_remind_checkout(user.name)
                 GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return
+
+    async def _check_dif_date(self,start_time: datetime|None, end_time: datetime|None ):
+        local_tz = ZoneInfo(settings.TZ)
+        if start_time and end_time:
+            logger.info(f"start_time: %s{start_time}")
+            logger.info(f"end_time: %s{end_time}")
+            local_start = start_time.astimezone(local_tz)
+            local_end = end_time.astimezone(local_tz)
+            logger.info(f"local_start: %s{local_start}")
+            logger.info(f"local_end: %s{local_end}")
+            if local_end.date() != local_start.date():
+                raise SessionException(SessionMessage.CHECKOUT_DIFF_DATE, SessionStatusCode.CHECKOUT_DIFF_DATE)
+        else:
+            raise SessionException(SessionMessage.CHECKOUT_DIFF_DATE, SessionStatusCode.CHECKOUT_DIFF_DATE)

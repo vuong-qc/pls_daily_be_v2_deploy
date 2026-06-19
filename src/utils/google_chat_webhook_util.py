@@ -11,15 +11,13 @@ class GgChatWebhookUtil:
         #  retry khi gặp lỗi mạng (RequestError) hoặc lỗi HTTP 4xx, 5xx (HTTPStatusError)
         retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError))
     )
-    def call_webhook(text: str, space_id: str, key: str, token: str):
+    def call_webhook(payload: dict , space_id: str, key: str, token: str):
         url = f"{settings.GG_CHAT_API}/{space_id}/messages"
         query_params = {
             "key": key,
             "token": token,
         }
-        app_message = {
-            "text": text
-        }
+
         # url = f"{settings.GG_CHAT_API}/{space_id}/messages?key={key}&token={token}"
         # set timeout:10
         with httpx.Client(timeout=10.0) as client:
@@ -28,7 +26,7 @@ class GgChatWebhookUtil:
             response = client.post(
                 url=url,
                 params=query_params,
-                json=app_message  # Tự động dumps JSON và set Content-Type header
+                json=payload  # Tự động dumps JSON và set Content-Type header
             )
 
             # Nếu API trả về mã lỗi (VD: 500 Internal Server Error, 502 Bad Gateway...)

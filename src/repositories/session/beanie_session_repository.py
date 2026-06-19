@@ -7,6 +7,8 @@ from src.repositories.session.session_repository import SessionRepository
 from beanie.operators import Set, In, LTE, GTE
 from src.configs import settings
 from datetime import datetime
+import logging
+logger = logging.getLogger(__name__)
 
 class BeanieSessionRepository(SessionRepository):
     async def get_session_by_id(self, session_id: str) ->SessionDocument|None:
@@ -25,18 +27,18 @@ class BeanieSessionRepository(SessionRepository):
         
         if filters.start_time:
             filter_dump.update(
-                GTE(SessionDocument.end_time, filter_dump.pop("start_time"))
+                GTE(SessionDocument.start_time, filter_dump.pop("start_time"))
             )
         if filters.end_time:
             filter_dump.update(
-                LTE(SessionDocument.start_time, filter_dump.pop("end_time"))
+                LTE(SessionDocument.end_time, filter_dump.pop("end_time"))
             )
         
         query = SessionDocument.find(filter_dump, fetch_links=True)
 
         count = await query.count()
 
-        list_session = await query.skip(offset).limit(limit).to_list()
+        list_session = await query.sort(f"-{SessionDocument.start_time}").skip(offset).limit(limit).to_list()
         return list_session, count
 
     async def create_session(self, session: dict) -> SessionDocument:
@@ -78,5 +80,6 @@ class BeanieSessionRepository(SessionRepository):
             filter_dump.update(
                 In(SessionDocument.status, filter_dump.pop("status")),
             )
+        logger.info('session today: %s',filter_dump)
         query = SessionDocument.distinct(SessionDocument.user_id, filter_dump)
         return await query
