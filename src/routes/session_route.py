@@ -2,7 +2,7 @@ from src.repositories.session.beanie_session_repository import BeanieSessionRepo
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.models.session.request.create_session_model import CreateSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel
-from src.models.session.request.filter_session_model import FilterSessionModel
+from src.models.session.request.filter_session_model import FilterSessionModel, FilterSessionByDateRangeModel
 from fastapi import APIRouter, Query, Depends, status, Header, HTTPException
 from src.configs import settings
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
@@ -113,3 +113,15 @@ async def not_checkin(
     # call service
     print('call success')
     return await service.remind_checkin()
+
+@router.get("/my-sessions",
+            status_code=status.HTTP_200_OK,
+            description="Get my sessions",
+            response_model=ResponsePaginatedModel,
+)
+async def get_my_sessions(
+        filters: Annotated[FilterSessionByDateRangeModel, Query()],
+        service: SessionService = Depends(get_session_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    return await service.get_session_by_date_range(filters)

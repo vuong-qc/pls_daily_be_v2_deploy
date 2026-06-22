@@ -29,10 +29,12 @@ from pymongo import AsyncMongoClient
 from src.models.work_item.work_item_document import WorkItemDocument
 from src.models.session.session_document import SessionDocument
 from src.models.order.order_document import OrderDocument
+from src.models.session.session_view import DailySessionView
 from src.models.chatbot_token.chatbot_token_document import ChatbotTokenDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
+DailySessionView.model_rebuild()
 
 
 
@@ -46,7 +48,7 @@ async def init_db():
             database=cast(Any, db),
             document_models=[UserDocument, GroupDocument, WorkItemDocument
                 , FileDocument, DocumentItem, DocumentResult, SessionDocument,
-                             ChatbotTokenDocument, OrderDocument
+                             ChatbotTokenDocument, OrderDocument, DailySessionView
                              ]
         )
         print("MongoDB & Beanie initialized!")

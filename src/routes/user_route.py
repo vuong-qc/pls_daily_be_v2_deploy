@@ -74,7 +74,7 @@ async def update_user(
         user_data: dict = Depends(get_current_user_by_token)
 ):
     roles = user_data.get("roles")
-    return await user_service.update_user(user_id, update_user_model, roles)
+    return await user_service.update_user(user_id, update_user_model)
 
 @router.get("/get-user-by-email",
             response_model=ResponseModel

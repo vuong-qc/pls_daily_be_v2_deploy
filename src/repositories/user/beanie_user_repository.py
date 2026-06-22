@@ -39,6 +39,7 @@ class BeanieUserRepository(UserRepository):
         if user_doc:
             if user_data.get("password"):
                 user_data['updated_at'] = DateTimeUtil.current_milli_time()
+                user_data["require_pass_update"] = False
                 user_data["password"] = SecurityPasswordUtil.hash_password(user_data.pop("password"))
             await user_doc.update(Set(user_data))
             user_response = user_doc.model_dump(mode="json")

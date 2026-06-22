@@ -1,5 +1,5 @@
 from src.models.user.request.filter_user_model import FilterUserModel
-from src.models.user.request.update_user_model import UpdateUserModel
+from src.models.user.request.update_user_model import UpdateUserModel, UpdateProfileModel
 from src.repositories.user.user_repository import UserRepository
 from src.models.user.request.create_user_model import CreateUserModel
 from src.enums.user_role_enum import UserRole
@@ -44,7 +44,7 @@ class UserService:
             raise ExceptionUserNotFound()
         return ResponseModel(data=user)
 
-    async def update_user(self, user_id:str, update_user_model: UpdateUserModel, roles: list):
+    async def update_user(self, user_id:str, update_user_model: UpdateUserModel | UpdateProfileModel):
         user = await self.user_repository.get_user_by_id(user_id)
         if not user:
             raise ExceptionUserNotFound()

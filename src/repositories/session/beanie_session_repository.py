@@ -7,6 +7,7 @@ from src.repositories.session.session_repository import SessionRepository
 from beanie.operators import Set, In, LTE, GTE
 from src.configs import settings
 from datetime import datetime
+from src.models.session.session_view import DailySessionView
 import logging
 logger = logging.getLogger(__name__)
 
@@ -83,3 +84,12 @@ class BeanieSessionRepository(SessionRepository):
         logger.info('session today: %s',filter_dump)
         query = SessionDocument.distinct(SessionDocument.user_id, filter_dump)
         return await query
+
+    async def get_session_by_date_range(self, user_id: str, start_date: str, end_date: str):
+        results = await DailySessionView.find(
+            DailySessionView.user_id == user_id,
+            DailySessionView.id >= start_date,  # Lớn hơn hoặc bằng ngày bắt đầu
+            DailySessionView.id <= end_date  # Nhỏ hơn hoặc bằng ngày kết thúc
+        ).sort("-id").to_list()
+        print("results: ",results)
+        return results

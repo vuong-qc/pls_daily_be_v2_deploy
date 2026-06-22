@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from src.enums.user_status_enum import UserStatusEnum
 from datetime import datetime
+from src.utils.datetime_util import DateTimeUtil
 
 class UpdateUserModel(BaseModel):
     dob: Optional[datetime] = None
@@ -16,3 +17,13 @@ class UpdateUserModel(BaseModel):
     address: Optional[str] = None
 
     model_config = ConfigDict(extra='ignore')
+
+class UpdateProfileModel(BaseModel):
+    address: Optional[str] = None
+    dob: Optional[datetime] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[int] = None
+    avt: Optional[str] = None
+    password: Optional[str] = None
+    updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)

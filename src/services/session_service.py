@@ -2,7 +2,8 @@ from src.configs import settings
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
-from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
+from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel, \
+    FilterSessionByDateRangeModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
 from src.models.session.request.create_session_model import CreateSessionModel
 from src.models.session.response.session_response_model import SessionResponse
@@ -212,7 +213,6 @@ class SessionService:
         list_user_id = await self.session_repository.get_all_sessions_checkin(filters)
         logger.info(f"list_user_id: %s{list_user_id}")
 
-
         list_user_name = await self.user_repository.get_all_user_match_id(list_user_id)
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
@@ -235,3 +235,7 @@ class SessionService:
                 raise SessionException(SessionMessage.CHECKOUT_DIFF_DATE, SessionStatusCode.CHECKOUT_DIFF_DATE)
         else:
             raise SessionException(SessionMessage.CHECKOUT_DIFF_DATE, SessionStatusCode.CHECKOUT_DIFF_DATE)
+
+    async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel):
+        list_date_session = await self.session_repository.get_session_by_date_range(filters.user_id, filters.start_time, filters.end_time)
+        return ResponsePaginatedModel(data=list_date_session, total=len(list_date_session), offset=0)

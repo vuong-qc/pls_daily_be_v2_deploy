@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
 from src.models.session.response.project_session_model import UserIdOnly
 from src.models.session.session_document import SessionDocument
+from src.models.session.session_view import DailySessionView
+
 
 class SessionRepository(ABC):
     @abstractmethod
@@ -27,4 +29,8 @@ class SessionRepository(ABC):
 
     @abstractmethod
     async def get_all_sessions_checkin(self, filters: FilterCheckInSessionModel)->list[str]:
+        pass
+
+    @abstractmethod
+    async def get_session_by_date_range(self, user_id: str, start_date: str, end_date: str)->list[DailySessionView]:
         pass

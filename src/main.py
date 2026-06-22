@@ -16,6 +16,7 @@ from src.routes.document_route import router as document_route
 from src.routes.testcase_route import router as testcase_route
 from src.routes.session_route import router as session_route
 from src.routes.work_item_route import router as work_item_route
+from src.routes.profile_route import router as profile_route
 from src.configs import settings
 import logging
 
@@ -38,6 +39,7 @@ app = FastAPI(
 app.include_router(support_route, prefix="/support")
 app.include_router(auth_routes, prefix="/auths")
 app.include_router(user_routes, prefix="/users")
+app.include_router(profile_route, prefix="/profile")
 app.include_router(file_route, prefix="/files")
 app.include_router(session_route, prefix="/sessions")
 app.include_router(group_route, prefix="/group")

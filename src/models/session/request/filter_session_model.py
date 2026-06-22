@@ -16,3 +16,8 @@ class FilterSessionModel(BaseModel):
     user_id: Optional[str] = None
     offset: int = 0
     limit: int = Field(10,le=100)
+
+class FilterSessionByDateRangeModel(BaseModel):
+    start_time: str
+    end_time: str
+    user_id:  str
