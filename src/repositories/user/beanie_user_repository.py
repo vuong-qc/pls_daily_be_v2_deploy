@@ -88,9 +88,9 @@ class BeanieUserRepository(UserRepository):
         return False
     async def get_all_user_not_match_id(self, list_id: list[str])->list[ProjectUsername]:
         list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
-        list_user = await UserDocument.find(NotIn(UserDocument.id, list_object_id)).project(ProjectUsername).to_list()
+        list_user = await UserDocument.find(NotIn(UserDocument.id, list_object_id), In(UserDocument.status, [UserStatusEnum.ACTIVE.value])).project(ProjectUsername).to_list()
         return list_user
     async def get_all_user_match_id(self, list_id: list[str]) -> list[ProjectUsername]:
         list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
-        list_user = await UserDocument.find(In(UserDocument.id, list_object_id)).project(ProjectUsername).to_list()
+        list_user = await UserDocument.find(In(UserDocument.id, list_object_id),In(UserDocument.status, [UserStatusEnum.ACTIVE.value])).project(ProjectUsername).to_list()
         return list_user

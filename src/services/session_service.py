@@ -1,4 +1,5 @@
 from src.configs import settings
+from src.enums.user_role_enum import UserRole
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
@@ -198,7 +199,7 @@ class SessionService:
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         for user in list_user_not_checkin:
-            if total > 0:
+            if total > 0 and UserRole.TASKER in user.roles:
                 content = FormatContentGgChatAPI.format_content_remind_checkin(user.name)
                 GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return
