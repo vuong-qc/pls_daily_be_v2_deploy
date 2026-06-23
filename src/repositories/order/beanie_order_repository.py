@@ -78,3 +78,9 @@ class BeanieOrderRepository(OrderRepository):
         offset = filters.pop('offset', 0)
         order = await OrderDocument.find_one(filters)
         return order
+
+    async def delete_order(self, order_id: str):
+        logger.info(f"Deleting order: %s", order_id)
+        order = await OrderDocument.get(order_id)
+        if order:
+            await order.delete()

@@ -64,13 +64,16 @@ class LexorankUtil:
             if list_new_order:
                 await order_repository.insert_many_orders(list_new_order)
             for order in list_order:
-                task_doc = task_map[order.object_id]
-                validate_task = response_model.model_validate(task_doc)
-                validate_task.order = order.order
-                list_response.append(validate_task)
+                task_doc = task_map.get(order.object_id)
+                if task_doc:
+                    validate_task = response_model.model_validate(task_doc)
+                    validate_task.order = order.order
+                    list_response.append(validate_task)
+                else:
+                    await order_repository.delete_order(str(order.id))
             logger.info('list response with order: %s', list_response)
             list_response[:] = list_response[filter_item.offset:filter_item.offset+ filter_item.limit]
-        elif total == count_task:
+        else:
             # list order ->task
             # use map to sort order task
             list_order, total = await order_repository.get_list_orders(filters.model_dump(exclude_unset=True))
@@ -81,10 +84,13 @@ class LexorankUtil:
             task_map = {str(task.id): task for task in list_task}
 
             for order in list_order:
-                task_doc = task_map[order.object_id]
-                validate_task = response_model.model_validate(task_doc)
-                validate_task.order = order.order
-                list_response.append(validate_task)
+                task_doc = task_map.get(order.object_id)
+                if task_doc:
+                    validate_task = response_model.model_validate(task_doc)
+                    validate_task.order = order.order
+                    list_response.append(validate_task)
+                else:
+                    await order_repository.delete_order(str(order.id))
             logger.info('list response with order: %s', list_response)
-        # check offset, limit
+
         return list_response, count_task

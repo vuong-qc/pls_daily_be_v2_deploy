@@ -29,3 +29,6 @@ class OrderRepository(ABC):
     @abstractmethod
     async def find_one_order(self, filters: dict) -> OrderDocument | None:
         pass
+    @abstractmethod
+    async def delete_order(self, order_id: str):
+        pass

@@ -106,7 +106,7 @@ class TaskService:
                 filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id, type=task_data.order_type,
                                                 object_id=task_id)
                 order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
-
+                logger.info("check filter order: %s", filter_order)
                 if not order_model:
                     raise
 

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from src.models.user.request.filter_user_model import FilterUserModel
 from src.models.user.request.update_user_model import UpdateUserModel, UpdateProfileModel
 from src.repositories.user.user_repository import UserRepository
@@ -15,6 +17,7 @@ class UserService:
             f"{UserRole.HANDLER.value}" : True,
             f"{UserRole.MANAGER.value}" : True,
             f"{UserRole.TASKER.value}" : True,
+            f"{UserRole.ADMIN.value}" : True,
         }
 
     async def create_user(self, create_user_model: CreateUserModel, roles: list):
@@ -44,7 +47,7 @@ class UserService:
             raise ExceptionUserNotFound()
         return ResponseModel(data=user)
 
-    async def update_user(self, user_id:str, update_user_model: UpdateUserModel | UpdateProfileModel):
+    async def update_user(self, user_id:str, update_user_model: UpdateUserModel | UpdateProfileModel, roles: Optional[list]=None)-> ResponseModel:
         user = await self.user_repository.get_user_by_id(user_id)
         if not user:
             raise ExceptionUserNotFound()
@@ -56,6 +59,9 @@ class UserService:
             for role in update_data.get("roles"):
                 if f"{role}" not in self.role_admin_create:
                     raise ExceptionMasterUpdateUserOutScope()
+        if roles and  UserRole.ADMIN in roles:
+            if update_data.get("roles") and UserRole.ADMIN in roles:
+                raise ExceptionMasterUpdateUserOutScope()
         updated_user = await self.user_repository.update_user(user_id, update_data)
         return ResponseModel(data=updated_user)
 

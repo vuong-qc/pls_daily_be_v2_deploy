@@ -69,8 +69,8 @@ class SessionService:
         session = await self.session_repository.get_session_by_id(session_id)
         if not session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
-        if session_data.end_time and session.start_time is not None and session_data.end_time <= session.start_time:
-            raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
+        logger.info('session : %s',session)
+        logger.info('session update success with data: %s',session_data.model_dump(exclude_unset=True))
         if user_id != session.user_id:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
         await self._check_dif_date(session.start_time , session_data.end_time)
@@ -85,12 +85,6 @@ class SessionService:
         await self.session_repository.delete_session(session_id)
         return ResponseModel()
 
-    async def get_session(self, session_id:str):
-        session = await self.session_repository.get_session_by_id(session_id)
-        if not session:
-            raise
-        response = SessionResponse.model_validate(session)
-        return ResponseModel(data=response)
 
     async def get_list_sessions(self, filters: FilterSessionModel)-> ResponsePaginatedModel:
         list_sessions, total = await self.session_repository.get_list_session(filters)
@@ -102,11 +96,12 @@ class SessionService:
             list_sessions_response.append(response)
         return ResponsePaginatedModel(data=list_sessions_response, total=total, offset= filters.offset)
 
-    async def get_session_by_id(self, session_id:str):
+    async def get_session(self, session_id:str):
         session = await self.session_repository.get_session_by_id(session_id)
         if not session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         response = SessionResponse.model_validate(session)
+        await self._handle_response(response)
         return ResponseModel(data=response)
 
     async def _handle_response(self, response:SessionResponse):
@@ -148,8 +143,8 @@ class SessionService:
         update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time)
         if not update_session_data.end_time:
             update_session_data.end_time = datetime.now()
-        if update_session_data.end_time and update_session_data.end_time <= session.start_time:
-            raise SessionException(SessionMessage.START_GTE_END_TIME, SessionStatusCode.START_GTE_END_TIME)
+        logger.info('session : %s', session)
+        logger.info('session update success with data: %s', session_data.model_dump(exclude_unset=True))
         # check case end_time has diff date with start time
         await self._check_dif_date(session.start_time ,update_session_data.end_time)
 
@@ -225,11 +220,15 @@ class SessionService:
 
     async def _check_dif_date(self,start_time: datetime|None, end_time: datetime|None ):
         local_tz = ZoneInfo(settings.TZ)
+        local_start = start_time.astimezone(local_tz)
+        local_end = end_time.astimezone(local_tz)
+
+        if local_end and local_end <= local_start:
+            raise SessionException(SessionMessage.START_GTE_END_TIME, SessionStatusCode.START_GTE_END_TIME)
         if start_time and end_time:
             logger.info(f"start_time: %s{start_time}")
             logger.info(f"end_time: %s{end_time}")
-            local_start = start_time.astimezone(local_tz)
-            local_end = end_time.astimezone(local_tz)
+
             logger.info(f"local_start: %s{local_start}")
             logger.info(f"local_end: %s{local_end}")
             if local_end.date() != local_start.date():

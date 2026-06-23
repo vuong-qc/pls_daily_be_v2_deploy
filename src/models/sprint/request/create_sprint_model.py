@@ -21,10 +21,6 @@ class CreateSprintModel(BaseModel):
     next_order: Optional[str] = None
     prev_order: Optional[str] = None
 
-    @field_validator("status",mode="before")
-    @classmethod
-    def status_validator(cls, v):
-        return SprintStatusEnum.NEW
 
     @field_validator("type",mode="before")
     @classmethod

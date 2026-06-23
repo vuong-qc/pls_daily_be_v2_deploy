@@ -28,7 +28,7 @@ class DailySessionView(View):
 
     class Settings:
         source = SessionDocument
-        name = "daily_sessions_view"  # Tên collection view trong MongoDB
+        name = "daily_sessions_view"
         pipeline = [
             # Bước 1: Join với collection User
             {
@@ -37,6 +37,11 @@ class DailySessionView(View):
                     "localField": "user.$id",  # Đường dẫn DBRef của Beanie
                     "foreignField": "_id",
                     "as": "user_info_array"
+                }
+            },
+            {
+                "$match": {
+                    "user_info_array": {"$ne": []}
                 }
             },
             # Bước 2: Bóc mảng user_info_array thành 1 Object đơn lẻ
