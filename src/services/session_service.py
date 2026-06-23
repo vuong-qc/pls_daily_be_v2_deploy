@@ -149,7 +149,7 @@ class SessionService:
         if not update_session_data.end_time:
             update_session_data.end_time = datetime.now()
         if update_session_data.end_time and update_session_data.end_time <= session.start_time:
-            raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH, SessionStatusCode.START_GTE_END_TIME)
+            raise SessionException(SessionMessage.START_GTE_END_TIME, SessionStatusCode.START_GTE_END_TIME)
         # check case end_time has diff date with start time
         await self._check_dif_date(session.start_time ,update_session_data.end_time)
 
