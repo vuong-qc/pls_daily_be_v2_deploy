@@ -153,6 +153,20 @@ class SessionService:
         if not updated_session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         response = SessionResponse.model_validate(updated_session)
+        # inject call webhook
+        # get token
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        if total > 0:
+            list_task = []
+            list_task_data = []
+            await asyncio.gather(*[
+                self.get_work_item_by_id(work_id.id, list_task, list_task_data)
+                for work_id in session_data.list_subtasks
+            ])
+            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task, session_data.note_result)
+            GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+            response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
 
     async def _handle_update_task(self, item: UpdateSubTaskModel, session_id:str):

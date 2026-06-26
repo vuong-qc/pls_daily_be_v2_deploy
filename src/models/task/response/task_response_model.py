@@ -30,6 +30,7 @@ class TaskResponse(BaseModel):
     parent_model: Optional['TaskResponse'] = None
     order: Optional[str] = None
     percent_process: Optional[float] = None
+    session_id: Optional[str] = None
 
     @field_validator(
         'parent_model', mode='before'

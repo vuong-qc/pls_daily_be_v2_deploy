@@ -12,3 +12,4 @@ class WorkItemType(StrEnum):
     BUG = 'BUG'
     BACKLOG = 'BACKLOG'
     STORY = 'STORY'
+    TODO = 'TODO'

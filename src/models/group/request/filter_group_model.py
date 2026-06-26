@@ -9,3 +9,4 @@ class FilterGroupModel(BaseModel):
     limit: int = Field(10, le=100)
     created_by: Optional[str] = None
     parent_type: Optional[str] = None
+    parent_id: Optional[str] = None
