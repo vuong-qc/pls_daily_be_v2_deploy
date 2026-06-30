@@ -47,7 +47,7 @@ async def create_project(
 async def get_list_project(
         query: Annotated[FilterWorkItemModel, Query()],
         project_service: ProjectService = Depends(get_project_service),
-        user_data: dict = Depends(get_current_user_by_token),
+        # user_data: dict = Depends(get_current_user_by_token),
 ):
     return await project_service.get_list_projects(query)
 

@@ -10,3 +10,4 @@ class FilterGroupModel(BaseModel):
     created_by: Optional[str] = None
     parent_type: Optional[str] = None
     parent_id: Optional[str] = None
+    is_archived: Optional[bool] = None

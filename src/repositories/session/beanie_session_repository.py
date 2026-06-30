@@ -7,6 +7,7 @@ from src.repositories.session.session_repository import SessionRepository
 from beanie.operators import Set, In, LTE, GTE
 from src.configs import settings
 from datetime import datetime
+from src.utils.datetime_util import DateTimeUtil
 from src.models.session.session_view import DailySessionView
 import logging
 logger = logging.getLogger(__name__)
@@ -92,4 +93,18 @@ class BeanieSessionRepository(SessionRepository):
             DailySessionView.id <= end_date  # Nhỏ hơn hoặc bằng ngày kết thúc
         ).sort("-id").to_list()
         print("results: ",results)
-        return results
+        data_dict = {item.id: item for item in results}
+        list_result = []
+        all_dates = DateTimeUtil.generate_date_range(start_date, end_date)
+        for date in all_dates:
+            if date not in data_dict:
+                list_result.append(DailySessionView(
+                    id=date,
+                    user_id=user_id,
+                    total_sessions=0,
+                    sessions=[],
+                ))
+            else:
+                list_result.append(data_dict[date])
+        return list_result
+

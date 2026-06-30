@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Optional
 from src.models.user.response.user_response_model import UserResponse
 
-# Bạn có thể tự custom các fields bạn cần trả về để tối ưu hiệu năng
 class SessionInGroup(BaseModel):
     id: PydanticObjectId
     user_id: str

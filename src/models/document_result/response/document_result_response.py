@@ -9,3 +9,4 @@ class DocumentResultResponse(BaseModel):
     parent_id: str
     evaluate: Optional[str] = None
     check: Optional[bool] = None
+    evaluate_todo: Optional[str] = None

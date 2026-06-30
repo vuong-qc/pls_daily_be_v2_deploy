@@ -26,3 +26,4 @@ class UpdateWorkItemModel(BaseModel):
     task: Optional[str] = None
     des: Optional[str] = None
     status: Optional[str] = None
+    title: Optional[str] = None

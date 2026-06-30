@@ -5,3 +5,4 @@ class SessionStatusEnum(StrEnum):
     IN_PROGRESS = 'IN_PROGRESS'
     CANCELED = 'CANCELED'
     DONE = 'DONE'
+    LATE ='LATE'

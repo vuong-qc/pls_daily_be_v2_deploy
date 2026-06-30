@@ -19,7 +19,10 @@ class FormatContentGgChatAPI:
             task_lines = f"{TextFormatEnum.TASK_HEADER}{TextFormatEnum.SPACE}{TextFormatEnum.TASK_EMPTY}"
 
         # Build HTML text cho Note
-        note_line = f'{TextFormatEnum.TASK_PREFIX}{note}'
+        cleaned_note = note.lstrip('-').strip()
+
+        # Sau đó mới format với prefix
+        note_line = f'{TextFormatEnum.TASK_PREFIX} {cleaned_note}'
 
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([

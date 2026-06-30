@@ -9,6 +9,7 @@ class GroupDocument(DocumentWithSoftDelete):
     parent_id: Optional[str] = None
     parent_type: Optional[str] = None
     created_by: Optional[str] = None
+    is_archived: Optional[bool] = None
     name: Annotated[str, Indexed(index_type=pymongo.TEXT)]
 
     class Settings:

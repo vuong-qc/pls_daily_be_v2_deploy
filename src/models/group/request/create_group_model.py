@@ -10,3 +10,4 @@ class CreateGroupModel(BaseModel):
     sub_type: Optional[GroupSubType] = None
     created_by: Optional[str] = None
     parent_type: Optional[str] = None
+    is_archived: Optional[bool] = None

@@ -1,3 +1,4 @@
+from src.models.session.request.filter_session_model import FilterSessionModel
 from src.enums.work_item_type import WorkItemType
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
 from src.models.task.request.update_task_model import UpdateTaskModel, UpdateUserTaskModel, UpdateStoryModel
@@ -18,6 +19,7 @@ from src.models.task.request.filter_task_model import FilterTaskModel
 from src.models.order.request.update_order_model import UpdateOrderModel
 from src.models.order.request.filter_order_model import FilterOrderModel
 from src.repositories.order.order_repository import OrderRepository
+from src.repositories.session.session_repository import SessionRepository
 import asyncio
 import logging
 from src.enums.task_status_enum import TaskStatusEnum
@@ -26,11 +28,13 @@ from src.utils.datetime_util import DateTimeUtil
 logger = logging.getLogger(__name__)
 
 class TaskService:
-    def __init__(self, task_repository: WorkItemRepository, user_service: UserService, project_service: ProjectService, order_repository: OrderRepository):
+    def __init__(self, task_repository: WorkItemRepository, user_service: UserService,
+                 project_service: ProjectService, order_repository: OrderRepository, session_repository: SessionRepository, ):
         self.task_repository = task_repository
         self.user_service = user_service
         self.project_service = project_service
         self.order_repository = order_repository
+        self.session_repository = session_repository
 
     async def create_task(self, task_data: CreateTaskModel, handler_id:str = None):
         if task_data.assigned_id:
@@ -148,16 +152,33 @@ class TaskService:
     async def get_list_tasks(self, filters: FilterTaskModel, user_id: str):
         filter_order = FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=filters.parent)
         list_response = []
+        if filters.is_today:
+            # query in session
+            start_of_today_vn = DateTimeUtil.get_start_time_today()
+            logger.info(f"start_of_today_vn: %s{start_of_today_vn}")
+            filters_session = FilterSessionModel(start_time=start_of_today_vn,limit=1, offset=0)
+            list_session, total = await self.session_repository.get_list_session(filters_session)
+            if total < 1:
+                return ResponsePaginatedModel(data=[], total=total, offset= filters.offset)
+            list_task_today = list_session[0].list_task
+            filters.list_ids = list_task_today
+            list_tasks, total = await self.task_repository.get_list_work_items(filters)
+            for task in list_tasks:
+                list_response.append(TaskResponse.model_validate(task))
+            self._handler_inject_task_to_story(list_response)
+            return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
         # case task
         if filters.type_order:
+            # handle case story fetched with its task
             # list_response, total = await self._auto_gen_order(filter_order, filters)
             list_response, total = await LexorankUtil.auto_gen_order(filter_order, filters, TaskResponse, self.task_repository, self.order_repository)
+            self._handler_inject_task_to_story(list_response)
         else:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-        if filters.type and (WorkItemType.STORY in filters.type or WorkItemType.BACKLOG in filters.type):
+        if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
                 self._get_task_story(
                     task
@@ -292,13 +313,14 @@ class TaskService:
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
     async def _get_task_story(self, response:TaskResponse):
-        children =  await self.task_repository.get_children(str(response.id))
-        # logger.info('check children: %s', children)
-        for child in children:
-            logger.info('check child: %s', child)
-        response.children =[TaskResponse.model_validate(child)
-                            for child in children
-                            ]
+        if (response.children is None or len(response.children) == 0) and response.type in [WorkItemType.BACKLOG, WorkItemType.STORY]:
+            children =  await self.task_repository.get_children(str(response.id))
+            # logger.info('check children: %s', children)
+            for child in children:
+                logger.info('check child: %s', child)
+            response.children =[TaskResponse.model_validate(child)
+                                for child in children
+                                ]
 
     async def _check_handler_of_project(self, project_id:str, user_id:str):
         # check case backlog of user-> project_id is user_id -> not check
@@ -324,5 +346,28 @@ class TaskService:
             await self.task_repository.update_many(list_ids, update_data.model_dump(exclude_unset=True))
 
 
-    async def check_parent_type(self, parent_type):
-        pass
+    def _handler_inject_task_to_story(self, list_response: list):
+        parent_map = dict()
+        for response in list_response:
+            # add if has parent is story
+            logger.debug("response: %s", response)
+            if response.parent_model and response.parent_model.type == WorkItemType.STORY:
+                parent_id = response.parent
+                if parent_id not in parent_map:
+                    parent_obj = TaskResponse.model_validate(response.parent_model)
+                    parent_obj.children = []
+                    parent_map[parent_id] = parent_obj
+                    logging.info("create case task of story: %s", response)
+
+                parent_map[parent_id].children.append(response)
+            elif response.type == WorkItemType.STORY:
+                if response.parent not in parent_map:
+                    response.children = []
+                    parent_map[response.id] = response
+                    logger.info("case story: %s", response)
+            else:
+                logging.info("case task sprint: %s", response)
+                parent_map[response.id] = response
+        all_parents = list(parent_map.values())
+
+        list_response[:] = all_parents

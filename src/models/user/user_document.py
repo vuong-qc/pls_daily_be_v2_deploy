@@ -21,6 +21,8 @@ class UserDocument(Document):
     # user_code: int = Indexed(unique=True)
     created_at: int
     updated_at: int
+    daily_checkin: bool = True
+    department: Optional[str] = None
 
     # @before_event(Insert)
     # async def gen_user_code(self):

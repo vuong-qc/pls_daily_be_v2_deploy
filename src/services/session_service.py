@@ -24,6 +24,7 @@ from src.utils.google_chat_webhook_util import GgChatWebhookUtil
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 import asyncio
 from zoneinfo import ZoneInfo
+from fastapi import BackgroundTasks
 from src.enums.session_status_enum import SessionStatusEnum
 import logging
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ class SessionService:
         if list_user_checkin:
             if session_data.user_id in list_user_checkin:
                 raise SessionException(SessionMessage.SESSION_CHECKED_IN, SessionStatusCode.SESSION_CHECKED_IN)
+
+        # check status
         new_session = await self.session_repository.create_session(session_data.model_dump())
         logger.info('checkin success with data: %s',new_session)
         created_session = await self.session_repository.get_session_by_id(str(new_session.id))
@@ -117,14 +120,14 @@ class SessionService:
             count_sub_task_done = await self.work_item_repository.count_work_item(filter_subtask_done)
 
             filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING], parent=str(task.id), offset=0, limit=1)
-            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask)
+            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask) + count_sub_task_done
             task_response = TaskResponse.model_validate(task)
 
             task_response.percent_process = count_sub_task_done/count_total_subtask if count_total_subtask else 0
             list_task_res.append(task_response)
         response.list_tasks_data = list_task_res
 
-    async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel):
+    async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel, background_tasks: BackgroundTasks) -> ResponseModel:
         session = await self.session_repository.get_session_by_id(session_id)
         if not session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
@@ -134,11 +137,6 @@ class SessionService:
         if user_id != session.user_id:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
 
-        # task or subtask
-        await asyncio.gather(*[
-            self._handle_update_task(item, session_id)
-            for item in session_data.list_subtasks
-        ])
         # update session
         update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time)
         if not update_session_data.end_time:
@@ -153,6 +151,9 @@ class SessionService:
         if not updated_session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         response = SessionResponse.model_validate(updated_session)
+
+        #background job handle update
+        background_tasks.add_task(self._handle_update_status_task_done,session_data, session_id)
         # inject call webhook
         # get token
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
@@ -169,7 +170,7 @@ class SessionService:
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
 
-    async def _handle_update_task(self, item: UpdateSubTaskModel, session_id:str):
+    async def _handle_update_task(self, item: UpdateSubTaskModel, session_id:str, list_task_id: set[str]):
         work_item = await self.work_item_repository.get_work_item_by_id(item.id)
         if not work_item:
             raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
@@ -180,11 +181,9 @@ class SessionService:
 
         if work_item.type == WorkItemType.SUBTASK.value and item.status == TaskStatusEnum.DONE.value:
             update_data = UpdateTaskModel(status=item.status, session_id=session_id)
-            await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
-
-        else:
-            update_data = UpdateTaskModel(status=item.status)
-            await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
+            updated_subtask = await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
+            if updated_subtask and updated_subtask.parent:
+                list_task_id.add(str(updated_subtask.parent))
 
     async def get_work_item_by_id(self, work_item_id:str, list_title: list, list_data: list):
         work_item = await self.work_item_repository.get_work_item_by_id(work_item_id)
@@ -208,7 +207,7 @@ class SessionService:
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         for user in list_user_not_checkin:
-            if total > 0 and UserRole.TASKER in user.roles:
+            if total > 0 and UserRole.TASKER in user.roles and user.daily_checkin:
                 content = FormatContentGgChatAPI.format_content_remind_checkin(user.name)
                 GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
         return
@@ -253,3 +252,21 @@ class SessionService:
     async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel):
         list_date_session = await self.session_repository.get_session_by_date_range(filters.user_id, filters.start_time, filters.end_time)
         return ResponsePaginatedModel(data=list_date_session, total=len(list_date_session), offset=0)
+
+    async def _handle_update_status_task_done(self, session_data: CheckoutModel, session_id: str):
+        list_task_id= set()
+        for item in session_data.list_subtasks:
+            await self._handle_update_task(item, session_id, list_task_id)
+
+        for task in list_task_id:
+            # count subtask done/ total =process_percent
+            filter_subtask_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(task), offset=0, limit=1)
+            count_sub_task_done = await self.work_item_repository.count_work_item(filter_subtask_done)
+
+            filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING], parent=str(task), offset=0, limit=1)
+            count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask) + count_sub_task_done
+
+            if  count_total_subtask == count_sub_task_done and count_sub_task_done > 0:
+                update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
+                await self.work_item_repository.update_work_item(task, update_data.model_dump(
+                    exclude_unset=True))

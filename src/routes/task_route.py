@@ -8,6 +8,7 @@ from src.models.task.request.create_task_model import CreateTaskModel, CreateUse
 from src.models.task.request.filter_task_model import FilterTaskModel
 from src.models.task.request.update_task_model import UpdateTaskModel, UpdateUserTaskModel, UpdateStoryModel
 from fastapi import APIRouter, Query, Depends, status, Header, HTTPException
+from src.repositories.session.beanie_session_repository import BeanieSessionRepository
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.services.task_service import TaskService
 from src.utils.role_checker_util import RoleCheckerUtil
@@ -28,7 +29,8 @@ def get_task_service(
 ):
     task_repo = BeanieWorkItemRepository()
     order_repo = BeanieOrderRepository()
-    return TaskService(task_repo, user_service, project_service, order_repo)
+    session_repo = BeanieSessionRepository()
+    return TaskService(task_repo, user_service, project_service, order_repo, session_repo)
 @router.post('/create-story',
             status_code=status.HTTP_201_CREATED,
              summary='Story create in backlog/project',

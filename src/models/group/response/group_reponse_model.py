@@ -10,3 +10,4 @@ class GroupResponse(BaseModel):
     sub_type: Optional[str] = None
     created_by: Optional[str] = None
     parent_type: Optional[str] = None
+    is_archived: Optional[bool] = False

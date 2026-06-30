@@ -3,7 +3,7 @@ from src.repositories.work_item.beanie_work_item_repository import BeanieWorkIte
 from src.models.session.request.create_session_model import CreateSessionModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterSessionByDateRangeModel
-from fastapi import APIRouter, Query, Depends, status, Header, HTTPException
+from fastapi import APIRouter, Query, Depends, status, Header, HTTPException, BackgroundTasks
 from src.configs import settings
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
 from src.constant.session_url_constant import SessionUrlEnum
@@ -82,11 +82,12 @@ async def delete_session(session_id:str,
              )
 async def checkout(session_id:str,
                    data: CheckoutModel,
+                   background_tasks: BackgroundTasks,
                    service: SessionService = Depends(get_session_service),
                    user_data: dict = Depends(get_current_user_by_token),
                    ):
     user_id = user_data.get('sub')
-    return await service.checkout(user_id, session_id, data)
+    return await service.checkout(user_id, session_id, data, background_tasks)
 
 @router.post(f'/{SessionUrlEnum.REMIND_CHECKOUT.value}',
             include_in_schema=False

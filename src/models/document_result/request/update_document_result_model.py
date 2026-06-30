@@ -8,3 +8,4 @@ class UpdateDocumentResult(BaseModel):
     parent_id: Optional[str] = None
     evaluate: Optional[DocumentResultEvaluate] = None
     check: Optional[bool] = None
+    evaluate_todo: Optional[str] = None
