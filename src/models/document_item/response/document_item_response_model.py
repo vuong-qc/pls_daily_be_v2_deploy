@@ -20,3 +20,15 @@ class DocumentResponse(BaseModel):
     is_archived: Optional[bool] = False
     is_checked: Optional[bool] = False
     is_urgent: Optional[bool] = False
+    priority: Optional[str] = None
+    notes: Optional[str] = None
+    assignee: Optional[list[str]] = None
+    sprint: Optional[str] = None
+    task: Optional[str] = None
+    precondition: Optional[str] = None
+    step_implement: Optional[str] = None
+    role: Optional[str] = None
+    data_test: Optional[str] = None
+    expect_result: Optional[str] = None
+    final_result: Optional[str] = None
+    handler: Optional[str] = None

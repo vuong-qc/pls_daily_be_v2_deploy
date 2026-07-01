@@ -36,7 +36,7 @@ class JWTBearerUtil(HTTPBearer):
         payload = {
             "sub": user_id,
             "roles": roles,
-            "exp": datetime.now(tz=timezone.utc) + timedelta(days=7),
+            "exp": datetime.now(tz=timezone.utc) + timedelta(days=30),
             "updated_at": updated_at,
         }
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

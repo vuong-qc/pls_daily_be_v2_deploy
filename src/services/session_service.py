@@ -63,7 +63,7 @@ class SessionService:
                 self.get_work_item_by_id(work_id, list_task, list_task_data)
                 for work_id in session_data.list_task
             ])
-            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes)
+            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes, response.user.department)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
@@ -132,6 +132,8 @@ class SessionService:
         if not session:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
 
+        if session.status == SessionStatusEnum.DONE:
+            return ResponseModel()
         # update work item: task, subtask,
         # add session_id in to subtask
         if user_id != session.user_id:
@@ -159,13 +161,13 @@ class SessionService:
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         if total > 0:
-            list_task = []
-            list_task_data = []
-            await asyncio.gather(*[
-                self.get_work_item_by_id(work_id.id, list_task, list_task_data)
-                for work_id in session_data.list_subtasks
-            ])
-            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task, session_data.note_result)
+            list_subtasks = [ subtask.id for subtask in session_data.list_subtasks]
+            list_task_data = await self._handle_subtask_form_checkout(list_subtasks)
+            # await asyncio.gather(*[
+            #     self.get_work_item_by_id(work_id.id, list_task, list_task_data)
+            #     for work_id in session_data.list_subtasks
+            # ])
+            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, response.user.department)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
@@ -190,6 +192,24 @@ class SessionService:
         if work_item:
             list_title.append(work_item.title)
             list_data.append(TaskResponse.model_validate(work_item))
+
+    async def _handle_subtask_form_checkout(self, list_subtask: list):
+        parent_map = dict()
+        list_subtask_filter = FilterWorkItemModel(list_ids=list_subtask, offset=0, limit=len(list_subtask))
+        list_subtask_data, total = await self.work_item_repository.get_list_work_items(list_subtask_filter)
+
+        for subtask in list_subtask_data:
+            parent_id = subtask.parent
+            if parent_id not in parent_map:
+                parent_obj = TaskResponse.model_validate(subtask.parent_model)
+                parent_obj.children = []
+                parent_map[parent_id] = parent_obj
+                logging.info(" case subtask of story: %s", subtask)
+
+            parent_map[parent_id].children.append(TaskResponse.model_validate(subtask))
+
+        all_parents = list(parent_map.values())
+        return all_parents
 
     async def remind_checkin(self):
         # get list session -> list user_id distinct checkin today
@@ -268,5 +288,9 @@ class SessionService:
 
             if  count_total_subtask == count_sub_task_done and count_sub_task_done > 0:
                 update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
+                await self.work_item_repository.update_work_item(task, update_data.model_dump(
+                    exclude_unset=True))
+            else:
+                update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
                 await self.work_item_repository.update_work_item(task, update_data.model_dump(
                     exclude_unset=True))

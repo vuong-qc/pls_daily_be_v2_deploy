@@ -15,4 +15,6 @@ class SessionDocument(DocumentWithSoftDelete):
     checkout: Optional[bool] = None
     note_result: Optional[str] = None
     work_form: Optional[str] = None
+    checkin_late: Optional[bool] = None
+    checkout_late: Optional[bool] = None
 

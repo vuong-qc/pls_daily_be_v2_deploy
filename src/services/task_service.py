@@ -1,3 +1,7 @@
+from typing import Optional
+
+from anyio.abc import TaskStatus
+
 from src.models.session.request.filter_session_model import FilterSessionModel
 from src.enums.work_item_type import WorkItemType
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
@@ -181,7 +185,7 @@ class TaskService:
         if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
                 self._get_task_story(
-                    task
+                    task, FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=str(task.id)), FilterWorkItemModel(offset=0, limit=100, parent=str(task.id), type_order=filters.type_order)
                 )
                 for task in list_response
             ])
@@ -191,8 +195,15 @@ class TaskService:
         # check user is assigned to task to create subtask
         task = await self.task_repository.get_work_item_by_id(data.parent)
         if task:
+            if task.status == TaskStatusEnum.CANCELED:
+                raise TaskException(TaskMessage.CANCELED_TASK, TaskStatusCode.CANCELED_TASK)
             if not task.assigned_id or user_id not in task.assigned_id:
                 raise TaskException(TaskMessage.TASKER_NOT_MATCH_TASK, TaskStatusCode.TASKER_NOT_MATCH_TASK)
+
+            if task.status == TaskStatusEnum.NEW or task.status == TaskStatusEnum.DONE:
+                # update task status is In processing
+                update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
+                await self.task_repository.update_work_item(data.parent, update_data.model_dump(exclude_unset=True))
 
         subtask = await self.task_repository.create_work_item(data.model_dump())
         return ResponseModel(data=TaskResponse.model_validate(subtask))
@@ -312,15 +323,28 @@ class TaskService:
             return ResponseModel(data=response)
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
-    async def _get_task_story(self, response:TaskResponse):
+    async def _get_task_story(self, response:TaskResponse, filter_order: Optional[FilterOrderModel] = None, filter_item: Optional[FilterWorkItemModel] = None,):
         if (response.children is None or len(response.children) == 0) and response.type in [WorkItemType.BACKLOG, WorkItemType.STORY]:
-            children =  await self.task_repository.get_children(str(response.id))
+            # children =  await self.task_repository.get_children(str(response.id))
+            # # logger.info('check children: %s', children)
+            # for child in children:
+            #     logger.info('check child: %s', child)
+            # response.children =[TaskResponse.model_validate(child)
+            #                     for child in children
+            #                     ]
+            if filter_order and filter_item and filter_item.type_order:
+                logger.info(f"filter_order: {filter_order}, filter_item: {filter_item}")
+                list_response, total = await LexorankUtil.auto_gen_order(filter_order, filter_item, TaskResponse, self.task_repository, self.order_repository)
+                response.children = list_response
+                return
+            children = await self.task_repository.get_children(str(response.id))
             # logger.info('check children: %s', children)
             for child in children:
                 logger.info('check child: %s', child)
             response.children =[TaskResponse.model_validate(child)
                                 for child in children
                                 ]
+
 
     async def _check_handler_of_project(self, project_id:str, user_id:str):
         # check case backlog of user-> project_id is user_id -> not check
@@ -354,7 +378,7 @@ class TaskService:
             if response.parent_model and response.parent_model.type == WorkItemType.STORY:
                 parent_id = response.parent
                 if parent_id not in parent_map:
-                    parent_obj = TaskResponse.model_validate(response.parent_model)
+                    parent_obj = TaskResponse.model_validate(response.parent_model.model_dump())
                     parent_obj.children = []
                     parent_map[parent_id] = parent_obj
                     logging.info("create case task of story: %s", response)

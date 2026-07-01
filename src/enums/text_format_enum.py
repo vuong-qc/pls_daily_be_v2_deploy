@@ -3,6 +3,7 @@ from enum import StrEnum
 class TextFormatEnum(StrEnum):
     # Dùng thẻ <font> và <b> thoải mái vì chúng ta sẽ đưa nó vào Card
     CHECKIN = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked in!"""
+    CHECKIN_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked in!"""
     TASK_HEADER = "&#8226; <b>Task</b>:"
     SUBTASK_HEADER = "&#8226; <b>Subtask</b>:"
     TASK_PREFIX = "&nbsp;&nbsp;- " # Dùng &nbsp; để lùi đầu dòng trong HTML
@@ -14,4 +15,5 @@ class TextFormatEnum(StrEnum):
     SPACE = ' '
     RESULT_NOTE = "&#8226; <b>Ghi chú kết quả</b>:"
     CHECKOUT = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked out!"""
+    CHECKOUT_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked out!"""
     SUBTASK_EMPTY = "Không tạo subtask"

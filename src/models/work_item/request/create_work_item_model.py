@@ -30,3 +30,4 @@ class CreateWorkItemModel(BaseModel):
     group: Optional[str] = None
     sprint: Optional[str] = None
     task: Optional[str] = None
+    expect_result: Optional[str] = None

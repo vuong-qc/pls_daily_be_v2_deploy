@@ -45,6 +45,7 @@ class WorkItemDocument(DocumentWithSoftDelete):
     sprint: Optional[str] = None
     task: Optional[str] = None
     explanation: Optional[str] = None
+    expect_result: Optional[str] = None
 
     class Settings:
         name = "work_items"

@@ -10,6 +10,7 @@ class TaskMessage(StrEnum):
     USER_TASK_PARENT_NOT_MATCH = 'Parent of user task must be BACKLOG'
     NOT_UPDATE_TASK_TYPE_IN_STORY = 'Can not change type of task belong story'
     NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN = 'Can not change type of task/story has children'
+    CANCELED_TASK = 'Canceled task'
 class TaskStatusCode(IntEnum):
     TASK_NOT_FOUND = status.HTTP_404_NOT_FOUND
     SUBTASK_NOT_FOUND = status.HTTP_404_NOT_FOUND
@@ -19,6 +20,7 @@ class TaskStatusCode(IntEnum):
     USER_TASK_PARENT_NOT_MATCH_TYPE = status.HTTP_400_BAD_REQUEST
     NOT_UPDATE_TASK_TYPE_IN_STORY = status.HTTP_400_BAD_REQUEST
     NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN = status.HTTP_400_BAD_REQUEST
+    CANCELED_TASK = status.HTTP_400_BAD_REQUEST
 
 class TaskException(HTTPException):
     def __init__(self, message:TaskMessage, code: TaskStatusCode):

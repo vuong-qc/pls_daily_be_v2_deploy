@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     created_at: int
     updated_at: int
     password: str = Field(exclude=True)
+    department: Optional[str] = None
 
 class UserDetails(UserResponse):
     projects: Optional[list[ProjectInfo]] = []
