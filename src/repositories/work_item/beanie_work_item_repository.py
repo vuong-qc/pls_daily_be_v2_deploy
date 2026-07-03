@@ -221,13 +221,15 @@ class BeanieWorkItemRepository(WorkItemRepository):
                 ]
         # print("check work item", project)
 
-    async def statistic_task(self, sprint_id:str, item_type:str, target_status: str) -> SprintTaskStatsResult | None:
+    async def statistic_task(self, sprint_ids:list[str], item_type:str, target_status: list[str]) -> SprintTaskStatsResult | None:
         pipeline = [
             # Bước 1: Tìm chính xác Sprint
             {
                 "$match": {
                     "type": "SPRINT",
-                    "_id": PydanticObjectId(sprint_id)
+                    "_id": {
+                        "$in": [PydanticObjectId(id) for id in sprint_ids]
+                    }
                 }
             },
 
@@ -303,7 +305,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
                             "$filter": {
                                 "input": "$all_tasks",
                                 "as": "task",
-                                "cond": {"$eq": ["$$task.status", target_status]}
+                                "cond": {"$in": ["$$task.status", target_status]}
                             }
                         }
                     }
@@ -366,3 +368,12 @@ class BeanieWorkItemRepository(WorkItemRepository):
             out.setdefault(r.parent, {})[r.status] = r.count
 
         return out
+
+    async def count_point(self, filters: FilterWorkItemModel) ->float:
+        filter_dump = filters.model_dump(exclude_unset=True)
+        offset = filter_dump.pop("offset", 0)
+        limit = filter_dump.pop("limit", 10)
+        self._update_query_by_form(filters, filter_dump)
+
+        sum_point = await WorkItemDocument.find(filter_dump).sum(f"{WorkItemDocument.point}")
+        return  float(sum_point or 0)

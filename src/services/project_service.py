@@ -1,3 +1,5 @@
+from src.enums.work_item_type import WorkItemType
+from src.enums.sprint_status_enum import SprintStatusEnum
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.project.request.create_project_model import CreateProjectModel
 from src.models.project.request.update_project_model import UpdateProjectModel
@@ -33,7 +35,16 @@ class ProjectService:
         projects, total = await self.project_repository.get_list_work_items(filters)
         list_projects = []
         for project in projects:
-            list_projects.append(ProjectResponse.model_validate(project))
+            response = ProjectResponse.model_validate(project)
+            filter_children = FilterWorkItemModel(type=[WorkItemType.SPRINT],offset=0, limit=1, parent=str(project.id), status=[status for status in SprintStatusEnum if status!= SprintStatusEnum.CANCELED])
+            total_children = await self.project_repository.count_work_item(filter_children)
+            response.total_children = total_children
+
+            filter_children.status = [SprintStatusEnum.PROCESSING]
+            processing_children = await self.project_repository.count_work_item(filter_children)
+            response.processing_children = processing_children
+
+            list_projects.append(response)
         return ResponsePaginatedModel(data=list_projects, total=total, offset=filters.offset)
 
     async def update_project(self, project_id:str, project_model: UpdateProjectModel):

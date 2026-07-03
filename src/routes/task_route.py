@@ -199,3 +199,13 @@ async def statistics_task_by_sprint_id(
 ):
     return await task_service.get_tasks_by_sprint(sprint_id, user_id)
 
+@router.get('/statistics-my-tasks',
+            status_code=status.HTTP_200_OK,
+            description='Get total number of tasks, task not done, total point, point not done',
+            )
+async def statistics_my_tasks(
+        task_service: TaskService = Depends(get_task_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    user_id = user_data.get("sub")
+    return await task_service.count_my_tasks(user_id)

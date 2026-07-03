@@ -68,4 +68,10 @@ class ResponseSprintStatisticTask(ResponsePaginatedModel):
     total_done_tasks: int
     total_point_done_tasks: int
 
+class ResponseCountTaskPoint(BaseModel):
+    count_my_tasks: float
+    count_total_point: float
+    count_not_done_tasks: float
+    count_not_done_point: float
+
 TaskResponse.model_rebuild()

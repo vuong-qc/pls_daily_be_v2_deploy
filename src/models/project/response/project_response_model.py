@@ -7,5 +7,6 @@ class ProjectResponse(ProjectInfo):
     handler_id: Optional[List[str]] = None
     handler: Optional[List[UserResponse]] = None
     owner: Optional[UserResponse] = None
-
+    total_children: Optional[int] = None
+    processing_children: Optional[int] = None
 

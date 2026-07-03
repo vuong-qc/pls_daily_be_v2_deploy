@@ -36,7 +36,7 @@ class WorkItemRepository(ABC):
         pass
 
     @abstractmethod
-    async def statistic_task(self, sprint_id:str, type:str, target_status:str)-> SprintTaskStatsResult | None:
+    async def statistic_task(self, sprint_ids:list[str], type:str, target_status:list[str])-> SprintTaskStatsResult | None:
         pass
 
     @abstractmethod
@@ -52,4 +52,8 @@ class WorkItemRepository(ABC):
                 parents: list[str],
                 statuses: list[str],
         ) -> dict[str, dict[str, int]]:
+        pass
+
+    @abstractmethod
+    async def count_point(self, filters: FilterWorkItemModel)->float:
         pass

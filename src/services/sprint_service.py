@@ -124,7 +124,7 @@ class SprintService:
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
     async def _add_count_task_sprints(self, sprint_response: SprintResponse, parent:str):
-        statistic = await self.sprint_repository.statistic_task(parent, WorkItemType.TASK.value, TaskStatusEnum.DONE.value)
+        statistic = await self.sprint_repository.statistic_task([parent], WorkItemType.TASK.value, [TaskStatusEnum.DONE.value])
         sprint_response.total_tasks = statistic.total_tasks
         sprint_response.done_tasks = statistic.target_status_tasks
         logger.info('data sprint: %s', sprint_response)

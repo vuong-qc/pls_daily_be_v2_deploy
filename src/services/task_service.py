@@ -1,6 +1,5 @@
 from typing import Optional
 
-from src.enums.work_item_type import WorkItemType
 from src.enums.session_status_enum import SessionStatusEnum
 from src.models.session.request.filter_session_model import FilterSessionModel
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
@@ -11,7 +10,7 @@ from src.services.user_service import UserService
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.services.project_service import ProjectService
 from src.exception.task_exception import TaskException, TaskMessage, TaskStatusCode
-from src.models.task.response.task_response_model import TaskResponse, ResponseSprintStatisticTask
+from src.models.task.response.task_response_model import TaskResponse, ResponseSprintStatisticTask, ResponseCountTaskPoint
 from src.models.subtask.request.create_subtask_model import CreateSubtaskModel
 from src.models.subtask.request.update_subtask_model import UpdateSubtaskModel
 from src.exception.sprint_exception import SprintException, SprintMessage, SprintStatusCode
@@ -441,3 +440,17 @@ class TaskService:
                 total_point += task.point
                 list_response.append(response)
         return ResponseSprintStatisticTask(data=list_response, total=len(list_response), total_point=total_point, total_point_done_tasks=total_point_done_tasks, total_done_tasks=total_done_tasks,offset=0)
+
+    async def count_my_tasks(self, user_id:str):
+        filters = FilterWorkItemModel(limit=1, offset=0, assigned_id=[user_id], type=[WorkItemType.TASK], status=[status for status in TaskStatusEnum if status!= TaskStatusEnum.CANCELED])
+        count_my_tasks = await self.task_repository.count_work_item(filters)
+        count_total_point = await self.task_repository.count_point(filters)
+
+
+        filters.status = [status for status in TaskStatusEnum if status!= TaskStatusEnum.CANCELED and status!= TaskStatusEnum.DONE]
+        count_not_done_tasks = await self.task_repository.count_work_item(filters)
+        count_not_done_point = await self.task_repository.count_point(filters)
+
+        response = ResponseCountTaskPoint(count_my_tasks=count_my_tasks,count_total_point=count_total_point,count_not_done_tasks= count_not_done_tasks, count_not_done_point=count_not_done_point)
+
+        return ResponseModel(data=response)
