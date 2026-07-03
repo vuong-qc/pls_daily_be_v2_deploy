@@ -1,9 +1,11 @@
+from typing import Optional
+
 from src.enums.work_item_type import WorkItemType
-from src.models.work_item.request.filter_work_item import FilterWorkItemModel
+from src.models.work_item.request.filter_work_item import FilterWorkItemModel, ParentStatusCount
 from src.models.project.response.project_response_model import ProjectResponse
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
-from beanie.operators import Set, In, RegEx, LTE
+from beanie.operators import Set, In, RegEx, LTE, GTE, And
 from beanie import PydanticObjectId
 from src.models.user.user_document import UserDocument
 import logging
@@ -78,8 +80,13 @@ class BeanieWorkItemRepository(WorkItemRepository):
         query = WorkItemDocument.find(filter_dump)
         count = await query.count()
         return count
-    async def get_children(self, parent_id:str) ->list[WorkItemDocument]:
+    async def get_children(self, parent_id:str, status: Optional[list[str]]= None, user_id: Optional[str]= None) ->list[WorkItemDocument]:
         filters = FilterWorkItemModel(offset=0, limit=10, parent=parent_id)
+
+        if user_id:
+            filters.assigned_id = [user_id]
+        if status:
+            filters.status_id = status
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
@@ -89,6 +96,23 @@ class BeanieWorkItemRepository(WorkItemRepository):
         children = await query.to_list()
         return children
 
+    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[str]= None):
+        filters = FilterWorkItemModel(offset=0, limit=10)
+        if user_id:
+            filters.assigned_id = [user_id]
+        if status:
+            filters.status_id = status
+        filter_dump = filters.model_dump(exclude_unset=True)
+        filter_dump.update(
+            In(WorkItemDocument.parent, parents)
+        )
+        offset = filter_dump.pop("offset",0)
+        limit = filter_dump.pop("limit",10)
+        query = WorkItemDocument.find(filter_dump,
+                                      fetch_links=True,
+                                      )
+        children = await query.to_list()
+        return children
     def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
@@ -142,9 +166,22 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filter_dump.update(
                 In(WorkItemDocument.task,filters.task)
             )
-        if filters.deadline:
+
+        if filters.deadline_end and filters.deadline_start:
             filter_dump.update(
-                LTE(WorkItemDocument.deadline,filter_dump.pop('deadline'))
+                And(
+                    GTE(WorkItemDocument.deadline, filter_dump.pop('deadline_start')),
+                    LTE(WorkItemDocument.deadline, filter_dump.pop('deadline_end'))
+                )
+            )
+
+        elif filters.deadline_start:
+            filter_dump.update(
+                GTE(WorkItemDocument.deadline,filter_dump.pop('deadline_start'))
+            )
+        elif filters.deadline_end:
+            filter_dump.update(
+                LTE(WorkItemDocument.deadline,filter_dump.pop('deadline_end'))
             )
 
 
@@ -291,3 +328,44 @@ class BeanieWorkItemRepository(WorkItemRepository):
         query = In(WorkItemDocument.id, list_object_id)
         await WorkItemDocument.find(query).update(Set(data))
         return
+
+
+
+    async def count_items_by_parent_status(
+            self,
+            parents: list[str],
+            statuses: list[str],
+    ) -> dict[str, dict[str, int]]:
+        pipeline = [
+            {
+                "$match": {
+                    "parent": {"$in": parents},
+                    "status": {"$in": statuses},
+                }
+            },
+            {
+                "$group": {
+                    "_id": {"parent": "$parent", "status": "$status"},
+                    "count": {"$sum": 1},
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "parent": "$_id.parent",
+                    "status": "$_id.status",
+                    "count": 1,
+                }
+            },
+        ]
+
+        results = await WorkItemDocument.find(
+            In(WorkItemDocument.parent,parents),  # optional, để tận dụng index sớm hơn (pre-filter)
+        ).aggregate(pipeline, projection_model=ParentStatusCount).to_list()
+
+        # gom về dict: {parent: {status: count}}
+        out: dict[str, dict[str, int]] = {p: {s: 0 for s in statuses} for p in parents}
+        for r in results:
+            out.setdefault(r.parent, {})[r.status] = r.count
+
+        return out

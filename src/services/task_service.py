@@ -1,9 +1,8 @@
 from typing import Optional
 
-from anyio.abc import TaskStatus
-
-from src.models.session.request.filter_session_model import FilterSessionModel
 from src.enums.work_item_type import WorkItemType
+from src.enums.session_status_enum import SessionStatusEnum
+from src.models.session.request.filter_session_model import FilterSessionModel
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
 from src.models.task.request.update_task_model import UpdateTaskModel, UpdateUserTaskModel, UpdateStoryModel
 from src.repositories.work_item.work_item_repository import WorkItemRepository
@@ -160,7 +159,7 @@ class TaskService:
             # query in session
             start_of_today_vn = DateTimeUtil.get_start_time_today()
             logger.info(f"start_of_today_vn: %s{start_of_today_vn}")
-            filters_session = FilterSessionModel(start_time=start_of_today_vn,limit=1, offset=0)
+            filters_session = FilterSessionModel(start_time=start_of_today_vn,status= [SessionStatusEnum.NEW],limit=1, offset=0, user_id=user_id)
             list_session, total = await self.session_repository.get_list_session(filters_session)
             if total < 1:
                 return ResponsePaginatedModel(data=[], total=total, offset= filters.offset)
@@ -177,11 +176,12 @@ class TaskService:
             # handle case story fetched with its task
             # list_response, total = await self._auto_gen_order(filter_order, filters)
             list_response, total = await LexorankUtil.auto_gen_order(filter_order, filters, TaskResponse, self.task_repository, self.order_repository)
-            self._handler_inject_task_to_story(list_response)
         else:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
+        self._handler_inject_task_to_story(list_response)
+
         if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
                 self._get_task_story(
@@ -395,3 +395,24 @@ class TaskService:
         all_parents = list(parent_map.values())
 
         list_response[:] = all_parents
+
+    async def get_tasks_by_sprint(self, sprint_id:str, user_id:str):
+        task_story_of_sprint = await self.task_repository.get_children(sprint_id, user_id)
+        list_story_ids = []
+        list_tasks = []
+        list_task_id = []
+        for item in task_story_of_sprint:
+            if item.type == WorkItemType.STORY:
+                list_story_ids.append(str(item.id))
+            elif item.type == WorkItemType.TASK:
+                list_tasks.append(item)
+                list_task_id.append(str(item.id))
+
+        # get task of story
+        task_by_story = await self.task_repository.get_children_by_parents(list_story_ids)
+        for task in task_by_story:
+            list_tasks.append(task)
+            list_task_id.append(str(task.id))
+
+        task_with_count_status = await self.task_repository.count_items_by_parent_status(list_task_id, [TaskStatusEnum.NEW.value, TaskStatusEnum.PROCESSING.value, TaskStatusEnum.LATE.value])
+        print("test",task_with_count_status)

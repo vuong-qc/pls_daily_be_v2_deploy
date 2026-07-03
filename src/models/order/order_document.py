@@ -1,14 +1,14 @@
 from beanie import DocumentWithSoftDelete, Indexed
 import pymongo
 from pymongo import IndexModel
-
+from typing import Optional
 
 class OrderDocument(DocumentWithSoftDelete):
     type: str
     object_id: str
     owner_id: str
     order: str
-    parent_id: str
+    parent_id: Optional[str] = None
 
     class Settings:
         name='order'

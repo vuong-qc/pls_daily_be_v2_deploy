@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Optional
+
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
 
@@ -26,7 +28,11 @@ class WorkItemRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_children(self, parent_id:str)->list[WorkItemDocument]:
+    async def get_children(self, parent_id:str, status: Optional[list[str]]= None, user_id: Optional[str]= None) ->list[WorkItemDocument]:
+        pass
+
+    @abstractmethod
+    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[str]= None):
         pass
 
     @abstractmethod
@@ -39,4 +45,11 @@ class WorkItemRepository(ABC):
 
     @abstractmethod
     async def update_many(self, list_ids: list[str], data: dict):
+        pass
+    @abstractmethod
+    async def count_items_by_parent_status(
+                self,
+                parents: list[str],
+                statuses: list[str],
+        ) -> dict[str, dict[str, int]]:
         pass

@@ -31,3 +31,12 @@ class CreateWorkItemModel(BaseModel):
     sprint: Optional[str] = None
     task: Optional[str] = None
     expect_result: Optional[str] = None
+
+    screen: Optional[str] = None
+    action: Optional[str] = None
+    blame: Optional[str] = None
+    extra_info: Optional[str] = None
+    platform: Optional[str] = None
+    device: Optional[str] = None
+    device_version: Optional[str] = None
+    project_version: Optional[str] = None

@@ -48,6 +48,15 @@ class WorkItemResponse(BaseModel):
     task_model: Optional['WorkItemResponse'] = None
     explanation: Optional[str] = None
 
+    screen: Optional[str] = None
+    action: Optional[str] = None
+    blame: Optional[str] = None
+    extra_info: Optional[str] = None
+    platform: Optional[str] = None
+    device: Optional[str] = None
+    device_version: Optional[str] = None
+    project_version: Optional[str] = None
+
     @field_validator(
         'parent_model', mode='before'
     )

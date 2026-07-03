@@ -76,7 +76,8 @@ class SessionService:
         logger.info('session update success with data: %s',session_data.model_dump(exclude_unset=True))
         if user_id != session.user_id:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
-        await self._check_dif_date(session.start_time , session_data.end_time)
+        if session_data.end_time:
+            await self._check_dif_date(session.start_time , session_data.end_time)
 
         updated_session = await self.session_repository.update_session(session_id, session_data.model_dump(exclude_unset=True))
 
@@ -181,10 +182,10 @@ class SessionService:
             raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH,
                                    SessionStatusCode.TASK_SUBTASK_TYPE_NOT_MATCH)
 
-        if work_item.type == WorkItemType.SUBTASK.value and item.status == TaskStatusEnum.DONE.value:
+        if work_item.type == WorkItemType.SUBTASK.value:
             update_data = UpdateTaskModel(status=item.status, session_id=session_id)
             updated_subtask = await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
-            if updated_subtask and updated_subtask.parent:
+            if updated_subtask and updated_subtask.parent and work_item.status == TaskStatusEnum.DONE:
                 list_task_id.add(str(updated_subtask.parent))
 
     async def get_work_item_by_id(self, work_item_id:str, list_title: list, list_data: list):
