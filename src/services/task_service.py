@@ -11,7 +11,7 @@ from src.services.user_service import UserService
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.services.project_service import ProjectService
 from src.exception.task_exception import TaskException, TaskMessage, TaskStatusCode
-from src.models.task.response.task_response_model import TaskResponse
+from src.models.task.response.task_response_model import TaskResponse, ResponseSprintStatisticTask
 from src.models.subtask.request.create_subtask_model import CreateSubtaskModel
 from src.models.subtask.request.update_subtask_model import UpdateSubtaskModel
 from src.exception.sprint_exception import SprintException, SprintMessage, SprintStatusCode
@@ -397,22 +397,47 @@ class TaskService:
         list_response[:] = all_parents
 
     async def get_tasks_by_sprint(self, sprint_id:str, user_id:str):
-        task_story_of_sprint = await self.task_repository.get_children(sprint_id, user_id)
+        task_story_of_sprint = await self.task_repository.get_children(parent_id=sprint_id, user_id=user_id)
         list_story_ids = []
         list_tasks = []
         list_task_id = []
+        print("task of sprint",task_story_of_sprint)
         for item in task_story_of_sprint:
             if item.type == WorkItemType.STORY:
                 list_story_ids.append(str(item.id))
             elif item.type == WorkItemType.TASK:
                 list_tasks.append(item)
                 list_task_id.append(str(item.id))
-
+        print("list_story_ids:", list_story_ids)
+        print("list_tasks:", list_tasks)
+        print("list_task_id:", list_task_id)
         # get task of story
         task_by_story = await self.task_repository.get_children_by_parents(list_story_ids)
         for task in task_by_story:
             list_tasks.append(task)
             list_task_id.append(str(task.id))
 
-        task_with_count_status = await self.task_repository.count_items_by_parent_status(list_task_id, [TaskStatusEnum.NEW.value, TaskStatusEnum.PROCESSING.value, TaskStatusEnum.LATE.value])
+        task_with_count_status = await self.task_repository.count_items_by_parent_status(list_task_id, [TaskStatusEnum.NEW.value, TaskStatusEnum.PROCESSING.value, TaskStatusEnum.LATE.value, TaskStatusEnum.DONE.value])
         print("test",task_with_count_status)
+
+        total_done_tasks = 0
+        total_point_done_tasks = 0
+        list_response = []
+        total_point = 0
+
+        for task in list_tasks:
+            status_count_object = task_with_count_status.get(str(task.id))
+            if status_count_object:
+                count_new = status_count_object.get(TaskStatusEnum.NEW.value,0)
+                count_processing = status_count_object.get(TaskStatusEnum.PROCESSING.value, 0)
+                count_late = status_count_object.get(TaskStatusEnum.LATE.value, 0)
+                count_done = status_count_object.get(TaskStatusEnum.DONE.value, 0)
+                response = TaskResponse.model_validate(task)
+                total_subtask = count_done + count_processing + count_late + count_new
+                response.percent_process = count_done / total_subtask if total_subtask > 0 else 0
+                if task.status == TaskStatusEnum.DONE.value:
+                    total_done_tasks += 1
+                    total_point_done_tasks += task.point
+                total_point += task.point
+                list_response.append(response)
+        return ResponseSprintStatisticTask(data=list_response, total=len(list_response), total_point=total_point, total_point_done_tasks=total_point_done_tasks, total_done_tasks=total_done_tasks,offset=0)

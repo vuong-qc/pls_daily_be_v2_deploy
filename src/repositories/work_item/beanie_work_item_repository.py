@@ -86,8 +86,10 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if user_id:
             filters.assigned_id = [user_id]
         if status:
-            filters.status_id = status
+            filters.status = status
         filter_dump = filters.model_dump(exclude_unset=True)
+        self._update_query_by_form(filters, filter_dump)
+        print("filter",filter_dump)
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
         query = WorkItemDocument.find(filter_dump,
@@ -101,13 +103,14 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if user_id:
             filters.assigned_id = [user_id]
         if status:
-            filters.status_id = status
+            filters.status = status
         filter_dump = filters.model_dump(exclude_unset=True)
         filter_dump.update(
             In(WorkItemDocument.parent, parents)
         )
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
+        print("filter",filter_dump)
         query = WorkItemDocument.find(filter_dump,
                                       fetch_links=True,
                                       )
@@ -197,7 +200,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
             if check_work_item:
                 project.parent_model = WorkItemDocument.model_construct(id=PydanticObjectId(parent_id))
         if type(handler_id) is not bool:
-            if handler_id == []:
+            if handler_id == [] or handler_id is None:
                 project.handler = []
             else:
                 project.handler = [
@@ -209,7 +212,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
             project.owner = UserDocument.model_construct(id=PydanticObjectId(data['owner_id']))
 
         if type(assigned_id) is not bool:
-            if assigned_id == []:
+            if assigned_id == [] or assigned_id is None:
                 project.assignee = []
             else:
                 project.assignee = [
@@ -338,12 +341,6 @@ class BeanieWorkItemRepository(WorkItemRepository):
     ) -> dict[str, dict[str, int]]:
         pipeline = [
             {
-                "$match": {
-                    "parent": {"$in": parents},
-                    "status": {"$in": statuses},
-                }
-            },
-            {
                 "$group": {
                     "_id": {"parent": "$parent", "status": "$status"},
                     "count": {"$sum": 1},
@@ -361,8 +358,8 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
         results = await WorkItemDocument.find(
             In(WorkItemDocument.parent,parents),  # optional, để tận dụng index sớm hơn (pre-filter)
+            In(WorkItemDocument.status,statuses)
         ).aggregate(pipeline, projection_model=ParentStatusCount).to_list()
-
         # gom về dict: {parent: {status: count}}
         out: dict[str, dict[str, int]] = {p: {s: 0 for s in statuses} for p in parents}
         for r in results:

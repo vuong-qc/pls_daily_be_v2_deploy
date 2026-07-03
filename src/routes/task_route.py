@@ -193,9 +193,9 @@ async def auto_update_status_task(
             )
 async def statistics_task_by_sprint_id(
         sprint_id: str,
+        user_id: str,
         task_service: TaskService = Depends(get_task_service),
         user_data: dict = Depends(get_current_user_by_token),
 ):
-    user_id = user_data.get("sub")
-    return task_service.get_tasks_by_sprint(sprint_id, user_id)
+    return await task_service.get_tasks_by_sprint(sprint_id, user_id)
 

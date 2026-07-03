@@ -156,7 +156,7 @@ class SessionService:
         response = SessionResponse.model_validate(updated_session)
 
         #background job handle update
-        background_tasks.add_task(self._handle_update_status_task_done,session_data, session_id)
+        await self._handle_update_status_task_done(session_data, session_id)
         # inject call webhook
         # get token
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
@@ -181,11 +181,11 @@ class SessionService:
         if work_item.type not in [WorkItemType.TASK.value, WorkItemType.SUBTASK.value]:
             raise SessionException(SessionMessage.TASK_SUBTASK_TYPE_NOT_MATCH,
                                    SessionStatusCode.TASK_SUBTASK_TYPE_NOT_MATCH)
-
+        logger.info ('subtask : %s', work_item)
         if work_item.type == WorkItemType.SUBTASK.value:
             update_data = UpdateTaskModel(status=item.status, session_id=session_id)
             updated_subtask = await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
-            if updated_subtask and updated_subtask.parent and work_item.status == TaskStatusEnum.DONE:
+            if updated_subtask and updated_subtask.parent and updated_subtask.status == TaskStatusEnum.DONE:
                 list_task_id.add(str(updated_subtask.parent))
 
     async def get_work_item_by_id(self, work_item_id:str, list_title: list, list_data: list):
@@ -276,6 +276,8 @@ class SessionService:
 
     async def _handle_update_status_task_done(self, session_data: CheckoutModel, session_id: str):
         list_task_id= set()
+        # logger.debug(f"list_task_id: %s{session_data.list_subtasks}")
+
         for item in session_data.list_subtasks:
             await self._handle_update_task(item, session_id, list_task_id)
 
@@ -286,12 +288,13 @@ class SessionService:
 
             filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING], parent=str(task), offset=0, limit=1)
             count_total_subtask = await self.work_item_repository.count_work_item(filter_all_subtask) + count_sub_task_done
-
+            logger.info(f"count_sub_task_done: %s{count_sub_task_done}")
+            logger.info(f"count_total_subtask: %s{count_total_subtask}")
             if  count_total_subtask == count_sub_task_done and count_sub_task_done > 0:
                 update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
                 await self.work_item_repository.update_work_item(task, update_data.model_dump(
                     exclude_unset=True))
-            else:
-                update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
-                await self.work_item_repository.update_work_item(task, update_data.model_dump(
-                    exclude_unset=True))
+            # else:
+            #     update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
+            #     await self.work_item_repository.update_work_item(task, update_data.model_dump(
+            #         exclude_unset=True))

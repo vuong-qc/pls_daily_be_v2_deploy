@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, Any, List
 from src.models.user.response.user_response_model import UserResponse
 from beanie import PydanticObjectId, Link
-
+from src.models.response_model import ResponsePaginatedModel
 
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -62,5 +62,10 @@ class TaskResponse(BaseModel):
         if isinstance(v, list) and all(isinstance(item, Link) for item in v):
             return None
         return v
+
+class ResponseSprintStatisticTask(ResponsePaginatedModel):
+    total_point: int
+    total_done_tasks: int
+    total_point_done_tasks: int
 
 TaskResponse.model_rebuild()

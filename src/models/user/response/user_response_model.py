@@ -22,7 +22,6 @@ class UserResponse(BaseModel):
     # user_code: int = Indexed(unique=True)
     created_at: int
     updated_at: int
-    password: str = Field(exclude=True)
     department: Optional[str] = None
 
 class UserDetails(UserResponse):
