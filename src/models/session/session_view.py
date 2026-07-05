@@ -3,10 +3,11 @@ from beanie import View
 from pydantic import BaseModel
 from src.configs import settings
 from src.models.session.session_document import SessionDocument
-from src.models.user.user_document import UserDocument
 from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional
+from pydantic import SerializeAsAny
+
 from src.models.user.response.user_response_model import UserResponse
 
 class SessionInGroup(BaseModel):
@@ -23,7 +24,7 @@ class DailySessionView(View):
     id: str  # Trong View, id này chính là chuỗi ngày YYYY-MM-DD từ $group
     user_id: str # Thêm field này ở tầng group để tiện filter sau này
     total_sessions: int
-    sessions: List[SessionInGroup]
+    sessions: List[SerializeAsAny[SessionInGroup]]
 
     class Settings:
         source = SessionDocument

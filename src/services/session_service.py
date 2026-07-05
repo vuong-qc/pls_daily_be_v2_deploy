@@ -7,7 +7,7 @@ from src.models.session.request.filter_session_model import FilterSessionModel, 
     FilterSessionByDateRangeModel
 from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
 from src.models.session.request.create_session_model import CreateSessionModel
-from src.models.session.response.session_response_model import SessionResponse
+from src.models.session.response.session_response_model import SessionResponse, SessionTaskResponse
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.exception.session_exception import SessionException, SessionMessage, SessionStatusCode
@@ -25,6 +25,7 @@ from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 import asyncio
 from zoneinfo import ZoneInfo
 from fastapi import BackgroundTasks
+import math
 from src.enums.session_status_enum import SessionStatusEnum
 import logging
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ class SessionService:
             raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
 
         # update session
-        update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time)
+        update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time, note_result=session_data.note_result)
         if not update_session_data.end_time:
             update_session_data.end_time = datetime.now()
         logger.info('session : %s', session)
@@ -272,7 +273,27 @@ class SessionService:
 
     async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel):
         list_date_session = await self.session_repository.get_session_by_date_range(filters.user_id, filters.start_time, filters.end_time)
-        return ResponsePaginatedModel(data=list_date_session, total=len(list_date_session), offset=0)
+        # handle add task, subtask to each session
+        # cal point estimate, % process
+        # iterate over date -> sessions ->list subtask in session
+        list_session = []
+        for index, date_session in enumerate(list_date_session):
+            list_session_w_task_data = []
+            for session in date_session.sessions:
+                # get subtask by session_id -> group by parent
+                # % process
+                list_task_data = await self.calc_process_task_session(str(session.id))
+                session_response = SessionTaskResponse.model_validate(session.model_dump())
+                session_response.list_tasks_data = list_task_data
+                list_session_w_task_data.append(session_response)
+
+            date_session.sessions = list_session_w_task_data
+            print(date_session.sessions)
+            list_session.append(date_session)
+
+        print("test",list_session)
+
+        return ResponsePaginatedModel(data=list_session, total=len(list_date_session), offset=0)
 
     async def _handle_update_status_task_done(self, session_data: CheckoutModel, session_id: str):
         list_task_id= set()
@@ -298,3 +319,33 @@ class SessionService:
             #     update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
             #     await self.work_item_repository.update_work_item(task, update_data.model_dump(
             #         exclude_unset=True))
+
+    async def calc_process_task_session(self, session_id: str):
+        parent_map = dict()
+        list_task = []
+
+        subtask_done_map = dict()
+        filter_subtask = FilterWorkItemModel(type= [WorkItemType.SUBTASK],session_id=str(session_id), limit=10, offset=0)
+        list_subtask = await self.work_item_repository.filter_work_item_for_order(filter_subtask)
+        for subtask in list_subtask:
+            task_id = subtask.parent
+            if task_id not in parent_map:
+                task_obj = TaskResponse.model_validate(subtask.parent_model)
+                task_obj.children = []
+                parent_map[task_id] = task_obj
+                subtask_done_map[task_id] = 1 if subtask.status == TaskStatusEnum.DONE else 0
+            else:
+                if subtask.status == TaskStatusEnum.DONE:
+                    subtask_done_map[task_id] +=1
+            parent_map[task_id].children.append(TaskResponse.model_validate(subtask))
+
+        for key, value in parent_map.items():
+            all_subtasks = await self.work_item_repository.get_children(key, status=[ status for status in TaskStatusEnum if status != TaskStatusEnum.CANCELED])
+            percent_process = subtask_done_map[key]/len(all_subtasks) if len(all_subtasks) > 0 else 0
+            parent_map[key].percent_process = math.floor(percent_process + 0.5)
+            parent_map[key].estimated_point = math.floor(percent_process + 0.5) * parent_map[key].point
+
+        list_task[:] = list(parent_map.values())
+        for task in list_task:
+            print(task)
+        return list_task

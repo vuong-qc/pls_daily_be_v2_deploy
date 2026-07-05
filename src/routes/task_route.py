@@ -209,3 +209,17 @@ async def statistics_my_tasks(
 ):
     user_id = user_data.get("sub")
     return await task_service.count_my_tasks(user_id)
+
+@router.post('/copy-task',
+            status_code=status.HTTP_201_CREATED,
+            summary='Task copy',
+            description="copy task by task id",
+            dependencies=[Depends(RoleCheckerUtil([UserRole.HANDLER.value]))]
+
+             )
+async def copy_task(
+        task_id: str,
+        task_service: TaskService = Depends(get_task_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    return await task_service.copy_task(task_id)

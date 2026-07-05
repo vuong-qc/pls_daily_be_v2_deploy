@@ -11,6 +11,7 @@ class UpdateSessionModel(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     work_form: Optional[str] = None
+    note_result: Optional[str] = None
 
 class UpdateSubTaskModel(BaseModel):
     status: TaskStatusEnum

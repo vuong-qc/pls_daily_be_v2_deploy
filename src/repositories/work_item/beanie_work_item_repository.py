@@ -334,8 +334,6 @@ class BeanieWorkItemRepository(WorkItemRepository):
         await WorkItemDocument.find(query).update(Set(data))
         return
 
-
-
     async def count_items_by_parent_status(
             self,
             parents: list[str],

@@ -454,3 +454,15 @@ class TaskService:
         response = ResponseCountTaskPoint(count_my_tasks=count_my_tasks,count_total_point=count_total_point,count_not_done_tasks= count_not_done_tasks, count_not_done_point=count_not_done_point)
 
         return ResponseModel(data=response)
+
+    async def copy_task(self, task_id: str):
+        task = await self.task_repository.get_work_item_by_id(task_id)
+        if not task:
+            raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
+
+        cp_task = CreateTaskModel(**task.model_dump())
+        cp_task.assigned_id = None
+
+        new_task = await self.task_repository.create_work_item(cp_task.model_dump())
+        response = TaskResponse.model_validate(new_task)
+        return ResponseModel(data=response)

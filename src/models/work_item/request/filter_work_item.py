@@ -24,6 +24,7 @@ class FilterWorkItemModel(BaseModel):
     deadline_end: Optional[int] = None
     sprint: Optional[list[str]] = None
     task: Optional[str] = None
+    session_id: Optional[str] = None
 
 class ParentStatusCount(BaseModel):
     parent: str
