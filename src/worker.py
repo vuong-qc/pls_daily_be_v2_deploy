@@ -2,10 +2,22 @@ import httpx
 from src.configs import settings
 from arq import cron
 from arq.connections import RedisSettings
-from zoneinfo import ZoneInfo
 import logging
 from src.constant.session_url_constant import SessionUrlEnum
 logger = logging.getLogger(__name__)
+
+async def call_internal_api(api_url: str, task_name: str):
+    headers = {
+        "x-internal-key": settings.INTERNAL_API_KEY
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(api_url, timeout=10.0, headers=headers)
+            response.raise_for_status()
+            logger.info("%s completed with status %s", task_name, response.status_code)
+        except httpx.HTTPError:
+            logger.exception("%s failed when calling internal API: %s", task_name, api_url)
+            raise
 
 # Đây là hàm chạy trong Worker
 async def remind_forgot_checkout_task(ctx):
@@ -13,44 +25,18 @@ async def remind_forgot_checkout_task(ctx):
 
     # URL nội bộ (ví dụ gọi trong cùng mạng LAN hoặc cùng Docker network)
     api_url = f'{settings.INTERNAL_API_URL}/{SessionUrlEnum.SESSIONS.value}/{SessionUrlEnum.REMIND_CHECKOUT.value}'
-    headers = {
-        "x-internal-key": settings.INTERNAL_API_KEY
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            # Gọi API của FastAPI
-            await client.post(api_url, timeout=10.0, headers=headers)
-
-
-        except httpx.HTTPError as e:
-            logger.info(f"Lỗi khi gọi API nội bộ: {e}")
+    await call_internal_api(api_url, "remind_forgot_checkout_task")
 
 async def remind_checkin_task(ctx):
     logger.info('testing checkin...')
-    headers = {
-        "x-internal-key": settings.INTERNAL_API_KEY
-    }
     api_url = f'{settings.INTERNAL_API_URL}/{SessionUrlEnum.SESSIONS.value}/{SessionUrlEnum.REMIND_CHECKIN.value}'
-    async with httpx.AsyncClient() as client:
-        try:
-            await client.post(api_url, timeout=10.0, headers=headers)
-
-        except httpx.HTTPError as e:
-            logger.info('Error call api internal')
+    await call_internal_api(api_url, "remind_checkin_task")
 
 async def check_n_update_task(ctx):
     # query deadline < datetime current
     logger.info('testing check status task...')
-    headers = {
-        "x-internal-key": settings.INTERNAL_API_KEY
-    }
     api_url = f'{settings.INTERNAL_API_URL}/task/{settings.SUB_DOMAIN_AUTO_UPDATE_TASK}'
-    async with httpx.AsyncClient() as client:
-        try:
-            await client.post(api_url, timeout=10.0, headers=headers)
-
-        except httpx.HTTPError as e:
-            logger.info('Error call api internal')
+    await call_internal_api(api_url, "check_n_update_task")
 
 class WorkerSettings:
     functions = []
