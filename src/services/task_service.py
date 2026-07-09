@@ -24,7 +24,7 @@ from src.repositories.order.order_repository import OrderRepository
 from src.repositories.session.session_repository import SessionRepository
 import asyncio
 import logging
-from src.enums.task_status_enum import TaskStatusEnum
+from src.enums.task_status_enum import TaskStatusEnum, TaskPreviewStatusEnum
 from src.enums.work_item_type import WorkItemType
 from src.utils.datetime_util import DateTimeUtil
 logger = logging.getLogger(__name__)
@@ -175,6 +175,9 @@ class TaskService:
             # handle case story fetched with its task
             # list_response, total = await self._auto_gen_order(filter_order, filters)
             list_response, total = await LexorankUtil.auto_gen_order(filter_order, filters, TaskResponse, self.task_repository, self.order_repository)
+            logger.info(f"list_response len: {len(list_response)}")
+            for task in list_response:
+                logger.info("check print task later %s, %s", task.title, task.type)
         else:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
@@ -188,6 +191,9 @@ class TaskService:
                 )
                 for task in list_response
             ])
+        logger.info(f"list_response later len: {len(list_response)}")
+        for task in list_response:
+            logger.info("check print task later %s, %s", task.title, task.type)
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
     async def create_subtask(self, data: CreateSubtaskModel, user_id: str):
@@ -358,11 +364,11 @@ class TaskService:
             raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
 
     async def auto_update_late_dl_task(self):
-        filters = FilterWorkItemModel(offset=0, limit=1, deadline=DateTimeUtil.current_milli_time(),
+        filters = FilterWorkItemModel(offset=0, limit=1, deadline_end=DateTimeUtil.current_milli_time(),
                                       type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
         list_task = await self.task_repository.filter_work_item_for_order(filters)
         list_ids = [str(task.id) for task in list_task]
-        update_data = UpdateTaskModel(status=TaskStatusEnum.LATE)
+        update_data = UpdateTaskModel(review_status=TaskPreviewStatusEnum.LATE)
         if list_ids:
             logger.info('list ids: %s', list_ids)
             logger.info('list task: %s', list_task)
@@ -373,24 +379,24 @@ class TaskService:
         parent_map = dict()
         for response in list_response:
             # add if has parent is story
-            logger.debug("response: %s", response)
+            # logger.debug("response: %s", response.title)
             if response.parent_model and response.parent_model.type == WorkItemType.STORY:
                 parent_id = response.parent
                 if parent_id not in parent_map:
                     parent_obj = TaskResponse.model_validate(response.parent_model.model_dump())
                     parent_obj.children = []
                     parent_map[parent_id] = parent_obj
-                    logging.info("create case task of story: %s", response)
+                    logging.info("create case task of story: %s", response.parent_model.title)
 
                 parent_map[parent_id].children.append(response)
             elif response.type == WorkItemType.STORY:
                 if response.parent not in parent_map:
                     response.children = []
-                    parent_map[response.id] = response
-                    logger.info("case story: %s", response)
+                    parent_map[str(response.id)] = response
+                    logger.info("case story: %s", response.title)
             else:
-                logging.info("case task sprint: %s", response)
-                parent_map[response.id] = response
+                logging.info("case task sprint: %s", response.title)
+                parent_map[str(response.id)] = response
         all_parents = list(parent_map.values())
 
         list_response[:] = all_parents
@@ -429,10 +435,9 @@ class TaskService:
             if status_count_object:
                 count_new = status_count_object.get(TaskStatusEnum.NEW.value,0)
                 count_processing = status_count_object.get(TaskStatusEnum.PROCESSING.value, 0)
-                count_late = status_count_object.get(TaskStatusEnum.LATE.value, 0)
                 count_done = status_count_object.get(TaskStatusEnum.DONE.value, 0)
                 response = TaskResponse.model_validate(task)
-                total_subtask = count_done + count_processing + count_late + count_new
+                total_subtask = count_done + count_processing  + count_new
                 response.percent_process = count_done / total_subtask if total_subtask > 0 else 0
                 if task.status == TaskStatusEnum.DONE.value:
                     total_done_tasks += 1

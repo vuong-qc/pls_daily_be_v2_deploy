@@ -5,7 +5,7 @@ from src.models.work_item.request.filter_work_item import FilterWorkItemModel, P
 from src.models.project.response.project_response_model import ProjectResponse
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
-from beanie.operators import Set, In, RegEx, LTE, GTE, And
+from beanie.operators import Set, In, RegEx, LTE, GTE, And, Or
 from beanie import PydanticObjectId
 from src.models.user.user_document import UserDocument
 import logging
@@ -48,12 +48,13 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
-        self._update_query_by_form(filters, filter_dump)
+        await self._update_query_by_form(filters, filter_dump)
 
         logger.info('filter work item: %s', filter_dump)
 
         query = WorkItemDocument.find(filter_dump,
                                       fetch_links=True,
+                                      nesting_depth=1
                                       )
         count = await query.count()
         results = await query.skip(offset).limit(limit).to_list()
@@ -66,7 +67,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         return results, count
 
     async def get_work_item_by_id(self, project_id:str):
-        project = await WorkItemDocument.find_one(WorkItemDocument.id==PydanticObjectId(project_id), fetch_links=True)
+        project = await WorkItemDocument.find_one(WorkItemDocument.id==PydanticObjectId(project_id), fetch_links=True, nesting_depth=1)
         if project:
             return project
         return None
@@ -75,7 +76,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
-        self._update_query_by_form(filters, filter_dump)
+        await self._update_query_by_form(filters, filter_dump)
         logger.info('filter work item for count: %s', filter_dump)
         query = WorkItemDocument.find(filter_dump)
         count = await query.count()
@@ -88,7 +89,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if status:
             filters.status = status
         filter_dump = filters.model_dump(exclude_unset=True)
-        self._update_query_by_form(filters, filter_dump)
+        await self._update_query_by_form(filters, filter_dump)
         print("filter",filter_dump)
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
@@ -116,7 +117,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
                                       )
         children = await query.to_list()
         return children
-    def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
+    async def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
         filter_dump.pop('is_today', None)
@@ -137,10 +138,41 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filter_dump.update(
                 In(WorkItemDocument.owner_id,filters.owner_id)
             )
+        # if filters.assigned_id:
+        #     filter_dump.update(
+        #         In(WorkItemDocument.assigned_id,filters.assigned_id)
+        #     )
+        # ---- assigned_id: xử lý riêng case STORY ----
         if filters.assigned_id:
-            filter_dump.update(
-                In(WorkItemDocument.assigned_id,filters.assigned_id)
-            )
+            filter_dump.pop("assigned_id", None)  # bỏ key mặc định để tự build $or
+            assigned_ids = filters.assigned_id
+            or_conditions = [In(WorkItemDocument.assigned_id, assigned_ids)]
+
+            if filters.type and WorkItemType.STORY in filters.type:
+                # Lấy các parent (story id) có task con đang assign đúng người
+                motor_collection = WorkItemDocument.get_pymongo_collection()
+                story_ids_raw = await motor_collection.distinct(
+                    "parent",
+                    {
+                        "assigned_id": {"$in": assigned_ids},
+                        "parent": {"$ne": None},
+                    },
+                )
+                if story_ids_raw:
+                    story_ids = [
+                        PydanticObjectId(pid) if not isinstance(pid, PydanticObjectId) else pid
+                        for pid in story_ids_raw
+                    ]
+                    or_conditions.append(
+                        And(
+                            WorkItemDocument.type == WorkItemType.STORY,
+                            In(WorkItemDocument.id, story_ids),
+                        )
+                    )
+
+            filter_dump.update(Or(*or_conditions))
+        # ------------------------------------------------
+
         if filters.type:
             filter_dump.update(
                 In(WorkItemDocument.type,filters.type)
@@ -324,7 +356,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset", 0)
         limit = filter_dump.pop("limit", 10)
-        self._update_query_by_form(filters, filter_dump)
+        await self._update_query_by_form(filters, filter_dump)
         query = WorkItemDocument.find(filter_dump, fetch_links=True)
         list_work_item = await query.to_list()
         return list_work_item
@@ -371,7 +403,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset", 0)
         limit = filter_dump.pop("limit", 10)
-        self._update_query_by_form(filters, filter_dump)
+        await self._update_query_by_form(filters, filter_dump)
 
         sum_point = await WorkItemDocument.find(filter_dump).sum(f"{WorkItemDocument.point}")
         return  float(sum_point or 0)

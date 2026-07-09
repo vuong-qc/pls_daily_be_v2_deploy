@@ -27,6 +27,8 @@ class DocumentItem(DocumentWithSoftDelete):
     expect_result: Optional[str] = None
     final_result: Optional[str] = None
     handler: Optional[str] = None
+    scenario: Optional[str] = None
+    feature: Optional[str] = None
 
     class Settings:
         name='document_items'

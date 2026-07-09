@@ -32,6 +32,7 @@ class TaskResponse(BaseModel):
     percent_process: Optional[float] = None
     session_id: Optional[str] = None
     estimated_point: Optional[int] = None
+    total_subtask: Optional[int] = None
 
     @field_validator(
         'parent_model', mode='before'

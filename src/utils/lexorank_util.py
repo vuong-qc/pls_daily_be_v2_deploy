@@ -46,7 +46,7 @@ class LexorankUtil:
             if str(task.id) not in order_map:
                 missing_tasks.append(task)
             task_map[str(task.id)] = task
-            logger.info('debug task: %s', task)
+            logger.info('debug task: %s', task.title)
 
         missing_tasks = [task for task in list_task if str(task.id) not in order_map]
         current_position = list_order[0].order if total > 0 else None
@@ -72,7 +72,7 @@ class LexorankUtil:
                 list_response.append(validate_task)
             else:
                 await order_repository.delete_order(str(order.id))
-        logger.info('list response with order: %s', list_response)
+        # logger.info('list response with order: %s', list_response)
         list_response[:] = list_response[filter_item.offset:filter_item.offset + filter_item.limit]
 
         return list_response, count_task

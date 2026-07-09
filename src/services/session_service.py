@@ -211,6 +211,9 @@ class SessionService:
             parent_map[parent_id].children.append(TaskResponse.model_validate(subtask))
 
         all_parents = list(parent_map.values())
+        for parent in all_parents:
+            all_subtasks = await self.work_item_repository.get_children(str(parent.id), status=[ status for status in TaskStatusEnum if status != TaskStatusEnum.CANCELED])
+            parent.total_subtask = len(all_subtasks)
         return all_parents
 
     async def remind_checkin(self):

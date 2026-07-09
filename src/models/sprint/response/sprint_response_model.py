@@ -5,6 +5,11 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from src.models.user.response.user_response_model import UserResponse
 from beanie import PydanticObjectId, BackLink, Link
 
+class StatisticUserTask(BaseModel):
+    total_point: Optional[int] = None
+    total_point_done_tasks: Optional[int] = None
+    total_done_tasks: Optional[int] = None
+    total_user_task: Optional[int] = None
 
 class SprintResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -22,8 +27,7 @@ class SprintResponse(BaseModel):
     total_tasks: Optional[int] = None
     done_tasks: Optional[int] = None
     order: Optional[str] = None
-
-
+    statistic_user_task: Optional[dict[str, StatisticUserTask]] = None
     @field_validator(
         'assignee', mode='before'
     )

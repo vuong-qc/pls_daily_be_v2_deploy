@@ -16,6 +16,7 @@ from typing import Any, cast
 from beanie import init_beanie
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from datetime import timezone
 
 
 from src.configs import settings
@@ -38,7 +39,11 @@ DailySessionView.model_rebuild()
 
 
 
-client = AsyncMongoClient(settings.MONGO_URI)
+client = AsyncMongoClient(
+    settings.MONGO_URI,
+    tz_aware=True,
+    tzinfo=timezone.utc,
+)
 db = client[settings.DB_NAME]
 
 async def init_db():
