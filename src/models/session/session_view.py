@@ -19,6 +19,15 @@ class SessionInGroup(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     user_info: Optional[UserResponse] = None
+    notes: Optional[str] = None
+    checkin: Optional[bool] = None
+    checkout: Optional[bool] = None
+    note_result: Optional[str] = None
+    work_form: Optional[str] = None
+    checkin_late: Optional[bool] = None
+    checkout_late: Optional[bool] = None
+    arrival_status: Optional[str] = None
+    departure_status: Optional[str] = None
 
 class DailySessionView(View):
     id: str  # Trong View, id này chính là chuỗi ngày YYYY-MM-DD từ $group
@@ -71,14 +80,10 @@ class DailySessionView(View):
                     },
                     "sessions": {
                         "$push": {
-                            "id": "$_id",
-                            "user_id": "$user_id",
-                            "status": "$status",
-                            "notes": "$notes",
-                            "list_task": "$list_task",
-                            "start_time": "$start_time",
-                            "end_time": "$end_time",
-                            "user_info": "$user_info"  # Đã có sẵn tất cả các trường từ UserResponse nhờ $addFields
+                            "$mergeObjects": [
+                                "$$ROOT",
+                                {"id": "$_id", "user_info": "$user_info"}
+                            ]
                         }
                     },
                     "total_sessions": {"$sum": 1}

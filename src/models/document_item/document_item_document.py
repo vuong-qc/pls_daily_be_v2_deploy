@@ -1,6 +1,8 @@
 from typing import Optional
 
-from beanie import DocumentWithSoftDelete
+from src.models.work_item.work_item_document import WorkItemDocument
+from src.models.user.user_document import UserDocument
+from beanie import DocumentWithSoftDelete, Link
 
 class DocumentItem(DocumentWithSoftDelete):
     group_id: Optional[str] = None
@@ -29,6 +31,10 @@ class DocumentItem(DocumentWithSoftDelete):
     handler: Optional[str] = None
     scenario: Optional[str] = None
     feature: Optional[str] = None
+    assignee_model: Optional[list[Link[UserDocument]]] = None
+    handler_model: Optional[Link[UserDocument]] = None
+    task_model: Optional[Link[WorkItemDocument]] = None
+    sprint_model: Optional[Link[WorkItemDocument]] = None
 
     class Settings:
         name='document_items'

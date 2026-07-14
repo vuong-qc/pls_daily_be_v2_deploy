@@ -14,6 +14,7 @@ class CreateSessionModel(BaseModel):
     notes: str
     work_form: Optional[str] = None
     checkin_late: Optional[bool] = None
+    arrival_status: Optional[str] = None
 
     # @model_validator(mode='after')
     # def update_status_if_late(self) -> 'CreateSessionModel':

@@ -54,8 +54,8 @@ class DocumentItemService:
         doc_result = await self.document_result_repository.get_document_result(document_result_id)
         if not doc_result:
             raise DocumentException(DocumentMessage.DOCUMENT_RESULT_NOT_FOUND, DocumentStatusCode.DOCUMENT_RESULT_NOT_FOUND)
-        if doc_result.owner_id != user_id:
-            raise DocumentException(DocumentMessage.NOT_CREATOR, DocumentStatusCode.NOT_CREATOR)
+        # if doc_result.owner_id != user_id:
+        #     raise DocumentException(DocumentMessage.NOT_CREATOR, DocumentStatusCode.NOT_CREATOR)
         print("doc result", doc_result)
         updated_document = await self.document_result_repository.update_document_result(document_result_id, data.model_dump(exclude_unset=True))
         if not updated_document:

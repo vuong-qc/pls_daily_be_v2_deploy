@@ -2,6 +2,9 @@ from pydantic import BaseModel, ConfigDict
 from beanie import PydanticObjectId
 from typing import Optional
 
+from src.models.sprint.response.sprint_response_model import SprintResponse
+from src.models.task.response.task_response_model import TaskResponse
+from src.models.user.response.user_response_model import UserResponse
 from src.models.document_result.response.document_result_response import DocumentResultResponse
 
 
@@ -34,3 +37,7 @@ class DocumentResponse(BaseModel):
     handler: Optional[str] = None
     scenario: Optional[str] = None
     feature: Optional[str] = None
+    assignee_model: Optional[list[UserResponse]] = None
+    handler_model: Optional[UserResponse] = None
+    task_model: Optional[TaskResponse] = None
+    sprint_model: Optional[SprintResponse] = None

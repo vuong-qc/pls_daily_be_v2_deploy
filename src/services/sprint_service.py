@@ -113,15 +113,16 @@ class SprintService:
             list_sprints, total = await self.sprint_repository.get_list_work_items(filters)
             for sprint_item in list_sprints:
                 response = SprintResponse.model_validate(sprint_item)
-                if sprint_item.assigned_id:
-                    await asyncio.gather(*[
-                        self.get_task_by_sprint(str(sprint_item.id), assigned_id,response)
-                        for assigned_id in sprint_item.assigned_id
-                    ])
+
                 list_response.append(response)
         for response in list_response:
             if response.type == WorkItemType.SPRINT:
                 await self._add_count_task_sprints(response, str(response.id))
+                if response.assigned_id:
+                    await asyncio.gather(*[
+                        self.get_task_by_sprint(str(response.id), assigned_id,response)
+                        for assigned_id in response.assigned_id
+                    ])
                 # count point task
 
         # if filters.type and len(filters.type) == 1 and WorkItemType.SPRINT in filters.type  :
@@ -167,7 +168,6 @@ class SprintService:
         task_with_count_status = await self.sprint_repository.count_items_by_parent_status(list_task_id,
                                                                                          [TaskStatusEnum.NEW.value,
                                                                                           TaskStatusEnum.PROCESSING.value,
-                                                                                          TaskStatusEnum.LATE.value,
                                                                                           TaskStatusEnum.DONE.value])
         print("test", task_with_count_status)
 
@@ -181,10 +181,9 @@ class SprintService:
             if status_count_object:
                 count_new = status_count_object.get(TaskStatusEnum.NEW.value, 0)
                 count_processing = status_count_object.get(TaskStatusEnum.PROCESSING.value, 0)
-                count_late = status_count_object.get(TaskStatusEnum.LATE.value, 0)
                 count_done = status_count_object.get(TaskStatusEnum.DONE.value, 0)
                 response = TaskResponse.model_validate(task)
-                total_subtask = count_done + count_processing + count_late + count_new
+                total_subtask = count_done + count_processing  + count_new
                 response.percent_process = count_done / total_subtask if total_subtask > 0 else 0
                 if task.status == TaskStatusEnum.DONE.value:
                     total_done_tasks += 1

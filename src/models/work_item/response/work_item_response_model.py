@@ -87,6 +87,17 @@ class WorkItemResponse(BaseModel):
         if isinstance(v, list) and all(isinstance(item, Link) for item in v):
             return None
         return v
+    @field_validator(
+        "owner", mode='before'
+    )
+    @classmethod
+    def handle_owner(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
 
 
 WorkItemResponse.model_rebuild()

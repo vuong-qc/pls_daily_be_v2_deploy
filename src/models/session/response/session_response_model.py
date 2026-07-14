@@ -24,6 +24,8 @@ class SessionResponse(BaseModel):
     work_form: Optional[str] = None
     checkin_late: Optional[bool] = None
     checkout_late: Optional[bool] = None
+    arrival_status: Optional[str] = None
+    departure_status: Optional[str] = None
 
 class SessionTaskResponse(SessionInGroup):
     list_tasks_data: Optional[list[TaskResponse]] = None
