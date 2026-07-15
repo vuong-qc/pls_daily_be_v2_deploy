@@ -22,7 +22,8 @@ class UserDocument(Document):
     created_at: int
     updated_at: int
     daily_checkin: bool = True
-    department: Optional[str] = None
+    department: Optional[list[str]] = None
+    nickname: Optional[str] = None
 
     # @before_event(Insert)
     # async def gen_user_code(self):

@@ -35,6 +35,7 @@ class DocumentItem(DocumentWithSoftDelete):
     handler_model: Optional[Link[UserDocument]] = None
     task_model: Optional[Link[WorkItemDocument]] = None
     sprint_model: Optional[Link[WorkItemDocument]] = None
+    deadline: Optional[int] = None
 
     class Settings:
         name='document_items'

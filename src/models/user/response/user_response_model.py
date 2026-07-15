@@ -22,7 +22,9 @@ class UserResponse(BaseModel):
     # user_code: int = Indexed(unique=True)
     created_at: int
     updated_at: int
-    department: Optional[str] = None
+    daily_checkin: bool = True
+    nickname: Optional[str] = None
+    department: Optional[list[str]] = None
 
 class UserDetails(UserResponse):
     projects: Optional[list[ProjectInfo]] = []

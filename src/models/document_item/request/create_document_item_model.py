@@ -29,3 +29,4 @@ class CreateDocumentItem(BaseModel):
     handler: Optional[str] = None
     scenario: Optional[str] = None
     feature: Optional[str] = None
+    deadline: Optional[int] = None

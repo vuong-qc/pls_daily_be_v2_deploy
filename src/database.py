@@ -32,6 +32,7 @@ from src.models.session.session_document import SessionDocument
 from src.models.order.order_document import OrderDocument
 from src.models.session.session_view import DailySessionView
 from src.models.chatbot_token.chatbot_token_document import ChatbotTokenDocument
+from src.models.department.department_document import DepartmentDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
@@ -53,7 +54,8 @@ async def init_db():
             database=cast(Any, db),
             document_models=[UserDocument, GroupDocument, WorkItemDocument
                 , FileDocument, DocumentItem, DocumentResult, SessionDocument,
-                             ChatbotTokenDocument, OrderDocument, DailySessionView
+                             ChatbotTokenDocument, OrderDocument, DailySessionView,
+                             DepartmentDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")

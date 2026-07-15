@@ -17,3 +17,6 @@ class TextFormatEnum(StrEnum):
     CHECKOUT = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked out!"""
     CHECKOUT_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked out!"""
     SUBTASK_EMPTY = "Không tạo subtask"
+    SUBTASK_NOT_DONE = "Chưa hoàn thành subtask"
+    CHECKIN_LATE = "Check in trễ"
+    CHECKOUT_LATE = "Check out trễ"

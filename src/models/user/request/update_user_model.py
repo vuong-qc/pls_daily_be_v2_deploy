@@ -15,8 +15,10 @@ class UpdateUserModel(BaseModel):
     traineeStatus: Optional[int] = None
     password: Optional[str] = None
     address: Optional[str] = None
-    department: Optional[str] = None
+    department: Optional[list[str]] = None
     daily_checkin: Optional[bool] = None
+    nickname: Optional[str] = None
+
 
     model_config = ConfigDict(extra='ignore')
 
@@ -29,5 +31,6 @@ class UpdateProfileModel(BaseModel):
     avt: Optional[str] = None
     password: Optional[str] = None
     daily_checkin: Optional[bool] = None
-    department: Optional[str] = None
+    department: Optional[list[str]] = None
+    nickname: Optional[str] = None
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)

@@ -5,4 +5,5 @@ class ProjectUsername(BaseModel):
     name: str
     roles: list[int]
     daily_checkin: Optional[bool] = None
-    department: Optional[str] = None
+    department: Optional[list[str]] = None
+    nickname: Optional[str] = None

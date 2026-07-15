@@ -23,6 +23,7 @@ class CreateUserTaskModel(BaseModel):
     order_type: Optional[str] = None
     next_order: Optional[str] = None
     prev_order: Optional[str] = None
+    point: Optional[int] = None
 
     @field_validator("type", mode="before")
     @classmethod

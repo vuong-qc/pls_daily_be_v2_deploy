@@ -41,3 +41,4 @@ class DocumentResponse(BaseModel):
     handler_model: Optional[UserResponse] = None
     task_model: Optional[TaskResponse] = None
     sprint_model: Optional[SprintResponse] = None
+    deadline: Optional[int] = None

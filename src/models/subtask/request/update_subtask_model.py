@@ -12,5 +12,6 @@ class UpdateSubtaskModel(BaseModel):
     review_status: Optional[str] = None
     updated_at: Optional[int] = None
     parent: Optional[str] = None
+    session_id: Optional[str] = None
 
 

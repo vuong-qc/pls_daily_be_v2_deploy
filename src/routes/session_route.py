@@ -6,6 +6,7 @@ from src.models.session.request.filter_session_model import FilterSessionModel, 
 from fastapi import APIRouter, Query, Depends, status, Header, HTTPException, BackgroundTasks
 from src.configs import settings
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
+from src.repositories.department.beanie_department_repository import BeanieDepartmentRepository
 from src.constant.session_url_constant import SessionUrlEnum
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.services.session_service import SessionService
@@ -22,7 +23,8 @@ def get_session_service():
     work_item_repo = BeanieWorkItemRepository()
     chatbot_token_repo = BeanieChatbotTokenRepository()
     user_repo = BeanieUserRepository()
-    return SessionService(session_repo, work_item_repo, chatbot_token_repo, user_repo)
+    department_repo = BeanieDepartmentRepository()
+    return SessionService(session_repo, work_item_repo, chatbot_token_repo, user_repo, department_repo)
 
 @router.post('/checkin',
              status_code=status.HTTP_201_CREATED,

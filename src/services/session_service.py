@@ -19,6 +19,8 @@ from datetime import datetime
 from src.utils.datetime_util import DateTimeUtil
 from src.repositories.user.user_repository import UserRepository
 from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
+from src.repositories.department.department_repository import DepartmentRepository
+from src.models.department.request.filter_department_model import FilterDepartmentModel
 from src.models.chatbot_token.request.filter_chatbot_token_model import FilterChatbotTokenModel
 from src.utils.google_chat_webhook_util import GgChatWebhookUtil
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
@@ -32,11 +34,14 @@ logger = logging.getLogger(__name__)
 
 class SessionService:
     def __init__(self, session_repository: SessionRepository, work_item_repository: WorkItemRepository,
-                 chatbot_token_repository: ChatbotTokenRepository, user_repository: UserRepository,):
+                 chatbot_token_repository: ChatbotTokenRepository, user_repository: UserRepository,
+                 department_repository: DepartmentRepository,
+                 ):
         self.session_repository = session_repository
         self.work_item_repository = work_item_repository
         self.chatbot_token_repository = chatbot_token_repository
         self.user_repository = user_repository
+        self.department_repository = department_repository
 
     async def create_session(self, session_data: CreateSessionModel) -> ResponseModel:
         # check has session in today has not done
@@ -64,7 +69,17 @@ class SessionService:
                 self.get_work_item_by_id(work_id, list_task, list_task_data)
                 for work_id in session_data.list_task
             ])
-            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes, response.user.department)
+            # get department data
+            departments = None
+            if response.user and response.user.department:
+                filter_depart = FilterDepartmentModel(offset=0, limit=len(response.user.department),
+                                                      list_ids=response.user.department)
+                departments, total = await self.department_repository.get_list_departments(filter_depart)
+                if total:
+                    departments = [department.name for department in departments]
+                else:
+                    departments = None
+            content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes, departments, session_data.start_time, response.user.nickname, session_data.checkin_late, session_data.arrival_status, session_data.work_form)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
@@ -165,11 +180,22 @@ class SessionService:
         if total > 0:
             list_subtasks = [ subtask.id for subtask in session_data.list_subtasks]
             list_task_data = await self._handle_subtask_form_checkout(list_subtasks)
+            if not list_task_data:
+                filters_task = FilterWorkItemModel(offset=0, limit=len(session.list_task), list_ids=session.list_task)
+                list_subtasks, total = await self.work_item_repository.get_list_work_items(filters_task)
             # await asyncio.gather(*[
             #     self.get_work_item_by_id(work_id.id, list_task, list_task_data)
             #     for work_id in session_data.list_subtasks
             # ])
-            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, response.user.department)
+            departments = None
+            if response.user and response.user.department:
+                filter_depart = FilterDepartmentModel(offset=0, limit=len(response.user.department), list_ids=response.user.department)
+                departments, total = await self.department_repository.get_list_departments(filter_depart)
+                if total:
+                    departments = [department.name for department in departments]
+                else:
+                    departments = None
+            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
@@ -214,6 +240,11 @@ class SessionService:
         for parent in all_parents:
             all_subtasks = await self.work_item_repository.get_children(str(parent.id), status=[ status for status in TaskStatusEnum if status != TaskStatusEnum.CANCELED])
             parent.total_subtask = len(all_subtasks)
+            count_subtask_done = 0
+            for subtask in parent.children:
+                if subtask.status == TaskStatusEnum.DONE:
+                    count_subtask_done += 1
+            parent.estimated_point = math.floor(count_subtask_done / len(all_subtasks) * parent.point + 0.5) if count_subtask_done else 0
         return all_parents
 
     async def remind_checkin(self):
@@ -294,7 +325,7 @@ class SessionService:
             print(date_session.sessions)
             list_session.append(date_session)
 
-        print("test",list_session)
+        # print("test",list_session)
 
         return ResponsePaginatedModel(data=list_session, total=len(list_date_session), offset=0)
 

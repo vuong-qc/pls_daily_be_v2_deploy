@@ -4,14 +4,29 @@ from zoneinfo import ZoneInfo
 from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
+from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS
 
 class FormatContentGgChatAPI:
     @staticmethod
-    def format_content_checkin(user_name: str, tasks: list[str], note: str, department: Optional[str]=None) -> dict:
+    def format_content_checkin(user_name: str, tasks: list[str], note: str, department: Optional[list[str]]=None, start_time: Optional[datetime]= None, nickname: Optional[str] = None, checkin_late: Optional[bool]=None, arrival_status: Optional[str] = None, work_form: Optional[str] = None) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
-        content = TextFormatEnum.CHECKIN_DEPART.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, department= department) if department else TextFormatEnum.CHECKIN.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name)
+        if start_time and start_time.tzinfo is None:
+            now_vn = start_time.replace(tzinfo=tz_vn)
 
+            # Trường hợp 2: end_time đã có timezone (ví dụ FE gửi lên là UTC)
+        elif start_time:
+            now_vn = start_time.astimezone(tz_vn)
+        if nickname:
+            user_name = f"{user_name} ({nickname})"
+        content = TextFormatEnum.CHECKIN_DEPART.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, department= department) if department else TextFormatEnum.CHECKIN.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name)
+        first_line = ""
+        if checkin_late is not None:
+            first_line = f"[{TextFormatEnum.CHECKIN_LATE}]"
+        if arrival_status is not None:
+            first_line = first_line + TextFormatEnum.TASK_PREFIX+ f"[{ARRIVAL_STATUS.get(arrival_status)}]"
+        if work_form is not None:
+            first_line = first_line + TextFormatEnum.TASK_PREFIX + work_form
         # Build HTML text cho Task
         if tasks:
             task_list_str = TextFormatEnum.NEWLINE.join(f'{TextFormatEnum.TASK_PREFIX}{task}' for task in tasks)
@@ -23,10 +38,11 @@ class FormatContentGgChatAPI:
         cleaned_note = note.lstrip('-').strip()
 
         # Sau đó mới format với prefix
-        note_line = f'{TextFormatEnum.TASK_PREFIX} {cleaned_note}'
+        note_line = f'{cleaned_note}'
 
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([
+            first_line,
             content,
             task_lines,
             TextFormatEnum.NOTE,
@@ -56,9 +72,17 @@ class FormatContentGgChatAPI:
         }
 
     @staticmethod
-    def format_content_checkout(user_name: str, tasks: list[TaskResponse], note: Optional[str]=None, department: Optional[str] = None) -> dict:
+    def format_content_checkout(user_name: str, tasks: list[TaskResponse], note: Optional[str]=None, department: Optional[list[str]] = None, end_time: Optional[datetime]= None, nickname: Optional[str] = None, checkout_late: Optional[bool] = None, departure_status:Optional[str] = None) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
+        if end_time and end_time.tzinfo is None:
+            now_vn = end_time.replace(tzinfo=tz_vn)
+
+            # Trường hợp 2: end_time đã có timezone (ví dụ FE gửi lên là UTC)
+        elif end_time:
+            now_vn = end_time.astimezone(tz_vn)
+        if nickname:
+            user_name = f"{user_name} ({nickname})"
         content = TextFormatEnum.CHECKOUT_DEPART.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, department= department) if department else TextFormatEnum.CHECKOUT.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name)
 
         # Build HTML text cho Task
@@ -68,24 +92,26 @@ class FormatContentGgChatAPI:
             for task in tasks:
                 # Header Task
                 block = [
-                    f"{TextFormatEnum.TASK_HEADER} {task.title}"
+                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {task.estimated_point}"
+                ] if task.estimated_point else [
+                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {TextFormatEnum.SUBTASK_NOT_DONE}"
                 ]
 
-                # Subtask
-                if task.children:
-                    subtask_lines = TextFormatEnum.NEWLINE.join(
-                        f"{TextFormatEnum.TASK_PREFIX}{sub.title}"
-                        for sub in task.children
-                    )
-
-                    block.extend([
-                        TextFormatEnum.SUBTASK_HEADER,
-                        subtask_lines,
-                    ])
-                else:
-                    block.append(
-                        f"{TextFormatEnum.SUBTASK_HEADER} {TextFormatEnum.SUBTASK_EMPTY}"
-                    )
+                # # Subtask
+                # if task.children:
+                #     subtask_lines = TextFormatEnum.NEWLINE.join(
+                #         f"{TextFormatEnum.TASK_PREFIX}{sub.title}"
+                #         for sub in task.children
+                #     )
+                #
+                #     block.extend([
+                #         TextFormatEnum.SUBTASK_HEADER,
+                #         subtask_lines,
+                #     ])
+                # else:
+                #     block.append(
+                #         f"{TextFormatEnum.SUBTASK_HEADER} {TextFormatEnum.SUBTASK_EMPTY}"
+                #     )
 
                 task_blocks.append(
                     TextFormatEnum.NEWLINE.join(block)
@@ -95,8 +121,14 @@ class FormatContentGgChatAPI:
 
         else:
             task_lines = f"{TextFormatEnum.TASK_HEADER} {TextFormatEnum.TASK_EMPTY}"
+        first_line = ""
+        if checkout_late is not None:
+            first_line = f"[{TextFormatEnum.CHECKOUT_LATE}]"
+        if departure_status is not None:
+            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([
+            first_line,
             content,
             task_lines,
             TextFormatEnum.RESULT_NOTE,

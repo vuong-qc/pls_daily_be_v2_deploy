@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import lifespan
 from src.routes.chatbot_token_route import router as chatbot_token_route
+from src.routes.department_route import router as department_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -38,6 +39,7 @@ app = FastAPI(
 
 app.include_router(support_route, prefix="/support")
 app.include_router(auth_routes, prefix="/auths")
+app.include_router(department_route, prefix="/user")
 app.include_router(user_routes, prefix="/users")
 app.include_router(profile_route, prefix="/profile")
 app.include_router(file_route, prefix="/files")
