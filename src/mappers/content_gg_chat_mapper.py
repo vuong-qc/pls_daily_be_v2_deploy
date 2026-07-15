@@ -7,4 +7,6 @@ ARRIVAL_STATUS = {
 DEPARTMENT_STATUS = {
     "LEAVE_EARLY" : "Về sớm",
     "LEAVE_ON_TIME" : "Về đúng giờ",
+    "OT": "Làm thêm giờ, chạy task",
+    "LOGTIME_TIME": "Giờ log time"
 }

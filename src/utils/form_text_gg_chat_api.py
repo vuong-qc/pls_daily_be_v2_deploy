@@ -34,11 +34,29 @@ class FormatContentGgChatAPI:
         else:
             task_lines = f"{TextFormatEnum.TASK_HEADER}{TextFormatEnum.SPACE}{TextFormatEnum.TASK_EMPTY}"
 
-        # Build HTML text cho Note
-        cleaned_note = note.lstrip('-').strip()
 
-        # Sau đó mới format với prefix
-        note_line = f'{cleaned_note}'
+        lines = note.split('\n')
+
+        formatted_lines = []
+        for line in lines:
+            # Bước 1: Dùng .strip() để xóa khoảng trắng 2 đầu (đề phòng có dấu cách trước dấu -)
+            # Bước 2: Dùng .lstrip('-') để xóa các dấu '-' ở đầu
+            # Bước 3: Dùng .strip() lần nữa để xóa khoảng trắng bị kẹt giữa dấu '-' và chữ (vd: "- aa" -> "aa")
+            cleaned_note = line.strip().lstrip('-').strip()
+
+            # Bước 4: Gắn prefix vào đầu dòng (chỉ xử lý nếu dòng đó có nội dung)
+            if cleaned_note:
+                note_line = f'{TextFormatEnum.TASK_PREFIX}{cleaned_note}'
+                formatted_lines.append(note_line)
+
+        # Ghép các dòng lại thành một chuỗi duy nhất, cách nhau bởi ký tự xuống dòng
+        output_text = '\n'.join(formatted_lines)
+        # # Build HTML text cho Note
+        # cleaned_note = note.lstrip('-').strip()
+        #
+        # # Sau đó mới format với prefix
+        # note_line = f'{cleaned_note}'
+        note_line = output_text
 
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([
@@ -87,7 +105,24 @@ class FormatContentGgChatAPI:
 
         # Build HTML text cho Task
         task_blocks = []
-        note_line = f'{TextFormatEnum.TASK_PREFIX}{note}' if note else ''
+        lines = note.split('\n') if note else []
+
+        formatted_lines = []
+        for line in lines:
+            # Bước 1: Dùng .strip() để xóa khoảng trắng 2 đầu (đề phòng có dấu cách trước dấu -)
+            # Bước 2: Dùng .lstrip('-') để xóa các dấu '-' ở đầu
+            # Bước 3: Dùng .strip() lần nữa để xóa khoảng trắng bị kẹt giữa dấu '-' và chữ (vd: "- aa" -> "aa")
+            cleaned_note = line.strip().lstrip('-').strip()
+
+            # Bước 4: Gắn prefix vào đầu dòng (chỉ xử lý nếu dòng đó có nội dung)
+            if cleaned_note:
+                note_line = f'{TextFormatEnum.TASK_PREFIX}{cleaned_note}'
+                formatted_lines.append(note_line)
+
+        # Ghép các dòng lại thành một chuỗi duy nhất, cách nhau bởi ký tự xuống dòng
+        output_text = '\n'.join(formatted_lines)
+        # note_line = f'{TextFormatEnum.TASK_PREFIX}{note}' if note else ''
+        note_line = output_text
         if tasks:
             for task in tasks:
                 # Header Task
