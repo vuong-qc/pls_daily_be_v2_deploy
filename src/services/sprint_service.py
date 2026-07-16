@@ -48,7 +48,7 @@ class SprintService:
             response.order = order_model.order
         return ResponseModel(data=response)
 
-    async def update_sprint(self, sprint_id:str, sprint_data: UpdateSprintModel, handler_id:str = None):
+    async def update_sprint(self, sprint_id:str, sprint_data: UpdateSprintModel, handler_id:str):
         if sprint_data.assigned_id:
             for tasker in sprint_data.assigned_id:
                 await self.user_service.get_user_by_id(tasker)
@@ -81,6 +81,11 @@ class SprintService:
                                                 object_id=str(sprint.id))
                 order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
                 response.order = order_model.order if order_model else order_model
+            if response.assigned_id:
+                await asyncio.gather(*[
+                    self.get_task_by_sprint(str(response.id), assigned_id, response)
+                    for assigned_id in response.assigned_id
+                ])
             return ResponseModel(data=response)
         raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
 
@@ -116,13 +121,13 @@ class SprintService:
 
                 list_response.append(response)
         for response in list_response:
-            if response.type == WorkItemType.SPRINT:
-                await self._add_count_task_sprints(response, str(response.id))
-                if response.assigned_id:
-                    await asyncio.gather(*[
-                        self.get_task_by_sprint(str(response.id), assigned_id,response)
-                        for assigned_id in response.assigned_id
-                    ])
+            # if response.type == WorkItemType.SPRINT:
+            await self._add_count_task_sprints(response, str(response.id))
+            if response.assigned_id:
+                await asyncio.gather(*[
+                    self.get_task_by_sprint(str(response.id), assigned_id,response)
+                    for assigned_id in response.assigned_id
+                ])
                 # count point task
 
         # if filters.type and len(filters.type) == 1 and WorkItemType.SPRINT in filters.type  :
@@ -132,9 +137,31 @@ class SprintService:
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
     async def _add_count_task_sprints(self, sprint_response: SprintResponse, parent:str):
-        statistic = await self.sprint_repository.statistic_task([parent], WorkItemType.TASK.value, [TaskStatusEnum.DONE.value])
-        sprint_response.total_tasks = statistic.total_tasks
-        sprint_response.done_tasks = statistic.target_status_tasks
+        # statistic = await self.sprint_repository.statistic_task([parent], WorkItemType.TASK.value, [TaskStatusEnum.DONE.value])
+        # sprint_response.total_tasks = statistic.total_tasks
+        # sprint_response.done_tasks = statistic.target_status_tasks
+        total_task_story = await self.sprint_repository.get_children(str(sprint_response.id))
+        count_task = 0
+        print("total_task_story: ", len(total_task_story))
+        count_done_task = 0
+        list_story_ids = []
+        for item in total_task_story:
+            if item.type == WorkItemType.STORY:
+                list_story_ids.append(str(item.id))
+            if item.type == WorkItemType.TASK:
+                count_task += 1
+            if item.type == WorkItemType.TASK and item.status == TaskStatusEnum.DONE.value:
+                count_done_task += 1
+        task_in_story = await self.sprint_repository.get_children_by_parents(list_story_ids)
+        print("task_in_story: ", len(task_in_story))
+        for task in task_in_story:
+            if task.status == TaskStatusEnum.DONE.value:
+                count_done_task += 1
+            if task.status != TaskStatusEnum.CANCELED.value:
+                count_task += 1
+
+        sprint_response.total_tasks = count_task
+        sprint_response.done_tasks = count_done_task
         logger.info('data sprint: %s', sprint_response)
 
 
@@ -188,6 +215,7 @@ class SprintService:
                 if task.status == TaskStatusEnum.DONE.value:
                     total_done_tasks += 1
                     total_point_done_tasks += task.point
+                    response.percent_process = 1
                 total_point += task.point
                 list_response.append(response)
         if sprint_res.statistic_user_task is None:

@@ -19,4 +19,6 @@ class TextFormatEnum(StrEnum):
     SUBTASK_EMPTY = "Không tạo subtask"
     SUBTASK_NOT_DONE = "Chưa hoàn thành subtask"
     CHECKIN_LATE = "Check in trễ"
+    CHECKIN_ON_TIME = "Check in đúng giờ"
     CHECKOUT_LATE = "Check out trễ"
+    CHECKOUT_ON_TIME = "Check out đúng giờ"

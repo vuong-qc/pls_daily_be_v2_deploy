@@ -1,6 +1,6 @@
 ARRIVAL_STATUS = {
     "ARRIVE_LATE" : "Đến trễ",
-    "ARRIVE_ON_TIME": "Đến đùng giờ",
+    "ARRIVE_ON_TIME": "Đến đúng giờ",
     "LOGTIME_TIME": "Giờ log time"
 }
 

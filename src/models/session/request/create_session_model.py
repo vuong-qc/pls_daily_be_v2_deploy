@@ -12,9 +12,9 @@ class CreateSessionModel(BaseModel):
     list_task: list[str]
     start_time: datetime
     notes: str
-    work_form: Optional[str] = None
-    checkin_late: Optional[bool] = None
-    arrival_status: Optional[str] = None
+    work_form: str
+    checkin_late: bool = False
+    arrival_status: str = None
 
     # @model_validator(mode='after')
     # def update_status_if_late(self) -> 'CreateSessionModel':

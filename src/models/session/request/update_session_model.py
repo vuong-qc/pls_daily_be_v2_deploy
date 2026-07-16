@@ -20,6 +20,6 @@ class UpdateSubTaskModel(BaseModel):
 class CheckoutModel(BaseModel):
     list_subtasks: list[UpdateSubTaskModel]
     end_time: Optional[datetime] = None
-    note_result: Optional[str] = None
-    checkout_late: Optional[bool] = None
-    departure_status: Optional[str] = None
+    note_result: str
+    checkout_late: bool = False
+    departure_status: str

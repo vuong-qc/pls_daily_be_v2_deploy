@@ -8,7 +8,7 @@ from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS
 
 class FormatContentGgChatAPI:
     @staticmethod
-    def format_content_checkin(user_name: str, tasks: list[str], note: str, department: Optional[list[str]]=None, start_time: Optional[datetime]= None, nickname: Optional[str] = None, checkin_late: Optional[bool]=None, arrival_status: Optional[str] = None, work_form: Optional[str] = None) -> dict:
+    def format_content_checkin(user_name: str, tasks: list[str], note: str, department: Optional[list[str]]=None, start_time: Optional[datetime]= None, nickname: Optional[str] = None, checkin_late: Optional[bool]=False, arrival_status: Optional[str] = None, work_form: Optional[str] = None) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
         if start_time and start_time.tzinfo is None:
@@ -21,12 +21,14 @@ class FormatContentGgChatAPI:
             user_name = f"{user_name} ({nickname})"
         content = TextFormatEnum.CHECKIN_DEPART.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, department= department) if department else TextFormatEnum.CHECKIN.format(time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name)
         first_line = ""
-        if checkin_late is not None:
+        if checkin_late:
             first_line = f"[{TextFormatEnum.CHECKIN_LATE}]"
+        else:
+            first_line = f"[{TextFormatEnum.CHECKIN_ON_TIME}]"
         if arrival_status is not None:
             first_line = first_line + TextFormatEnum.TASK_PREFIX+ f"[{ARRIVAL_STATUS.get(arrival_status)}]"
         if work_form is not None:
-            first_line = first_line + TextFormatEnum.TASK_PREFIX + work_form
+            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{work_form}]"
         # Build HTML text cho Task
         if tasks:
             task_list_str = TextFormatEnum.NEWLINE.join(f'{TextFormatEnum.TASK_PREFIX}{task}' for task in tasks)
@@ -90,7 +92,7 @@ class FormatContentGgChatAPI:
         }
 
     @staticmethod
-    def format_content_checkout(user_name: str, tasks: list[TaskResponse], note: Optional[str]=None, department: Optional[list[str]] = None, end_time: Optional[datetime]= None, nickname: Optional[str] = None, checkout_late: Optional[bool] = None, departure_status:Optional[str] = None) -> dict:
+    def format_content_checkout(user_name: str, tasks: list[TaskResponse], note: Optional[str]=None, department: Optional[list[str]] = None, end_time: Optional[datetime]= None, nickname: Optional[str] = None, checkout_late: Optional[bool] = False, departure_status:Optional[str] = None, work_form: Optional[str] = None) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
         if end_time and end_time.tzinfo is None:
@@ -129,7 +131,7 @@ class FormatContentGgChatAPI:
                 block = [
                     f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {task.estimated_point}"
                 ] if task.estimated_point else [
-                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {TextFormatEnum.SUBTASK_NOT_DONE}"
+                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {TextFormatEnum.SUBTASK_NOT_DONE} POINT"
                 ]
 
                 # # Subtask
@@ -157,10 +159,15 @@ class FormatContentGgChatAPI:
         else:
             task_lines = f"{TextFormatEnum.TASK_HEADER} {TextFormatEnum.TASK_EMPTY}"
         first_line = ""
-        if checkout_late is not None:
+        if checkout_late:
             first_line = f"[{TextFormatEnum.CHECKOUT_LATE}]"
+        else:
+            first_line = f"[{TextFormatEnum.CHECKOUT_ON_TIME}]"
         if departure_status is not None:
             first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
+
+        if work_form:
+            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{work_form}]"
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([
             first_line,

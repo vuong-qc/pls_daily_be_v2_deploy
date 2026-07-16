@@ -215,6 +215,8 @@ class TaskService:
 
     async def update_subtask(self, subtask_id:str, data: UpdateSubtaskModel, user_id: str):
         subtask = await self.task_repository.get_work_item_by_id(subtask_id)
+        if data.status != TaskStatusEnum.DONE:
+            data.session_id = None
         if not subtask:
             raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
         task = await self.task_repository.get_work_item_by_id(subtask.parent)
@@ -328,7 +330,7 @@ class TaskService:
             return ResponseModel(data=response)
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
-    async def _get_task_story(self, response:TaskResponse, filter_order: Optional[FilterOrderModel] = None, filter_item: Optional[FilterWorkItemModel] = None,):
+    async def _get_task_story(self, response:TaskResponse, filter_order: Optional[FilterOrderModel] = None, filter_item: Optional[FilterWorkItemModel] = None, user_id: Optional[str] = None):
         if (response.children is None or len(response.children) == 0) and response.type in [WorkItemType.BACKLOG, WorkItemType.STORY]:
             # children =  await self.task_repository.get_children(str(response.id))
             # # logger.info('check children: %s', children)
@@ -342,7 +344,7 @@ class TaskService:
                 list_response, total = await LexorankUtil.auto_gen_order(filter_order, filter_item, TaskResponse, self.task_repository, self.order_repository)
                 response.children = list_response
                 return
-            children = await self.task_repository.get_children(str(response.id))
+            children = await self.task_repository.get_children(parent_id=str(response.id), user_id=user_id)
             # logger.info('check children: %s', children)
             for child in children:
                 logger.info('check child: %s', child)

@@ -195,7 +195,7 @@ class SessionService:
                     departments = [department.name for department in departments]
                 else:
                     departments = None
-            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status)
+            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status, response.work_form)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
@@ -210,7 +210,10 @@ class SessionService:
                                    SessionStatusCode.TASK_SUBTASK_TYPE_NOT_MATCH)
         logger.info ('subtask : %s', work_item)
         if work_item.type == WorkItemType.SUBTASK.value:
-            update_data = UpdateTaskModel(status=item.status, session_id=session_id)
+            if item.status == TaskStatusEnum.DONE.value:
+                update_data = UpdateTaskModel(status=item.status, session_id=session_id)
+            else:
+                update_data = UpdateTaskModel(status=item.status,session_id=None)
             updated_subtask = await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
             if updated_subtask and updated_subtask.parent and updated_subtask.status == TaskStatusEnum.DONE:
                 list_task_id.add(str(updated_subtask.parent))
@@ -375,11 +378,20 @@ class SessionService:
 
         for key, value in parent_map.items():
             all_subtasks = await self.work_item_repository.get_children(key, status=[ status for status in TaskStatusEnum if status != TaskStatusEnum.CANCELED])
+            # print("all_subtasks:", len(all_subtasks))
+            # print("done subtasks:", subtask_done_map[key])
             percent_process = subtask_done_map[key]/len(all_subtasks) if len(all_subtasks) > 0 else 0
-            parent_map[key].percent_process = math.floor(percent_process + 0.5)
-            parent_map[key].estimated_point = math.floor(percent_process + 0.5) * parent_map[key].point
+            parent_map[key].percent_process = percent_process
+            # print("percent_process:", parent_map[key].percent_process)
+            parent_map[key].estimated_point = math.floor(percent_process * parent_map[key].point + 0.5)
+            # print("check task",parent_map[key].estimated_point)
 
         list_task[:] = list(parent_map.values())
-        for task in list_task:
-            print(task)
         return list_task
+
+    async def receive_noti_extend(self):
+        # input : list email
+        # url to send noti
+        # check user in session
+        #
+        pass

@@ -31,8 +31,8 @@ class DocumentItemService:
         #write func check for group
         # check role for type
         data.created_by = user_id
-        if data.parent_type:
-            await self._check_role_with_doc_type(data.type, roles, data.created_by,data.object_id, data.parent_type)
+        # if data.parent_type and data.object_id:
+        #     await self._check_role_with_doc_type(data.type, roles, data.created_by,data.object_id, data.parent_type)
         document = await self.repository.create_document(data.model_dump())
         response = DocumentResponse.model_validate(document)
         # auto create doc result
@@ -45,8 +45,8 @@ class DocumentItemService:
         document = await self.repository.update_document(document_id, data)
         if not document:
              raise DocumentException(DocumentMessage.NOT_FOUND, DocumentStatusCode.NOT_FOUND)
-        if document.parent_type:
-            await self._check_role_with_doc_type(document.type, roles, user_id,document.object_id, document.parent_type)
+        # if document.parent_type:
+        #     await self._check_role_with_doc_type(document.type, roles, user_id,document.object_id, document.parent_type)
         response = DocumentResponse.model_validate(document)
         return ResponseModel(data=response)
 

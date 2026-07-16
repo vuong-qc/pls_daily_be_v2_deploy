@@ -55,7 +55,7 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         query = DocumentItem.find(filter_dump, fetch_links=True, nesting_depth=1)
         count = await query.count()
 
-        list_document = await query.skip(offset).limit(limit).sort("-date_time").to_list()
+        list_document = await query.skip(offset).limit(limit).sort("+date_time").to_list()
         return list_document, count
     async def _add_link_document_item(self, data: dict, document: DocumentItem):
         handler: str | bool = data.get("handler", False)

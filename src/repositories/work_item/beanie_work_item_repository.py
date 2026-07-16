@@ -90,9 +90,9 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filters.status = status
         filter_dump = filters.model_dump(exclude_unset=True)
         await self._update_query_by_form(filters, filter_dump)
-        print("filter",filter_dump)
         offset = filter_dump.pop("offset",0)
         limit = filter_dump.pop("limit",10)
+        print("filter",filter_dump)
         query = WorkItemDocument.find(filter_dump,
                                       fetch_links=True,
                                       )
