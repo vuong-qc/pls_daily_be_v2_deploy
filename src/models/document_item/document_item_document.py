@@ -36,6 +36,7 @@ class DocumentItem(DocumentWithSoftDelete):
     task_model: Optional[Link[WorkItemDocument]] = None
     sprint_model: Optional[Link[WorkItemDocument]] = None
     deadline: Optional[int] = None
+    bug_type: Optional[str] = None
 
     class Settings:
         name='document_items'

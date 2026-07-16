@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class UpdateDocumentItem(BaseModel):
+    group_id: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
     files: Optional[list[str]] = None
@@ -24,3 +25,4 @@ class UpdateDocumentItem(BaseModel):
     scenario: Optional[str] = None
     feature: Optional[str] = None
     deadline: Optional[int] = None
+    bug_type: Optional[str] = None

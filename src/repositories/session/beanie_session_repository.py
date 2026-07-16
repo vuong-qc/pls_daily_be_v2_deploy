@@ -37,7 +37,6 @@ class BeanieSessionRepository(SessionRepository):
             )
         
         query = SessionDocument.find(filter_dump, fetch_links=True)
-
         count = await query.count()
 
         list_session = await query.sort(f"-{SessionDocument.start_time}").skip(offset).limit(limit).to_list()

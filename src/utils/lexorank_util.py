@@ -32,7 +32,6 @@ class LexorankUtil:
         list_response = []
         logger.info('total order: %s', total)
         logger.info('total task: %s', count_task)
-        logger.info('total task not equal total order')
         list_task = await task_repository.filter_work_item_for_order(
             filter_item)
         list_order = await order_repository.get_all_orders(filters.model_dump(exclude_unset=True))

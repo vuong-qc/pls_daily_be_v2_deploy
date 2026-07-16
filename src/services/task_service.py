@@ -158,16 +158,21 @@ class TaskService:
             # query in session
             start_of_today_vn = DateTimeUtil.get_start_time_today()
             logger.info(f"start_of_today_vn: %s{start_of_today_vn}")
-            filters_session = FilterSessionModel(start_time=start_of_today_vn,status= [SessionStatusEnum.NEW],limit=1, offset=0, user_id=user_id)
+            filters_session = FilterSessionModel(start_time=start_of_today_vn,status= [SessionStatusEnum.NEW, SessionStatusEnum.IN_PROGRESS],limit=1, offset=0, user_id=user_id)
             list_session, total = await self.session_repository.get_list_session(filters_session)
+            print(list_session)
+            print(total)
             if total < 1:
                 return ResponsePaginatedModel(data=[], total=total, offset= filters.offset)
             list_task_today = list_session[0].list_task
             filters.list_ids = list_task_today
+            print(filters)
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
+            print("task",list_tasks)
+            print("total",total)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-            self._handler_inject_task_to_story(list_response)
+            # self._handler_inject_task_to_story(list_response)
             return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
         # case task
@@ -182,12 +187,12 @@ class TaskService:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-        self._handler_inject_task_to_story(list_response)
+        # self._handler_inject_task_to_story(list_response)
 
         if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
                 self._get_task_story(
-                    task, FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=str(task.id)), FilterWorkItemModel(offset=0, limit=100, parent=str(task.id), type_order=filters.type_order)
+                    task, FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=str(task.id)), FilterWorkItemModel(offset=0, limit=100, parent=str(task.id), type_order=filters.type_order, assigned_id=filters.assigned_id),
                 )
                 for task in list_response
             ])
@@ -330,7 +335,7 @@ class TaskService:
             return ResponseModel(data=response)
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
-    async def _get_task_story(self, response:TaskResponse, filter_order: Optional[FilterOrderModel] = None, filter_item: Optional[FilterWorkItemModel] = None, user_id: Optional[str] = None):
+    async def _get_task_story(self, response:TaskResponse, filter_order: Optional[FilterOrderModel] = None, filter_item: Optional[FilterWorkItemModel] = None):
         if (response.children is None or len(response.children) == 0) and response.type in [WorkItemType.BACKLOG, WorkItemType.STORY]:
             # children =  await self.task_repository.get_children(str(response.id))
             # # logger.info('check children: %s', children)
@@ -344,8 +349,8 @@ class TaskService:
                 list_response, total = await LexorankUtil.auto_gen_order(filter_order, filter_item, TaskResponse, self.task_repository, self.order_repository)
                 response.children = list_response
                 return
-            children = await self.task_repository.get_children(parent_id=str(response.id), user_id=user_id)
-            # logger.info('check children: %s', children)
+            children = await self.task_repository.get_children(parent_id=str(response.id))
+            logger.info('check children len: %s', len(children))
             for child in children:
                 logger.info('check child: %s', child)
             response.children =[TaskResponse.model_validate(child)
@@ -384,6 +389,7 @@ class TaskService:
             # logger.debug("response: %s", response.title)
             if response.parent_model and response.parent_model.type == WorkItemType.STORY:
                 parent_id = response.parent
+                logging.info("case task in story: %s", response.title)
                 if parent_id not in parent_map:
                     parent_obj = TaskResponse.model_validate(response.parent_model.model_dump())
                     parent_obj.children = []
@@ -392,6 +398,8 @@ class TaskService:
 
                 parent_map[parent_id].children.append(response)
             elif response.type == WorkItemType.STORY:
+                logger.info('case story: %s', response.title)
+                parent_map[response.id] = response
                 if response.parent not in parent_map:
                     response.children = []
                     parent_map[str(response.id)] = response

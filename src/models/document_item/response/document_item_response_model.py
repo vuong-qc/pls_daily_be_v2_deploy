@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, Link
 from typing import Optional
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from src.models.sprint.response.sprint_response_model import SprintResponse
 from src.models.task.response.task_response_model import TaskResponse
@@ -42,3 +42,49 @@ class DocumentResponse(BaseModel):
     task_model: Optional[TaskResponse] = None
     sprint_model: Optional[SprintResponse] = None
     deadline: Optional[int] = None
+    bug_type: Optional[str] = None
+
+    @field_validator(
+        'assignee_model', mode='before'
+    )
+    @classmethod
+    def handle_assignee_model(cls, v):
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'sprint_model', mode='before'
+    )
+    @classmethod
+    def handle_sprint_model(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'handler_model', mode='before'
+    )
+    @classmethod
+    def handle_handler_model(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'task_model', mode='before'
+    )
+    @classmethod
+    def handle_task_model(cls, v):
+        if isinstance(v, Link):
+            return None
+
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
