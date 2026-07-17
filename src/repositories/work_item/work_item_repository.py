@@ -32,7 +32,7 @@ class WorkItemRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[str]= None):
+    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[list[str]]= None):
         pass
 
     @abstractmethod

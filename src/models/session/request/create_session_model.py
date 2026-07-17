@@ -24,3 +24,10 @@ class CreateSessionModel(BaseModel):
     #         self.status = SessionStatusEnum.LATE
     #
     #     return self
+class CreateSessionComgao(BaseModel):
+    emails: list[str]
+    start_time: datetime
+    notes: str
+    work_form: str
+    checkin_late: bool = False
+    arrival_status: str = None

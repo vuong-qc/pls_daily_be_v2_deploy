@@ -8,6 +8,7 @@ class SessionStatusCode(IntEnum):
     START_GTE_END_TIME = status.HTTP_400_BAD_REQUEST
     CHECKOUT_DIFF_DATE = status.HTTP_400_BAD_REQUEST
     SESSION_CHECKED_IN = status.HTTP_400_BAD_REQUEST
+    USER_CHECKED_OUT = status.HTTP_400_BAD_REQUEST
 
 class SessionMessage(StrEnum):
     NOT_FOUND = 'Session not found'
@@ -16,6 +17,7 @@ class SessionMessage(StrEnum):
     START_GTE_END_TIME = 'Start time >= end time'
     CHECKOUT_DIFF_DATE = 'Checkout date != checkin date'
     SESSION_CHECKED_IN = 'User checked in session'
+    USER_CHECKED_OUT = 'User checked out'
 
 class SessionException(HTTPException):
     def __init__(self, message: SessionMessage, code: SessionStatusCode):

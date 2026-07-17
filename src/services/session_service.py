@@ -1,3 +1,4 @@
+from src.exception.user_exception import ExceptionUserNotFound
 from src.configs import settings
 from src.enums.user_role_enum import UserRole
 from src.models.task.response.task_response_model import TaskResponse
@@ -5,8 +6,9 @@ from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.repositories.session.session_repository import SessionRepository
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel, \
     FilterSessionByDateRangeModel
-from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel
-from src.models.session.request.create_session_model import CreateSessionModel
+from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, UpdateSubTaskModel, \
+    CheckoutComgaoModel
+from src.models.session.request.create_session_model import CreateSessionModel, CreateSessionComgao
 from src.models.session.response.session_response_model import SessionResponse, SessionTaskResponse
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.repositories.work_item.work_item_repository import WorkItemRepository
@@ -46,13 +48,7 @@ class SessionService:
     async def create_session(self, session_data: CreateSessionModel) -> ResponseModel:
         # check has session in today has not done
 
-        filters_in_session = FilterCheckInSessionModel(start_time=DateTimeUtil.get_start_time_today(),status=[SessionStatusEnum.NEW, SessionStatusEnum.IN_PROGRESS])
-        list_user_checkin = await self.session_repository.get_all_sessions_checkin(filters_in_session)
-        logger.info('session today: %s',list_user_checkin)
-        if list_user_checkin:
-            if session_data.user_id in list_user_checkin:
-                raise SessionException(SessionMessage.SESSION_CHECKED_IN, SessionStatusCode.SESSION_CHECKED_IN)
-
+        await self.check_user_checkin(session_data.user_id)
         # check status
         new_session = await self.session_repository.create_session(session_data.model_dump())
         logger.info('checkin success with data: %s',new_session)
@@ -145,17 +141,7 @@ class SessionService:
         response.list_tasks_data = list_task_res
 
     async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel, background_tasks: BackgroundTasks) -> ResponseModel:
-        session = await self.session_repository.get_session_by_id(session_id)
-        if not session:
-            raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
-
-        if session.status == SessionStatusEnum.DONE:
-            return ResponseModel()
-        # update work item: task, subtask,
-        # add session_id in to subtask
-        if user_id != session.user_id:
-            raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
-
+        session = await self.check_user_checkout(user_id, session_id)
         # update session
         update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time, note_result=session_data.note_result)
         if not update_session_data.end_time:
@@ -389,9 +375,62 @@ class SessionService:
         list_task[:] = list(parent_map.values())
         return list_task
 
-    async def receive_noti_extend(self):
+    async def check_user_checkin(self, user_id:str):
+        filters_in_session = FilterCheckInSessionModel(start_time=DateTimeUtil.get_start_time_today(),
+                                                       status=[SessionStatusEnum.NEW, SessionStatusEnum.IN_PROGRESS])
+        list_user_checkin = await self.session_repository.get_all_sessions_checkin(filters_in_session)
+        logger.info('session today: %s', list_user_checkin)
+        if list_user_checkin:
+            if user_id in list_user_checkin:
+                raise SessionException(SessionMessage.SESSION_CHECKED_IN, SessionStatusCode.SESSION_CHECKED_IN)
+
+    async def check_user_checkout(self, user_id:str, session_id:str):
+        session = await self.session_repository.get_session_by_id(session_id)
+        if not session:
+            raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
+
+        if session.status == SessionStatusEnum.DONE:
+            raise SessionException(SessionMessage.USER_CHECKED_OUT, SessionStatusCode.USER_CHECKED_OUT)
+        # update work item: task, subtask,
+        # add session_id in to subtask
+        if user_id != session.user_id:
+            raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
+        return session
+
+    async def checkin_comgao(self, data: CreateSessionComgao):
         # input : list email
         # url to send noti
         # check user in session
         #
-        pass
+        list_session = []
+        user_ids = []
+        user_map = {}
+        for email in data.emails:
+            user = await self.user_repository.get_user_by_email(email)
+            if not user:
+                raise ExceptionUserNotFound()
+            create_session = CreateSessionModel(
+                user_id=str(user.id), status=SessionStatusEnum.NEW,
+                list_task =[], start_time=data.start_time, notes= data.notes, work_form=data.work_form, checkin_late=data.checkin_late, arrival_status=data.arrival_status
+            )
+            list_session.append(create_session)
+            user_ids.append(str(user.id))
+            user_map[str(user.id)] = email
+        await asyncio.gather(*(
+            self.check_user_checkin(user_id) for user_id in user_ids
+        ))
+            # check in session
+        results = await asyncio.gather(
+            *(self.create_session(session) for session in list_session)
+        )
+        list_session_res = []
+        for result in results:
+            result.data.user_id = user_map[result.data.user_id]
+            list_session_res.append(result.data)
+
+        return ResponsePaginatedModel(data=list_session_res, total=len(list_session_res), offset=0)
+
+    async def checkout_comgao(self, data: CheckoutComgaoModel):
+        await asyncio.gather(*(
+            self.check_user_checkout()
+        ))

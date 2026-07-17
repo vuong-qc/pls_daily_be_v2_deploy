@@ -23,3 +23,6 @@ class CheckoutModel(BaseModel):
     note_result: str
     checkout_late: bool = False
     departure_status: str
+
+class CheckoutComgaoModel(CheckoutModel):
+    list_sessions: list[str]

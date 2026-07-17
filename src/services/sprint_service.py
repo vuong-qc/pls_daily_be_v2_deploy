@@ -142,7 +142,7 @@ class SprintService:
         # sprint_response.done_tasks = statistic.target_status_tasks
         total_task_story = await self.sprint_repository.get_children(str(sprint_response.id))
         count_task = 0
-        print("total_task_story: ", len(total_task_story))
+        # print("total_task_story: ", len(total_task_story))
         count_done_task = 0
         list_story_ids = []
         for item in total_task_story:
@@ -153,7 +153,7 @@ class SprintService:
             if item.type == WorkItemType.TASK and item.status == TaskStatusEnum.DONE.value:
                 count_done_task += 1
         task_in_story = await self.sprint_repository.get_children_by_parents(list_story_ids)
-        print("task_in_story: ", len(task_in_story))
+        # print("task_in_story: ", len(task_in_story))
         for task in task_in_story:
             if task.status == TaskStatusEnum.DONE.value:
                 count_done_task += 1
@@ -172,31 +172,36 @@ class SprintService:
             raise SprintException(SprintMessage.NOT_HANDLER_PR0JECT, SprintStatusCode.NOT_HANDLER_PR0JECT)
 
     async def get_task_by_sprint(self, sprint_id:str, user_id:str, sprint_res: SprintResponse):
-        task_story_of_sprint = await self.sprint_repository.get_children(parent_id=sprint_id, user_id=user_id)
+        filter_story = FilterWorkItemModel(parent=sprint_id, limit=100, offset=0, type=[WorkItemType.STORY, WorkItemType.TASK], assigned_id=[user_id])
+        task_story_of_sprint = await self.sprint_repository.filter_work_item_for_order(filter_story)
         list_story_ids = []
         list_tasks = []
         list_task_id = []
-        print("task of sprint", task_story_of_sprint)
+        # print("task of sprint", len(task_story_of_sprint))
+        # print("user_id:", user_id)
         for item in task_story_of_sprint:
+            # print("type, title: ", item.type, item.title)
             if item.type == WorkItemType.STORY:
                 list_story_ids.append(str(item.id))
             elif item.type == WorkItemType.TASK:
                 list_tasks.append(item)
                 list_task_id.append(str(item.id))
-        print("list_story_ids:", list_story_ids)
-        print("list_tasks:", list_tasks)
-        print("list_task_id:", list_task_id)
+        # print("list_story_ids:", list_story_ids, user_id)
+        # print("list_tasks:", list_tasks)
+        # print("list_task_id:", list_task_id, user_id)
         # get task of story
-        task_by_story = await self.sprint_repository.get_children_by_parents(list_story_ids)
+        task_by_story = await self.sprint_repository.get_children_by_parents(parents=list_story_ids, user_id=[user_id])
         for task in task_by_story:
+            # print("task_id: ", str(task.id), user_id)
             list_tasks.append(task)
             list_task_id.append(str(task.id))
+        # print("list_task_id appended:", list_task_id, user_id)
 
         task_with_count_status = await self.sprint_repository.count_items_by_parent_status(list_task_id,
                                                                                          [TaskStatusEnum.NEW.value,
                                                                                           TaskStatusEnum.PROCESSING.value,
                                                                                           TaskStatusEnum.DONE.value])
-        print("test", task_with_count_status)
+        # print("test", task_with_count_status)
 
         total_done_tasks = 0
         total_point_done_tasks = 0

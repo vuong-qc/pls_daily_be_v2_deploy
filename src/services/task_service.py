@@ -172,7 +172,17 @@ class TaskService:
             print("total",total)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-            # self._handler_inject_task_to_story(list_response)
+            if filters.type and (WorkItemType.STORY in filters.type or WorkItemType.BACKLOG in filters.type):
+                await asyncio.gather(*[
+                    self._get_task_story(
+                        task, FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=str(task.id)),
+                        FilterWorkItemModel(offset=0, limit=100, parent=str(task.id), type_order=filters.type_order,
+                                            assigned_id=filters.assigned_id),
+                    )
+                    for task in list_response
+                ])
+            self._handler_inject_task_to_story(list_response)
+            total = await self._count_task(filters, total)
             return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
         # case task
@@ -187,7 +197,7 @@ class TaskService:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-        # self._handler_inject_task_to_story(list_response)
+        self._handler_inject_task_to_story(list_response)
 
         if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
@@ -199,6 +209,7 @@ class TaskService:
         logger.info(f"list_response later len: {len(list_response)}")
         for task in list_response:
             logger.info("check print task later %s, %s", task.title, task.type)
+        total = await self._count_task(filters, total)
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
     async def create_subtask(self, data: CreateSubtaskModel, user_id: str):
@@ -222,6 +233,7 @@ class TaskService:
         subtask = await self.task_repository.get_work_item_by_id(subtask_id)
         if data.status != TaskStatusEnum.DONE:
             data.session_id = None
+
         if not subtask:
             raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
         task = await self.task_repository.get_work_item_by_id(subtask.parent)
@@ -230,6 +242,9 @@ class TaskService:
                 raise TaskException(TaskMessage.TASKER_NOT_MATCH_TASK, TaskStatusCode.TASKER_NOT_MATCH_TASK)
         update_task = await self.task_repository.update_work_item(subtask_id,data.model_dump(exclude_unset=True))
         if update_task:
+            # update task when session
+            if data.status != TaskStatusEnum.DONE and data.session_id:
+                await self._handle_update_status_task_done(subtask_id, data.session_id)
             return ResponseModel(data=TaskResponse.model_validate(update_task))
         raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
 
@@ -399,7 +414,7 @@ class TaskService:
                 parent_map[parent_id].children.append(response)
             elif response.type == WorkItemType.STORY:
                 logger.info('case story: %s', response.title)
-                parent_map[response.id] = response
+                # parent_map[response.id] = response
                 if response.parent not in parent_map:
                     response.children = []
                     parent_map[str(response.id)] = response
@@ -481,3 +496,37 @@ class TaskService:
         new_task = await self.task_repository.create_work_item(cp_task.model_dump())
         response = TaskResponse.model_validate(new_task)
         return ResponseModel(data=response)
+
+    async def _handle_update_status_task_done(self,task: str, session_id: str):
+        # count subtask done/ total =process_percent
+        filter_subtask_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(task), offset=0, limit=1)
+        count_sub_task_done = await self.task_repository.count_work_item(filter_subtask_done)
+
+        filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING],
+                                                 parent=str(task), offset=0, limit=1)
+        count_total_subtask = await self.task_repository.count_work_item(filter_all_subtask) + count_sub_task_done
+        logger.info(f"count_sub_task_done: %s{count_sub_task_done}")
+        logger.info(f"count_total_subtask: %s{count_total_subtask}")
+        if count_total_subtask == count_sub_task_done and count_sub_task_done > 0:
+            update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
+            await self.task_repository.update_work_item(task, update_data.model_dump(
+                exclude_unset=True))
+
+    async def _count_task(self, filters: FilterTaskModel, total: int):
+        count = 0
+        if filters.parent:
+            children = await self.task_repository.get_children(filters.parent)
+            list_story_ids = []
+            for child in children:
+                # print("child", child.type)
+                if child.type == WorkItemType.TASK:
+                    count += 1
+                elif child.type == WorkItemType.STORY:
+                    list_story_ids.append(str(child.id))
+
+            print("count", count)
+            print("story_ids", list_story_ids)
+            story_children = await self.task_repository.get_children_by_parents(list_story_ids, filters.status, filters.assigned_id)
+            return len(story_children) + count
+
+        return total

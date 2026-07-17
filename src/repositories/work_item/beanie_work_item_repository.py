@@ -99,10 +99,10 @@ class BeanieWorkItemRepository(WorkItemRepository):
         children = await query.to_list()
         return children
 
-    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[str]= None):
+    async def get_children_by_parents(self, parents: list[str], status: Optional[list[str]]= None, user_id: Optional[list[str]]= None):
         filters = FilterWorkItemModel(offset=0, limit=10)
         if user_id:
-            filters.assigned_id = [user_id]
+            filters.assigned_id = user_id
         if status:
             filters.status = status
         filter_dump = filters.model_dump(exclude_unset=True)
@@ -138,6 +138,8 @@ class BeanieWorkItemRepository(WorkItemRepository):
             filter_dump.update(
                 In(WorkItemDocument.owner_id,filters.owner_id)
             )
+        if filters.assigned_id is None:
+            filter_dump.pop("assigned_id", None)
         # if filters.assigned_id:
         #     filter_dump.update(
         #         In(WorkItemDocument.assigned_id,filters.assigned_id)
