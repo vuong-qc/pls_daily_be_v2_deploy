@@ -56,6 +56,7 @@ class WorkItemResponse(BaseModel):
     device: Optional[str] = None
     device_version: Optional[str] = None
     project_version: Optional[str] = None
+    bug_type: Optional[str] = None
 
     @field_validator(
         'parent_model', mode='before'

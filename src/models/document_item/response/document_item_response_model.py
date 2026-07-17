@@ -42,7 +42,6 @@ class DocumentResponse(BaseModel):
     task_model: Optional[TaskResponse] = None
     sprint_model: Optional[SprintResponse] = None
     deadline: Optional[int] = None
-    bug_type: Optional[str] = None
 
     @field_validator(
         'assignee_model', mode='before'

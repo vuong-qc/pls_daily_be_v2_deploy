@@ -25,6 +25,7 @@ class FilterWorkItemModel(BaseModel):
     sprint: Optional[list[str]] = None
     task: Optional[str] = None
     session_id: Optional[str] = None
+    bug_type: Optional[str] = None
 
 class ParentStatusCount(BaseModel):
     parent: str

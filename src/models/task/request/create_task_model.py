@@ -18,6 +18,7 @@ class CreateUserTaskModel(BaseModel):
     assigned_id: Optional[list[str]] = None
     time_rush: Optional[int] = None
     review_status: Optional[str] = None
+    deadline: Optional[int] = None
     is_in_sprint: bool = True
     duration: Optional[int] = None
     order_type: Optional[str] = None
@@ -36,7 +37,6 @@ class CreateUserTaskModel(BaseModel):
         return TaskStatusEnum.NEW
 
 class CreateTaskModel(CreateUserTaskModel):
-    deadline: Optional[int]
     point: Optional[int]
     handler_id: Optional[list[str]] = None
 

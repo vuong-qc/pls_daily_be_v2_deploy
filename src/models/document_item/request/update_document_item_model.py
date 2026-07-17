@@ -25,4 +25,3 @@ class UpdateDocumentItem(BaseModel):
     scenario: Optional[str] = None
     feature: Optional[str] = None
     deadline: Optional[int] = None
-    bug_type: Optional[str] = None

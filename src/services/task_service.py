@@ -79,6 +79,8 @@ class TaskService:
         task = await self.task_repository.get_work_item_by_id(task_id)
         if not task:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
+        if task_data.assigned_id and (task.des is None and task.point is None and task.point is None and task.deadline is None):
+            raise TaskException(TaskMessage.CANT_ASSIGN_TASK, TaskStatusCode.CANT_ASSIGN_TASK)
         if handler_id:
             # if user_id not in user assign => check role
             if handler_id not in task.assigned_id:
