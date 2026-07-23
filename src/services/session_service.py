@@ -1,3 +1,4 @@
+# from src.enums.chatbot_type_enum import ChatbotTypeEnum
 from src.exception.user_exception import ExceptionUserNotFound
 from src.configs import settings
 from src.enums.user_role_enum import UserRole
@@ -56,7 +57,9 @@ class SessionService:
         response = SessionResponse.model_validate(created_session)
         # inject call webhook
         # get token
+        # filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         if total > 0:
             list_task = []
@@ -393,8 +396,8 @@ class SessionService:
             raise SessionException(SessionMessage.USER_CHECKED_OUT, SessionStatusCode.USER_CHECKED_OUT)
         # update work item: task, subtask,
         # add session_id in to subtask
-        if user_id != session.user_id:
-            raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
+        # if user_id != session.user_id:
+        #     raise SessionException(SessionMessage.NOT_OWNER, SessionStatusCode.NOT_OWNER)
         return session
 
     async def checkin_comgao(self, data: CreateSessionComgao):
@@ -402,9 +405,10 @@ class SessionService:
         # url to send noti
         # check user in session
         #
+        logger.info('session comgao: %s', data)
         list_session = []
         user_ids = []
-        user_map = {}
+        map_user_session = {}
         for email in data.emails:
             user = await self.user_repository.get_user_by_email(email)
             if not user:
@@ -415,22 +419,36 @@ class SessionService:
             )
             list_session.append(create_session)
             user_ids.append(str(user.id))
-            user_map[str(user.id)] = email
         await asyncio.gather(*(
             self.check_user_checkin(user_id) for user_id in user_ids
-        ))
+            ),return_exceptions=False
+        )
             # check in session
         results = await asyncio.gather(
-            *(self.create_session(session) for session in list_session)
+            *(self.create_session(session) for session in list_session),
+            return_exceptions=False
         )
-        list_session_res = []
+        # list_session_res = []
         for result in results:
-            result.data.user_id = user_map[result.data.user_id]
-            list_session_res.append(result.data)
+            map_user_session[str(result.data.id)] = result.data.user_id
+            # list_session_res.append(str(result.data.id))
 
-        return ResponsePaginatedModel(data=list_session_res, total=len(list_session_res), offset=0)
+        return ResponseModel(data=map_user_session)
 
-    async def checkout_comgao(self, data: CheckoutComgaoModel):
+    async def checkout_comgao(self, data: CheckoutComgaoModel, background_tasks: BackgroundTasks):
         await asyncio.gather(*(
-            self.check_user_checkout()
-        ))
+            self.check_user_checkout(value, key)
+            for key, value in data.map_user_session.items()
+            ), return_exceptions=False
+        )
+        data_checkout = CheckoutModel(**data.model_dump())
+        results = await asyncio.gather(
+            *(self.checkout(value,key, data_checkout, background_tasks)
+              for key, value in data.map_user_session.items()
+              ),
+            return_exceptions=False
+        )
+        list_response = []
+        for result in results:
+            list_response.append(result.data)
+        return ResponsePaginatedModel(data=list_response, total=len(list_response), offset=0)

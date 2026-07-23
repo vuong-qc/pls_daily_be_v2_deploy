@@ -140,6 +140,21 @@ class BeanieWorkItemRepository(WorkItemRepository):
             )
         if filters.assigned_id is None:
             filter_dump.pop("assigned_id", None)
+        if filters.start and filters.end:
+            filter_dump.update(
+                And(
+                    GTE(WorkItemDocument.created_at, filter_dump.pop("start")),
+                    LTE(WorkItemDocument.created_at, filter_dump.pop("end"))
+                )
+            )
+        elif filters.start:
+            filter_dump.update(
+                    GTE(WorkItemDocument.created_at, filter_dump.pop("start")),
+            )
+        elif filters.end:
+            filter_dump.update(
+                    LTE(WorkItemDocument.created_at, filter_dump.pop("end")),
+            )
         # if filters.assigned_id:
         #     filter_dump.update(
         #         In(WorkItemDocument.assigned_id,filters.assigned_id)

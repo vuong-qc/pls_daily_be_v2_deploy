@@ -25,4 +25,4 @@ class CheckoutModel(BaseModel):
     departure_status: str
 
 class CheckoutComgaoModel(CheckoutModel):
-    list_sessions: list[str]
+    map_user_session: Optional[dict[str,str]] = None

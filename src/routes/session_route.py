@@ -1,7 +1,7 @@
 from src.repositories.session.beanie_session_repository import BeanieSessionRepository
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
-from src.models.session.request.create_session_model import CreateSessionModel
-from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel
+from src.models.session.request.create_session_model import CreateSessionModel, CreateSessionComgao
+from src.models.session.request.update_session_model import UpdateSessionModel, CheckoutModel, CheckoutComgaoModel
 from src.models.session.request.filter_session_model import FilterSessionModel, FilterSessionByDateRangeModel
 from fastapi import APIRouter, Query, Depends, status, Header, HTTPException, BackgroundTasks
 from src.configs import settings
@@ -128,3 +128,32 @@ async def get_my_sessions(
         user_data: dict = Depends(get_current_user_by_token),
 ):
     return await service.get_session_by_date_range(filters)
+
+@router.post('/checkin-webhook',
+             status_code=status.HTTP_200_OK,
+             response_model=ResponseModel,
+             description="Checkin webhook",
+             )
+async def checkin_webhook(
+        request: CreateSessionComgao,
+        x_internal_key: str = Header(),
+        service: SessionService = Depends(get_session_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,)
+    return await service.checkin_comgao(request)
+
+@router.post('/checkout-webhook',
+             status_code=status.HTTP_200_OK,
+             response_model=ResponsePaginatedModel,
+             description="Checkout webhook",
+)
+async def checkout_webhook(
+        request: CheckoutComgaoModel,
+        background_tasks: BackgroundTasks,
+        x_internal_key: str = Header(),
+        service: SessionService = Depends(get_session_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,)
+    return await service.checkout_comgao(request, background_tasks)

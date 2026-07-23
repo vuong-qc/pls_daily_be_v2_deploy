@@ -66,6 +66,11 @@ class BeanieUserRepository(UserRepository):
             filters.update(In(UserDocument.status, [status]))
         else:
             filters.update(In(UserDocument.status, [UserStatusEnum.ACTIVE.value, UserStatusEnum.INACTIVE.value]))
+
+        if filters.get("department"):
+            department = filters.pop("department", [])
+            filters.update(In(UserDocument.department, department))
+
         query = UserDocument.find(filters,fetch_links=True)
         count = await query.count()
         list_user_doc = await query.skip(offset).limit(limit).sort("-created_at").to_list()

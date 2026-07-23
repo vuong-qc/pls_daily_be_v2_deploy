@@ -26,6 +26,8 @@ class FilterWorkItemModel(BaseModel):
     task: Optional[str] = None
     session_id: Optional[str] = None
     bug_type: Optional[str] = None
+    start: Optional[int] = None
+    end: Optional[int] = None
 
 class ParentStatusCount(BaseModel):
     parent: str

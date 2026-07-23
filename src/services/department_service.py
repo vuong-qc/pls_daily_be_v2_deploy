@@ -22,14 +22,14 @@ class DepartmentService:
         if department_data.chatbot_token_id:
             await self.chatbot_service.get_chatbot_token(department_data.chatbot_token_id)
 
-        department = await self.update_department(department_id, department_data.model_dump(exclude_unset=True))
+        department = await self.department_repository.update_department(department_id, department_data.model_dump(exclude_unset=True))
         if not department:
             raise DepartmentException(DepartmentMessage.NOT_FOUND, DepartmentStatusCode.NOT_FOUND)
         response = DepartmentResponseModel.model_validate(department)
         return ResponseModel(data=response)
 
     async def delete_department(self, department_id: str) -> None:
-        await self.delete_department(department_id)
+        await self.department_repository.delete_department(department_id)
 
     async def get_department_by_id(self, department_id: str) -> ResponseModel:
         department = await self.department_repository.get_department_by_id(department_id)

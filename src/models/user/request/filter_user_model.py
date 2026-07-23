@@ -7,3 +7,4 @@ class FilterUserModel(BaseModel):
     keyword: Optional[str] = None
     roles: Optional[list[int]] = None
     status: Optional[int] = None
+    department: Optional[list[str]] = None
