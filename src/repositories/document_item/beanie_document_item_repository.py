@@ -36,6 +36,13 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop('offset',0)
         limit = filter_dump.pop('limit',10)
+        self._build_filter(filters, filter_dump)
+        query = DocumentItem.find(filter_dump, fetch_links=True, nesting_depth=1)
+        count = await query.count()
+
+        list_document = await query.skip(offset).limit(limit).sort("+date_time").to_list()
+        return list_document, count
+    def _build_filter(self, filters: FilterDocumentItem, filter_dump: dict):
         if filters.type:
             filter_dump.update(
                 In(DocumentItem.type, filters.type),
@@ -52,11 +59,6 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             filter_dump.update(
                 In(DocumentItem.object_id, filters.object_id),
             )
-        query = DocumentItem.find(filter_dump, fetch_links=True, nesting_depth=1)
-        count = await query.count()
-
-        list_document = await query.skip(offset).limit(limit).sort("+date_time").to_list()
-        return list_document, count
     async def _add_link_document_item(self, data: dict, document: DocumentItem):
         handler: str | bool = data.get("handler", False)
         # print("handler_id",handler_id)
@@ -92,3 +94,17 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
                 document.sprint_model = None
             else:
                 document.sprint_model = WorkItemDocument.model_construct(id=PydanticObjectId(sprint))
+
+    async def copy_document_items(self, filters: FilterDocumentItem, new_object_id:str):
+        filter_dump = filters.model_dump(exclude_unset=True)
+        offset = filter_dump.pop('offset', 0)
+        limit = filter_dump.pop('limit', 10)
+        self._build_filter(filters, filter_dump)
+        query = DocumentItem.find(filter_dump)
+        list_document = await query.to_list()
+        list_document_items = []
+        for document in list_document:
+            data = DocumentItem(**document.model_dump())
+            data.object_id = new_object_id
+            list_document_items.append(data)
+        await DocumentItem.insert_many(list_document_items)

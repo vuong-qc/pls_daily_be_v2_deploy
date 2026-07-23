@@ -19,4 +19,5 @@ class SessionDocument(DocumentWithSoftDelete):
     checkout_late: Optional[bool] = None
     arrival_status: Optional[str] = None
     departure_status: Optional[str] = None
+    evaluate_session: Optional[str] = None
 

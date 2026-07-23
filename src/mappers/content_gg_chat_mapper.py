@@ -10,3 +10,15 @@ DEPARTMENT_STATUS = {
     "OT": "Làm thêm giờ, chạy task",
     "LOGTIME_TIME": "Giờ log time"
 }
+
+EVALUATE_SESSION = {
+    "AHEAD" : "Vượt tiến độ",
+    "ON_TRACK" : "Đang đúng tiến độ đề ra",
+    "BEHIND" : "Chậm tiến độ được giao",
+    "UNFINISHED": "Không hoàn thành deadline"
+}
+
+BUG_TYPE = {
+    "BUG": "BUG",
+    "FEEDBACK" : "Góp ý"
+}

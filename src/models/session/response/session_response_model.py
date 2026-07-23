@@ -26,6 +26,7 @@ class SessionResponse(BaseModel):
     checkout_late: Optional[bool] = None
     arrival_status: Optional[str] = None
     departure_status: Optional[str] = None
+    evaluate_session: Optional[str] = None
 
 class SessionTaskResponse(SessionInGroup):
     list_tasks_data: Optional[list[TaskResponse]] = None

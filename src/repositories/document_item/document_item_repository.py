@@ -22,3 +22,6 @@ class DocumentItemRepository(ABC):
     @abstractmethod
     async def get_document_item(self, document_id: str) -> DocumentItem|None:
         pass
+    @abstractmethod
+    async def copy_document_items(self, filters: FilterDocumentItem, new_object_id:str):
+        pass

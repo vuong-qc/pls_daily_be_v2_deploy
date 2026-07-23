@@ -42,6 +42,10 @@ class DocumentResponse(BaseModel):
     task_model: Optional[TaskResponse] = None
     sprint_model: Optional[SprintResponse] = None
     deadline: Optional[int] = None
+    duration: Optional[int] = None
+    details: Optional[str] = None
+    ftf: Optional[bool] = None
+    is_closed: Optional[bool] = None
 
     @field_validator(
         'assignee_model', mode='before'

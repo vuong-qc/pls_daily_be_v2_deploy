@@ -28,6 +28,8 @@ class SessionInGroup(BaseModel):
     checkout_late: Optional[bool] = None
     arrival_status: Optional[str] = None
     departure_status: Optional[str] = None
+    evaluate_session: Optional[str] = None
+
 
 class DailySessionView(View):
     id: str  # Trong View, id này chính là chuỗi ngày YYYY-MM-DD từ $group

@@ -22,3 +22,17 @@ class TextFormatEnum(StrEnum):
     CHECKIN_ON_TIME = "Check in đúng giờ"
     CHECKOUT_LATE = "Check out trễ"
     CHECKOUT_ON_TIME = "Check out đúng giờ"
+    # ===== BUG NOTIFICATION =====
+    BUG_NEW_HEADER = """⚠️ <font color="#CB1D21"><b>[BUG MỚI]</b></font>"""
+    BUG_UPDATED_HEADER = """<font color="#F2994A"><b>[BUG ĐÃ CẬP NHẬT]</b></font>"""
+    BUG_DELETED_HEADER = """<font color="#828282"><b>[BUG ĐÃ XÓA]</b></font>"""
+
+    BUG_CREATOR = """&#8226; <b>Người tạo</b>: {user}"""
+    BUG_UPDATER = """&#8226; <b>Người cập nhật</b>: {user}"""
+    BUG_DELETER = """&#8226; <b>Người xóa</b>: {user}"""
+
+    BUG_TITLE = """&#8226; <b>Bug</b>: {title}"""
+    BUG_TYPE = """&#8226; <b>Loại</b>: {bug_type}"""
+    BUG_SCREEN = """&#8226; <b>Màn hình</b>: {screen}"""
+    BUG_EXTRA_INFO = """&#8226; <b>Thông tin</b>: {extra_info}"""
+    GUEST = """🐣Người dùng ẩn danh🐣"""

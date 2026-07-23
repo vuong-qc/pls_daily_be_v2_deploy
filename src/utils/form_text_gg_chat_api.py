@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
+from src.models.work_item.response.work_item_response_model import WorkItemResponse
 from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS
 
 class FormatContentGgChatAPI:
@@ -234,6 +235,58 @@ class FormatContentGgChatAPI:
             "cardsV2": [
                 {
                     "cardId": f"checkin_{now_vn.timestamp()}",
+                    "card": {
+                        "sections": [
+                            {
+                                "widgets": [
+                                    {
+                                        "textParagraph": {
+                                            "text": content  # Đưa đoạn HTML vào đây!
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    @staticmethod
+    def build_bug_new_message(user_name: str, item: WorkItemResponse) -> str:
+        lines = [
+            TextFormatEnum.BUG_NEW_HEADER,
+            TextFormatEnum.BUG_CREATOR.format(user=user_name),
+            TextFormatEnum.BUG_TITLE.format(title=item.title or ""),
+            TextFormatEnum.BUG_TYPE.format(bug_type=item.bug_type or ""),
+            TextFormatEnum.BUG_SCREEN.format(screen=item.screen or ""),
+            TextFormatEnum.BUG_EXTRA_INFO.format(extra_info=item.extra_info or ""),
+        ]
+        return TextFormatEnum.NEWLINE.join(lines)
+    @staticmethod
+    def build_bug_updated_message(user_name: str, item: WorkItemResponse) -> str:
+        lines = [
+            TextFormatEnum.BUG_UPDATED_HEADER,
+            TextFormatEnum.BUG_UPDATER.format(user=user_name),
+            TextFormatEnum.BUG_TITLE.format(title=item.title or ""),
+        ]
+        return TextFormatEnum.NEWLINE.join(lines)
+    @staticmethod
+    def build_bug_deleted_message(user_name: str, item: WorkItemResponse) -> str:
+        lines = [
+            TextFormatEnum.BUG_DELETED_HEADER,
+            TextFormatEnum.BUG_DELETER.format(user=user_name),
+            TextFormatEnum.BUG_TITLE.format(title=item.title or ""),
+        ]
+        return TextFormatEnum.NEWLINE.join(lines)
+
+    @staticmethod
+    def format_html_gg(content: str) -> dict:
+        tz_vn = ZoneInfo(settings.TZ)
+        now_vn = datetime.now(tz_vn)
+        return {
+            "cardsV2": [
+                {
+                    "cardId": f"html_{now_vn.timestamp()}",
                     "card": {
                         "sections": [
                             {

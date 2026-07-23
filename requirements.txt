@@ -18,3 +18,4 @@ lxml==5.1.0
 tenacity
 arq
 fractional-indexing
+python-dateutil

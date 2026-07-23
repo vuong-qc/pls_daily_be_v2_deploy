@@ -25,3 +25,7 @@ class UpdateDocumentItem(BaseModel):
     scenario: Optional[str] = None
     feature: Optional[str] = None
     deadline: Optional[int] = None
+    duration: Optional[int] = None
+    details: Optional[str] = None
+    ftf: Optional[bool] = None
+    is_closed: Optional[bool] = None

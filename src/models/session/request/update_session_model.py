@@ -23,6 +23,7 @@ class CheckoutModel(BaseModel):
     note_result: str
     checkout_late: bool = False
     departure_status: str
+    evaluate_session: str
 
 class CheckoutComgaoModel(CheckoutModel):
     map_user_session: Optional[dict[str,str]] = None

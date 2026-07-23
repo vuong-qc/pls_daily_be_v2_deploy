@@ -6,3 +6,5 @@ class DocumentTypeEnum(StrEnum):
     QA = 'QA'
     CHECKLIST = 'CHECKLIST'
     TODO = 'TODO'
+    MEETING_DOCUMENT = 'MEETING_DOCUMENT'
+    MEETING_REPORT = 'MEETING_REPORT'
