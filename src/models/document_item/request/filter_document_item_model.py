@@ -12,3 +12,5 @@ class FilterDocumentItem(BaseModel):
     is_archived: Optional[bool] = None
     is_checked: Optional[bool] = None
     is_urgent: Optional[bool] = None
+    ftf: Optional[bool] = None
+    is_closed: Optional[bool] = None

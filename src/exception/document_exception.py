@@ -8,6 +8,7 @@ class DocumentMessage(StrEnum):
     TASKER_NOT_MATCH_SPRINT = 'Only Tasker of sprint can add Q&A'
     NOT_ENOUGH_DATA = 'Not enough data TO validate data, missing: parent_id/ created_by/ object_id'
     DOCUMENT_RESULT_NOT_FOUND = 'Document Result Not Found'
+    CANT_ASSIGN_FTF = "Can't assign FtF, total == 5"
 
 class DocumentStatusCode(IntEnum):
     NOT_FOUND = status.HTTP_404_NOT_FOUND
@@ -16,6 +17,7 @@ class DocumentStatusCode(IntEnum):
     TASKER_NOT_MATCH_SPRINT = status.HTTP_400_BAD_REQUEST
     NOT_ENOUGH_DATA = status.HTTP_400_BAD_REQUEST
     DOCUMENT_RESULT_NOT_FOUND = status.HTTP_404_NOT_FOUND
+    CANT_ASSIGN_FTF = status.HTTP_400_BAD_REQUEST
 
 class DocumentException(HTTPException):
     def __init__(self, message:DocumentMessage, code:DocumentStatusCode):

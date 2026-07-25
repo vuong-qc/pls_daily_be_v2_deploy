@@ -59,7 +59,7 @@ class WorkItemService:
         response = WorkItemResponse.model_validate(work_item)
         if work_item.type == WorkItemType.BUG:
             user = await self.user_repository.get_user_by_id(user_id)
-            content = FormatContentGgChatAPI.build_bug_updated_message(user.name, response)
+            content = FormatContentGgChatAPI.build_bug_updated_message(user.name, response, work_item_model.model_dump(exclude_unset=True))
             if response.project:
                 tokens = await self._get_tokens(ChatbotTypeEnum.BUG, self._convert_position(response.project))
                 if tokens:

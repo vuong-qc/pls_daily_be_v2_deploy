@@ -76,7 +76,7 @@ class NotificationService:
         return ResponsePaginatedModel(data=list_response, total=total, offset=filter_department.offset)
 
     async def get_my_noti(self, user_id:str):
-        filters = FilterNotificationModel(limit=1, offset=0, viewer_id=user_id, type=NotificationTypeEnum.NOTIFICATION)
+        filters = FilterNotificationModel(limit=1, offset=0, viewer_ids=[user_id], type=NotificationTypeEnum.NOTIFICATION)
         list_noti, total = await self.notification_repository.get_list_noti(filters)
         response = NotificationResponse.model_validate(list_noti[0]) if list_noti else None
         return ResponseModel(data=response)

@@ -14,25 +14,42 @@ class TextFormatEnum(StrEnum):
     NEWLINE = '<br>' # Xuống dòng trong HTML
     SPACE = ' '
     RESULT_NOTE = "&#8226; <b>Ghi chú kết quả</b>:"
+
     CHECKOUT = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked out!"""
     CHECKOUT_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked out!"""
+
     SUBTASK_EMPTY = "Không tạo subtask"
     SUBTASK_NOT_DONE = "Chưa hoàn thành subtask"
     CHECKIN_LATE = "Check in trễ"
     CHECKIN_ON_TIME = "Check in đúng giờ"
     CHECKOUT_LATE = "Check out trễ"
     CHECKOUT_ON_TIME = "Check out đúng giờ"
+
+    DEPARTMENT_SEPARATOR = " &#8226; "
+    # Chỉ bôi đậm chữ phòng ban, bỏ dấu bullet ở header
+    DEPARTMENT_HEADER = "<b>Phòng ban</b>:"
+
+    # Thêm dấu bullet (và một chút khoảng trắng lùi đầu dòng cho đẹp) vào trước tên phòng ban
+    DEPARTMENT_ITEM = """&nbsp;&nbsp;&#8226; <font color="#2D9732">{department}</font>"""
+
+    EVALUATE_HEADER = """&#8226; <font color="#2D9732">Đánh giá</font>:"""
+    EVALUATE_VALUE = "<b>{evaluate}</b>"
     # ===== BUG NOTIFICATION =====
-    BUG_NEW_HEADER = """⚠️ <font color="#CB1D21"><b>[BUG MỚI]</b></font>"""
-    BUG_UPDATED_HEADER = """<font color="#F2994A"><b>[BUG ĐÃ CẬP NHẬT]</b></font>"""
-    BUG_DELETED_HEADER = """<font color="#828282"><b>[BUG ĐÃ XÓA]</b></font>"""
+    BUG_NEW_HEADER = """⚠️ <b>[BUG MỚI]</b>"""
+    BUG_UPDATED_HEADER = """<b>[BUG ĐÃ CẬP NHẬT]</b>"""
+    BUG_DELETED_HEADER = """<b>[BUG ĐÃ XÓA]</b>"""
 
-    BUG_CREATOR = """&#8226; <b>Người tạo</b>: {user}"""
-    BUG_UPDATER = """&#8226; <b>Người cập nhật</b>: {user}"""
-    BUG_DELETER = """&#8226; <b>Người xóa</b>: {user}"""
+    BUG_CREATE_LINE = """<font color="#CB1D21"><b>{user}</b></font> vừa tạo bug #{bug_code} - {title}"""
+    BUG_UPDATE_LINE = """<font color="#F2994A"><b>{user}</b></font> vừa cập nhật bug #{bug_code} - {title}"""
+    BUG_DELETE_LINE = """<font color="#828282"><b>{user}</b></font> vừa xóa bug #{bug_code} - {title}"""
 
-    BUG_TITLE = """&#8226; <b>Bug</b>: {title}"""
-    BUG_TYPE = """&#8226; <b>Loại</b>: {bug_type}"""
-    BUG_SCREEN = """&#8226; <b>Màn hình</b>: {screen}"""
-    BUG_EXTRA_INFO = """&#8226; <b>Thông tin</b>: {extra_info}"""
+    BUG_META_LINE = """{bug_type} &#8226; {screen}"""
+    BUG_EXTRA_INFO = """Thông tin thêm: {extra_info}"""
+    BUG_DESCRIPTION = """Mô tả: {description}"""
+    BUG_EXPECTED_RESULT = """Kết quả mong muốn: {expected_result}"""
+
+    BUG_UPDATE_FIELDS_HEADER = """<font color="#F2994A"><b>{user}</b></font> vừa cập nhật:"""
+    BUG_UPDATE_FIELD_LINE = """&nbsp;&nbsp;&#8226; {field_label} &rarr; {new_value}"""
+
     GUEST = """🐣Người dùng ẩn danh🐣"""
+

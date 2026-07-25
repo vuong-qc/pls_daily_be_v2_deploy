@@ -9,13 +9,19 @@ from beanie.operators import Set, In, LTE, GTE, And
 class BeanieMeetingRepository(MeetingRepository):
     async def create_meeting(self, data: dict)-> MeetingDocument:
         meeting = MeetingDocument(**data)
-        return await meeting.insert()
+        await self._add_link_document_item( data, meeting)
+        await meeting.insert()
+        return await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting.id), fetch_links=True)
 
     async def update_meeting(self, meeting_id: str, data: dict)-> MeetingDocument|None:
-        return await MeetingDocument.find_one(id=PydanticObjectId(meeting_id)).update(Set(data))
+        meet = await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting_id), fetch_links=True)
+        if meet:
+            await self._add_link_document_item( data, meet )
+            return await meet.update(Set(data))
+        return None
 
     async def delete_meeting(self, meeting_id: str):
-        return await MeetingDocument.find_one(id=PydanticObjectId(meeting_id)).delete()
+        return await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting_id)).delete()
 
     async def get_list_of_meetings(self, filters: FilterMeetingModel) -> tuple[list[MeetingDocument],int]:
         filter_dump = filters.model_dump(exclude_unset=True)
@@ -53,7 +59,7 @@ class BeanieMeetingRepository(MeetingRepository):
                 In(MeetingDocument.handler, filter_dump.pop('handler')),
             )
 
-        query = MeetingDocument.find(filter_dump)
+        query = MeetingDocument.find(filter_dump, fetch_links=True)
         count = await query.count()
         list_meeting = await query.skip(offset).limit(limit).to_list()
         return list_meeting, count
@@ -70,7 +76,7 @@ class BeanieMeetingRepository(MeetingRepository):
                     {
                         "$filter": {
                             # Nếu field chưa có (null), mặc định là mảng rỗng []
-                            "input": {"$ifNull": ["accepted_participant_ids", []]},
+                            "input": {"$ifNull": ["$accepted_participant_ids", []]},
                             "as": "user",
                             # Lọc bỏ phần tử bị trùng với update_user truyền vào
                             "cond": {"$ne": ["$$user", user_id]}
@@ -84,9 +90,9 @@ class BeanieMeetingRepository(MeetingRepository):
 
         # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
         # Trả về document sau khi update
-        meeting = await MeetingDocument.find_one({"_id": PydanticObjectId(meeting_id)}).update(
+        meeting = await MeetingDocument.find_one({"_id": PydanticObjectId(meeting_id)}, fetch_links=True).update(
             [{"$set": pipeline_set}],
-            response_type=UpdateResponse.NEW_DOCUMENT  # Để hàm trả về doc mới nhất
+            response_type=UpdateResponse.NEW_DOCUMENT  # Để hàm trả về doc mới nhất,
         )
         return meeting
     async def _add_link_document_item(self, data: dict, document: MeetingDocument):

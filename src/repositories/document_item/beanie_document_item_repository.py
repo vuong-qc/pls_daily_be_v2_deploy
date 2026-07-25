@@ -104,7 +104,9 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         list_document = await query.to_list()
         list_document_items = []
         for document in list_document:
-            data = DocumentItem(**document.model_dump())
+            raw_data = document.model_dump()
+            raw_data.pop('id', None)
+            data = DocumentItem(**raw_data)
             data.object_id = new_object_id
             list_document_items.append(data)
         await DocumentItem.insert_many(list_document_items)

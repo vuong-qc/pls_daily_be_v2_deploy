@@ -1,6 +1,7 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 
 class UpdateMeetingModel(BaseModel):
     title: Optional[str] = None
@@ -14,5 +15,5 @@ class UpdateMeetingModel(BaseModel):
     notification_date: Optional[int] = None
     meeting_hour: Optional[str] = None
     repeat_type: Optional[str] = None
-    date_of_month: Optional[int] = None
+    date_of_month: Optional[int] = Field(None, le=31)
     parent_id: Optional[int] = None

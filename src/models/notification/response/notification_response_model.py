@@ -14,6 +14,7 @@ class NotificationResponse(BaseModel):
     end_time: Optional[int] = None
     duration: Optional[int] = None
     files: Optional[List[str]] = None
+    viewer_ids: Optional[List[str]] = None
     owner_id: str
     departments: list[str]
     created_at: int

@@ -28,6 +28,14 @@ class DocumentItemService:
         self.document_result_repository = document_result_repository
 
     async def create_document(self, data: CreateDocumentItem, roles: Optional[list]=None, user_id: Optional[str] = None) -> ResponseModel:
+        if data.type == DocumentTypeEnum.TODO and data.ftf:
+            # check first thing first, count todo
+            # if count = 5 raise error
+            filter_todo = FilterDocumentItem(type=[DocumentTypeEnum.TODO], offset=0, limit=1, object_id=[data.object_id], ftf=True, is_checked=False)
+            list_doc, total = await self.repository.get_list_document_items(filter_todo)
+            if total>= 5:
+                raise DocumentException(DocumentMessage.CANT_ASSIGN_FTF, DocumentStatusCode.CANT_ASSIGN_FTF)
+
         #write func check for group
         # check role for type
         data.created_by = user_id
@@ -42,11 +50,23 @@ class DocumentItemService:
         return ResponseModel(data=response)
 
     async def update_document(self, document_id:str, data: UpdateDocumentItem, user_id:str, roles: Optional[list[int]] = None,) -> ResponseModel:
+        old_document = await self.repository.get_document_item(document_id)
+        if not old_document:
+            raise DocumentException(DocumentMessage.NOT_FOUND, DocumentStatusCode.NOT_FOUND)
+        if old_document.type == DocumentTypeEnum.TODO and data.ftf:
+            # check first thing first, count todo
+            # if count = 5 raise error
+            filter_todo = FilterDocumentItem(type=[DocumentTypeEnum.TODO], offset=0, limit=1, object_id=[old_document.object_id], ftf=True, is_checked=False)
+            list_doc, total = await self.repository.get_list_document_items(filter_todo)
+            if total>= 5:
+                raise DocumentException(DocumentMessage.CANT_ASSIGN_FTF, DocumentStatusCode.CANT_ASSIGN_FTF)
+
         document = await self.repository.update_document(document_id, data)
         if not document:
              raise DocumentException(DocumentMessage.NOT_FOUND, DocumentStatusCode.NOT_FOUND)
         # if document.parent_type:
         #     await self._check_role_with_doc_type(document.type, roles, user_id,document.object_id, document.parent_type)
+
         response = DocumentResponse.model_validate(document)
         return ResponseModel(data=response)
 

@@ -26,6 +26,7 @@ from src.database import lifespan
 from src.routes.chatbot_token_route import router as chatbot_token_route
 from src.routes.department_route import router as department_route
 from src.routes.notification_route import router as notification_route
+from src.routes.meeting_route import router as meeting_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -44,6 +45,7 @@ app.include_router(department_route, prefix="/department")
 app.include_router(user_routes, prefix="/users")
 app.include_router(profile_route, prefix="/profile")
 app.include_router(file_route, prefix="/files")
+app.include_router(meeting_route, prefix="/meeting")
 app.include_router(notification_route, prefix="/notifications")
 app.include_router(session_route, prefix="/sessions")
 app.include_router(group_route, prefix="/group")

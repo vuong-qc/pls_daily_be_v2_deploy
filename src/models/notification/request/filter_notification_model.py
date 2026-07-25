@@ -9,7 +9,7 @@ class FilterNotificationModel(BaseModel):
 
     type: Optional[str] = None
     is_random: Optional[bool] = False
-    is_expired: Optional[bool] = False
+    is_expired: Optional[bool] = None
     search: Optional[str] = None
     departments: Optional[list[str]] = None
-    viewer_id: Optional[str] = None
+    viewer_ids: Optional[list[str]] = None

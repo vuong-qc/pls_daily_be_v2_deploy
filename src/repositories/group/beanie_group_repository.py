@@ -1,3 +1,5 @@
+from beanie import PydanticObjectId
+
 from src.models.group.group_document import GroupDocument
 from src.models.group.response.group_reponse_model import GroupResponse
 from src.repositories.group.group_repository import GroupRepository
@@ -37,6 +39,10 @@ class BeanieGroupRepository(GroupRepository):
             data_dump.update(In(GroupDocument.type,filters.type))
         if filters.search:
             data_dump.update(RegEx(GroupDocument.name,data_dump.pop("search"),"i"))
+        if filters.ids:
+            data_dump.update(In(
+                GroupDocument.id, [PydanticObjectId(id_group) for id_group in data_dump.pop("ids",[])]
+                                ))
         query = GroupDocument.find(data_dump)
         count = await query.count()
         print("query:",data_dump)

@@ -22,3 +22,23 @@ BUG_TYPE = {
     "BUG": "BUG",
     "FEEDBACK" : "Góp ý"
 }
+
+FIELD_LABEL_MAP: dict[str, str] = {
+    "title": "Tên bug",
+    "des": "Mô tả",
+    "status": "Trạng thái",
+    "priority": "Độ ưu tiên",
+    "screen": "Màn hình",
+    "bug_type": "Loại bug",
+    "extra_info": "Thông tin thêm",
+    "explanation": "Kết quả mong muốn",
+    "deadline": "Deadline",
+    "handler_id": "Người xử lý",
+    "assigned_id": "Người được giao",
+    "platform": "Nền tảng",
+    "device": "Thiết bị",
+    "device_version": "Phiên bản thiết bị",
+    "project_version": "Phiên bản dự án",
+    "action": "Hành động",
+    "blame": "Nguyên nhân",
+}

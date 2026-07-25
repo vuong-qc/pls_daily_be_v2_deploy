@@ -1,7 +1,8 @@
 import time
 from src.configs import settings
 from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta, time as time_datetime
+from datetime import datetime, timedelta, time as time_datetime, date
+from dateutil.relativedelta import relativedelta
 
 class DateTimeUtil:
     @staticmethod
@@ -24,19 +25,20 @@ class DateTimeUtil:
             dates.append(current_date.strftime("%Y-%m-%d"))
             current_date += timedelta(days=1)
         return dates
-from datetime import date
-from dateutil.relativedelta import relativedelta
 
-# Ngày 31 tháng 1 năm 2023 (Năm thường)
-d1 = date(2023, 1, 31)
-next_month_1 = d1 + relativedelta(months=1)
-print(next_month_1)  # Kết quả: 2023-02-28
+    @staticmethod
+    def get_date_of_next_month(current_date: int, target_day: int) -> int:
+        tz_vn = ZoneInfo(settings.TZ)
 
-# Ngày 31 tháng 1 năm 2024 (Năm nhuận)
-d2 = date(2024, 1, 31)
-next_month_2 = d2 + relativedelta(months=1)
-print(next_month_2)  # Kết quả: 2024-02-29
+        date_month = datetime.fromtimestamp(current_date/1000, tz=tz_vn)
+        next_month = date_month + relativedelta(months=+1, day=target_day)
+        # convert other day
+        weekday = next_month.weekday()
 
-# Ngày 31 tháng 10 năm 2023 -> Tháng 11 chỉ có 30 ngày
-d3 = date(2023, 10, 31)
-print(d3 + relativedelta(months=1))  # Kết quả: 2023-11-30
+        # t7
+        if weekday == 5:
+            next_month -= timedelta(days=1)
+        elif weekday == 6:
+            next_month -= timedelta(days=2)
+
+        return int(next_month.timestamp() * 1000)

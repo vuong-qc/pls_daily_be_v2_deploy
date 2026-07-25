@@ -184,7 +184,7 @@ class SessionService:
                     departments = [department.name for department in departments]
                 else:
                     departments = None
-            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status, response.work_form)
+            content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status, response.work_form, response.evaluate_session)
             GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)

@@ -81,3 +81,14 @@ async def seen_notification(
 ):
     user_id = user_data["sub"]
     return await service.seen_noti(user_id, notification_id)
+@router.get("/get_my-notification",
+            status_code=status.HTTP_200_OK,
+            summary="Get my notification",
+            response_model=ResponseModel,
+            )
+async def get_my_notification(
+        service: NotificationService = Depends(get_notification_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    user_id = user_data["sub"]
+    return await service.get_my_noti(user_id)

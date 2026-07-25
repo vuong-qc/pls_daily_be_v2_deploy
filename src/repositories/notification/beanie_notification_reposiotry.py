@@ -30,9 +30,9 @@ class BeanieNotificationRepository(NotificationRepository):
         limit = filter_dump.pop("limit", 10)
 
         is_random = filter_dump.pop("is_random", False)
-        is_expired = filter_dump.pop("is_expired", False)
+        is_expired = filter_dump.pop("is_expired", None)
 
-        if filters.viewer_id:
+        if filters.viewer_ids:
             filter_dump.update(
                 NotIn(NotificationDocument.viewer_ids, filter_dump.pop("viewer_ids"))
             )
@@ -54,11 +54,16 @@ class BeanieNotificationRepository(NotificationRepository):
                 LT(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
             )
         else:
-            filter_dump.update(
-                GTE(NotificationDocument.start_time, DateTimeUtil.current_milli_time())
-            )
+            if is_expired is None:
+                pass
+            else:
+                filter_dump.update(
+                        GTE(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
+
+                )
 
         query = NotificationDocument.find(filter_dump)
+        print("filter", filter_dump)
         count = await query.count()
 
         if is_random:
@@ -78,7 +83,7 @@ class BeanieNotificationRepository(NotificationRepository):
                     {
                         "$filter": {
                             # Nếu field chưa có (null), mặc định là mảng rỗng []
-                            "input": {"$ifNull": ["viewer_ids", []]},
+                            "input": {"$ifNull": ["$viewer_ids", []]},
                             "as": "user",
                             # Lọc bỏ phần tử bị trùng với update_user truyền vào
                             "cond": {"$ne": ["$$user", user_id]}
