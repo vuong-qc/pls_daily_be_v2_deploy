@@ -14,3 +14,5 @@ class FilterDocumentItem(BaseModel):
     is_urgent: Optional[bool] = None
     ftf: Optional[bool] = None
     is_closed: Optional[bool] = None
+    start_deadline: Optional[int] = None
+    end_deadline: Optional[int] = None

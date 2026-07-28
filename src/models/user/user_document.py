@@ -23,6 +23,7 @@ class UserDocument(Document):
     updated_at: int
     daily_checkin: bool = True
     department: Optional[list[str]] = None
+    manager_department: Optional[list[str]] = None
     nickname: Optional[str] = None
 
     # @before_event(Insert)

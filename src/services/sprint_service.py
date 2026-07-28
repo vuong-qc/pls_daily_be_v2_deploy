@@ -86,6 +86,7 @@ class SprintService:
                     self.get_task_by_sprint(str(response.id), assigned_id, response)
                     for assigned_id in response.assigned_id
                 ])
+            await self._add_count_task_sprints(response, str(response.id))
             return ResponseModel(data=response)
         raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
 

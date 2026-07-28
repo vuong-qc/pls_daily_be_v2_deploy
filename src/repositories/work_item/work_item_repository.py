@@ -57,3 +57,8 @@ class WorkItemRepository(ABC):
     @abstractmethod
     async def count_point(self, filters: FilterWorkItemModel)->float:
         pass
+    @abstractmethod
+    async def statistic_bug(self, filters: FilterWorkItemModel) -> dict:
+        pass
+    @abstractmethod
+    async def count_total_tasks_in_sprint(self, filters: FilterWorkItemModel) -> int: pass

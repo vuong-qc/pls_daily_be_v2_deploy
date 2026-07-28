@@ -5,7 +5,7 @@ from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.response.work_item_response_model import WorkItemResponse
-from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP
+from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP, EVALUATE_SESSION
 import hashlib
 
 
@@ -20,8 +20,8 @@ class FormatContentGgChatAPI:
             # Trường hợp 2: end_time đã có timezone (ví dụ FE gửi lên là UTC)
         elif start_time:
             now_vn = start_time.astimezone(tz_vn)
-        if nickname:
-            user_name = f"{user_name} ({nickname})"
+        if nickname and nickname.strip():
+            user_name = f"{user_name} ({nickname.strip()})"
 
         # Build department text: mỗi phòng ban tô xanh lá, nối bằng dấu •
 
@@ -160,9 +160,9 @@ class FormatContentGgChatAPI:
         if tasks:
             for task in tasks:
                 block = [
-                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {task.estimated_point}"
+                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {task.estimated_point} POINT"
                 ] if task.estimated_point else [
-                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {TextFormatEnum.SUBTASK_NOT_DONE} POINT"
+                    f"{TextFormatEnum.TASK_HEADER} {task.title} [{task.status}] {TextFormatEnum.SUBTASK_NOT_DONE}"
                 ]
                 task_blocks.append(TextFormatEnum.NEWLINE.join(block))
             task_lines = TextFormatEnum.NEWLINE.join(task_blocks)
@@ -174,6 +174,13 @@ class FormatContentGgChatAPI:
             first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
         if work_form:
             first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{work_form}]"
+        # Thêm dòng Đánh giá (in đậm) nếu có
+        if evaluate:
+            department_lines = f"{TextFormatEnum.EVALUATE_VALUE.format(evaluate=EVALUATE_SESSION[evaluate])}"
+
+            note_line = TextFormatEnum.NEWLINE.join(
+                [note_line, department_lines]
+            )
 
         # Ghép các dòng chính
         body_lines = [
@@ -184,10 +191,6 @@ class FormatContentGgChatAPI:
             note_line,
         ]
 
-        # Thêm dòng Đánh giá (in đậm) nếu có
-        if evaluate:
-            body_lines.append(TextFormatEnum.EVALUATE_HEADER)
-            body_lines.append(TextFormatEnum.EVALUATE_VALUE.format(evaluate=evaluate))
 
         full_html_text = TextFormatEnum.NEWLINE.join(body_lines)
 

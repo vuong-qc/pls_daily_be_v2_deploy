@@ -30,10 +30,10 @@ class TextFormatEnum(StrEnum):
     DEPARTMENT_HEADER = "<b>Phòng ban</b>:"
 
     # Thêm dấu bullet (và một chút khoảng trắng lùi đầu dòng cho đẹp) vào trước tên phòng ban
-    DEPARTMENT_ITEM = """&nbsp;&nbsp;&#8226; <font color="#2D9732">{department}</font>"""
+    DEPARTMENT_ITEM = """&nbsp;&nbsp;&#8226; <font color="#197B32">{department}</font>"""
 
-    EVALUATE_HEADER = """&#8226; <font color="#2D9732">Đánh giá</font>:"""
-    EVALUATE_VALUE = "<b>{evaluate}</b>"
+    EVALUATE_HEADER = """&#8226; <b>Đánh giá:</b>"""
+    EVALUATE_VALUE = """&#8226; <font color="#197B32">{evaluate}</font>"""
     # ===== BUG NOTIFICATION =====
     BUG_NEW_HEADER = """⚠️ <b>[BUG MỚI]</b>"""
     BUG_UPDATED_HEADER = """<b>[BUG ĐÃ CẬP NHẬT]</b>"""

@@ -16,7 +16,7 @@ class LexorankUtil:
 
     @staticmethod
     def get_lexorank_between(prev_rank:str|None, next_rank:str|None) -> str:
-        """Calculates a string lexically positioned between prev_rank and nex_rank."""
+        """Calculates lexically positioned between prev_rank and nex_rank."""
         return generate_key_between(
             prev_rank,
             next_rank,

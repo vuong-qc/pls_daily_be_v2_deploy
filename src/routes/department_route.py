@@ -24,7 +24,7 @@ def get_department_service(
 @router.post("/create-department",
              response_model=ResponseModel,
              status_code=status.HTTP_201_CREATED,
-             description="Create a new department by master",
+             description="Create docker-compose.local-testing.yml new department by master",
              dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))]
              )
 async def create_department(department: CreateDepartmentModel,
@@ -37,8 +37,8 @@ async def create_department(department: CreateDepartmentModel,
             status_code=status.HTTP_202_ACCEPTED,
             response_model=ResponseModel,
             dependencies=[Depends(RoleCheckerUtil([UserRole.MASTER.value]))],
-            summary="Update a department",
-            description="Update a department by master"
+            summary="Update docker-compose.local-testing.yml department",
+            description="Update docker-compose.local-testing.yml department by master"
             )
 async def update_department(department_id: str, department: UpdateDepartmentModel,
                             service: DepartmentService = Depends(get_department_service),
@@ -48,8 +48,8 @@ async def update_department(department_id: str, department: UpdateDepartmentMode
 
 @router.delete("/delete-department/{department_id}",
                 status_code=status.HTTP_204_NO_CONTENT,
-               summary="Delete a department",
-               description="Delete a department by master"
+               summary="Delete docker-compose.local-testing.yml department",
+               description="Delete docker-compose.local-testing.yml department by master"
                )
 async def delete_department(department_id: str,
                             service: DepartmentService = Depends(get_department_service),

@@ -21,7 +21,7 @@ def get_notification_service() -> NotificationService:
 
 @router.post("/create-notification",
              status_code=status.HTTP_201_CREATED,
-             summary="Create a new notification",
+             summary="Create new notification",
              response_model=ResponseModel,
              )
 async def create_notification(
@@ -46,7 +46,7 @@ async def get_list_notifications(
 
 @router.put("/update-notification/{notification_id}",
             status_code=status.HTTP_202_ACCEPTED,
-            summary="Update a notification",
+            summary="Update notification",
             response_model=ResponseModel,
 )
 async def update_notification(
@@ -60,7 +60,7 @@ async def update_notification(
 
 @router.delete("/delete-notification/{notification_id}",
                status_code=status.HTTP_204_NO_CONTENT,
-                summary="Delete a notification", )
+                summary="Delete notification", )
 async def delete_notification(
         notification_id: str,
         service: NotificationService = Depends(get_notification_service),

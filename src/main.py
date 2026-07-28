@@ -27,6 +27,7 @@ from src.routes.chatbot_token_route import router as chatbot_token_route
 from src.routes.department_route import router as department_route
 from src.routes.notification_route import router as notification_route
 from src.routes.meeting_route import router as meeting_route
+from src.routes.shift_schedule_route import router as shift_schedule_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -41,21 +42,22 @@ app = FastAPI(
 
 app.include_router(support_route, prefix="/support")
 app.include_router(auth_routes, prefix="/auths")
+app.include_router(chatbot_token_route, prefix="/chatbot")
+app.include_router(document_route, prefix="/document")
 app.include_router(department_route, prefix="/department")
 app.include_router(user_routes, prefix="/users")
-app.include_router(profile_route, prefix="/profile")
 app.include_router(file_route, prefix="/files")
+app.include_router(group_route, prefix="/group")
 app.include_router(meeting_route, prefix="/meeting")
 app.include_router(notification_route, prefix="/notifications")
-app.include_router(session_route, prefix="/sessions")
-app.include_router(group_route, prefix="/group")
+app.include_router(profile_route, prefix="/profile")
 app.include_router(project_route, prefix="/project")
 app.include_router(sprint_route, prefix="/sprint")
+app.include_router(session_route, prefix="/sessions")
+app.include_router(shift_schedule_route, prefix="/shift-schedule")
 app.include_router(task_route, prefix="/task")
-app.include_router(document_route, prefix="/document")
 app.include_router(testcase_route, prefix="/testcase")
 app.include_router(work_item_route, prefix="/work-item")
-app.include_router(chatbot_token_route, prefix="/chatbot")
 
 logging.basicConfig(
     level=logging.INFO,

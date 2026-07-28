@@ -7,9 +7,18 @@ from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
 from beanie.operators import Set, In, RegEx, LTE, GTE, And, Or
 from beanie import PydanticObjectId
+from src.enums.task_priority_enum import TaskPriorityEnum
+from src.enums.bug_type_enum import BugTypeEnum
+from src.enums.bug_status_enum import BugStatusEnum
+from datetime import datetime, timezone
 from src.models.user.user_document import UserDocument
+import re
 import logging
 logger = logging.getLogger(__name__)
+DAY_MS = 24 * 60 * 60 * 1000
+VN_OFFSET_MS = 7 * 60 * 60 * 1000  # UTC+7
+BUG_TYPE_BUG = BugTypeEnum.BUG_TYPE_BUG.value
+BUG_TYPE_FEEDBACK = BugTypeEnum.BUG_TYPE_FEEDBACK.value
 
 class BeanieWorkItemRepository(WorkItemRepository):
     async def create_work_item(self, data: dict):
@@ -117,26 +126,32 @@ class BeanieWorkItemRepository(WorkItemRepository):
                                       )
         children = await query.to_list()
         return children
+
     async def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
         filter_dump.pop('is_today', None)
-        # list_ids = filter_dump.pop('list_ids',[])
+        if not filters.status:
+            filter_dump.pop("status", None)
         if filters.list_ids:
             filter_dump.update(
-                In(WorkItemDocument.id, [PydanticObjectId(id) for id in filter_dump.pop('list_ids',[])]),
+                In(WorkItemDocument.id, [PydanticObjectId(id) for id in filter_dump.pop('list_ids', [])]),
             )
         if filters.search:
+            keyword = filter_dump.pop("search").strip().split()
+            normalized = " ".join(keyword)
+            escaped = re.escape(normalized)
+            regex = f".*{escaped}.*"
             filter_dump.update(
-                RegEx(WorkItemDocument.title, filter_dump.pop("search"),"i")
+                RegEx(WorkItemDocument.title, regex, "i")
             )
         if filters.handler_id:
             filter_dump.update(
-                In(WorkItemDocument.handler_id,filters.handler_id)
+                In(WorkItemDocument.handler_id, filters.handler_id)
             )
         if filters.owner_id:
             filter_dump.update(
-                In(WorkItemDocument.owner_id,filters.owner_id)
+                In(WorkItemDocument.owner_id, filters.owner_id)
             )
         if filters.assigned_id is None:
             filter_dump.pop("assigned_id", None)
@@ -149,54 +164,85 @@ class BeanieWorkItemRepository(WorkItemRepository):
             )
         elif filters.start:
             filter_dump.update(
-                    GTE(WorkItemDocument.created_at, filter_dump.pop("start")),
+                GTE(WorkItemDocument.created_at, filter_dump.pop("start")),
             )
         elif filters.end:
             filter_dump.update(
-                    LTE(WorkItemDocument.created_at, filter_dump.pop("end")),
+                LTE(WorkItemDocument.created_at, filter_dump.pop("end")),
             )
-        # if filters.assigned_id:
-        #     filter_dump.update(
-        #         In(WorkItemDocument.assigned_id,filters.assigned_id)
-        #     )
-        # ---- assigned_id: xử lý riêng case STORY ----
+
+        # ---- SỬA: gộp assigned_id + status + deadline vào chung 1 khối xử lý STORY ----
+        # Lý do gộp: cả 3 field này đều là "field của task", không tồn tại (hoặc không đáng tin)
+        # trên chính document STORY (story không có status, deadline/assigned_id thực chất nằm ở
+        # task con: task.parent = story.id). Nên phải kiểm tra qua task con rồi suy ngược ra STORY,
+        # thay vì AND thẳng field đó lên chính document STORY như code cũ.
+        child_raw_query = {}  # dùng để distinct() tìm story_id qua task con
+        non_story_exprs = []  # áp trực tiếp cho các type khác STORY (giữ nguyên hành vi cũ)
+
         if filters.assigned_id:
-            filter_dump.pop("assigned_id", None)  # bỏ key mặc định để tự build $or
-            assigned_ids = filters.assigned_id
-            or_conditions = [In(WorkItemDocument.assigned_id, assigned_ids)]
+            filter_dump.pop("assigned_id", None)
+            child_raw_query["assigned_id"] = {"$in": filters.assigned_id}
+            non_story_exprs.append(In(WorkItemDocument.assigned_id, filters.assigned_id))
 
-            if filters.type and WorkItemType.STORY in filters.type:
-                # Lấy các parent (story id) có task con đang assign đúng người
-                motor_collection = WorkItemDocument.get_pymongo_collection()
-                story_ids_raw = await motor_collection.distinct(
-                    "parent",
-                    {
-                        "assigned_id": {"$in": assigned_ids},
-                        "parent": {"$ne": None},
-                    },
-                )
-                if story_ids_raw:
-                    story_ids = [
-                        PydanticObjectId(pid) if not isinstance(pid, PydanticObjectId) else pid
-                        for pid in story_ids_raw
-                    ]
-                    or_conditions.append(
-                        And(
-                            WorkItemDocument.type == WorkItemType.STORY,
-                            In(WorkItemDocument.id, story_ids),
-                        )
-                    )
-
-            filter_dump.update(Or(*or_conditions))
-        # ------------------------------------------------
-
-        if filters.type:
-            filter_dump.update(
-                In(WorkItemDocument.type,filters.type)
-            )
         if filters.status:
+            status_values = filter_dump.pop("status")
+            child_raw_query["status"] = {"$in": status_values}
+            non_story_exprs.append(In(WorkItemDocument.status, status_values))
+
+        if filters.deadline_end and filters.deadline_start:
+            d_start = filter_dump.pop('deadline_start')
+            d_end = filter_dump.pop('deadline_end')
+            child_raw_query["deadline"] = {"$gte": d_start, "$lte": d_end}
+            non_story_exprs.append(
+                And(GTE(WorkItemDocument.deadline, d_start), LTE(WorkItemDocument.deadline, d_end))
+            )
+        elif filters.deadline_start:
+            d_start = filter_dump.pop('deadline_start')
+            child_raw_query["deadline"] = {"$gte": d_start}
+            non_story_exprs.append(GTE(WorkItemDocument.deadline, d_start))
+        elif filters.deadline_end:
+            d_end = filter_dump.pop('deadline_end')
+            child_raw_query["deadline"] = {"$lte": d_end}
+            non_story_exprs.append(LTE(WorkItemDocument.deadline, d_end))
+
+        has_story_type = bool(filters.type) and WorkItemType.STORY in filters.type
+        filter_dump.pop("type", None)
+
+        if child_raw_query and has_story_type:
+            # Tìm các story có ÍT NHẤT 1 task con thoả toàn bộ điều kiện (assigned_id/status/deadline)
+            motor_collection = WorkItemDocument.get_pymongo_collection()
+            story_ids_raw = await motor_collection.distinct(
+                "parent",
+                {**child_raw_query, "parent": {"$ne": None}},
+            )
+            story_ids = [
+                PydanticObjectId(pid) if not isinstance(pid, PydanticObjectId) else pid
+                for pid in story_ids_raw
+            ]
+
+            or_conditions = []
+            other_types = [t for t in filters.type if t != WorkItemType.STORY]
+            if other_types:
+                # Nhánh các type khác STORY: áp điều kiện trực tiếp lên chính document như cũ
+                or_conditions.append(
+                    And(In(WorkItemDocument.type, other_types), *non_story_exprs)
+                )
+            # Nhánh STORY: suy ra từ task con khớp điều kiện
+            or_conditions.append(
+                And(WorkItemDocument.type == WorkItemType.STORY, In(WorkItemDocument.id, story_ids))
+            )
+            filter_dump.update(Or(*or_conditions))
+            type_handled_in_or = True
+        else:
+            # Không liên quan STORY -> giữ hành vi cũ, áp thẳng lên document
+            for expr in non_story_exprs:
+                filter_dump.update(expr)
+            type_handled_in_or = False
+        # ---- HẾT PHẦN SỬA ----
+
+        if filters.type and not type_handled_in_or:
             filter_dump.update(
-                In(WorkItemDocument.status,filters.status)
+                In(WorkItemDocument.type, filters.type)
             )
         if filters.priority:
             filter_dump.update(
@@ -204,39 +250,20 @@ class BeanieWorkItemRepository(WorkItemRepository):
             )
         if filters.group:
             filter_dump.update(
-                In(WorkItemDocument.group,filters.group)
+                In(WorkItemDocument.group, filters.group)
             )
         if filters.project:
             filter_dump.update(
-                In(WorkItemDocument.project,filters.project)
+                In(WorkItemDocument.project, filters.project)
             )
         if filters.sprint:
             filter_dump.update(
-                In(WorkItemDocument.sprint,filters.sprint)
+                In(WorkItemDocument.sprint, filters.sprint)
             )
         if filters.task:
             filter_dump.update(
-                In(WorkItemDocument.task,filters.task)
+                In(WorkItemDocument.task, filters.task)
             )
-
-        if filters.deadline_end and filters.deadline_start:
-            filter_dump.update(
-                And(
-                    GTE(WorkItemDocument.deadline, filter_dump.pop('deadline_start')),
-                    LTE(WorkItemDocument.deadline, filter_dump.pop('deadline_end'))
-                )
-            )
-
-        elif filters.deadline_start:
-            filter_dump.update(
-                GTE(WorkItemDocument.deadline,filter_dump.pop('deadline_start'))
-            )
-        elif filters.deadline_end:
-            filter_dump.update(
-                LTE(WorkItemDocument.deadline,filter_dump.pop('deadline_end'))
-            )
-
-
     async def _add_link_document(self, data: dict, project: WorkItemDocument):
         handler_id: list[str] | bool = data.get("handler_id", False)
         # print("handler_id",handler_id)
@@ -424,3 +451,210 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
         sum_point = await WorkItemDocument.find(filter_dump).sum(f"{WorkItemDocument.point}")
         return  float(sum_point or 0)
+    def _build_time_buckets(self, start_time: int, end_time: int) -> list[dict]:
+        """
+        Chia [start_time, end_time] thành tối đa 7 bucket theo NGÀY LỊCH
+        GIỜ VIỆT NAM (00:00 -> 23:59:59.999 giờ VN).
+        - Số ngày <= 7  -> mỗi bucket đúng 1 ngày VN, số bucket = số ngày.
+        - Số ngày > 7   -> chia đúng 7 bucket, mỗi bucket số ngày nguyên,
+          không có bucket lẻ (vd 2.5 ngày). Ngày dư dồn vào các bucket cuối.
+        """
+        if end_time <= start_time:
+            return [{"start_time": start_time, "end_time": end_time}]
+
+        vn_start_day = self._vn_day_start(start_time)
+        vn_end_day = self._vn_day_start(end_time)
+
+        # Tổng số ngày lịch VN nằm trong khoảng (tính cả ngày bắt đầu và kết thúc)
+        total_days = max(1, round((vn_end_day - vn_start_day) / DAY_MS) + 1)
+        num_buckets = min(total_days, 7)
+
+        base_days = total_days // num_buckets
+        remainder = total_days % num_buckets
+
+        # remainder bucket cuối có (base_days + 1) ngày, còn lại base_days ngày
+        bucket_day_counts = [base_days] * (num_buckets - remainder) + [
+            base_days + 1
+        ] * remainder
+
+        buckets = []
+        cursor_day_start = vn_start_day  # mốc 00:00 VN của ngày đầu tiên
+        for idx, days in enumerate(bucket_day_counts):
+            bucket_start = start_time if idx == 0 else cursor_day_start
+            next_day_start = cursor_day_start + days * DAY_MS
+            bucket_end = end_time if idx == len(bucket_day_counts) - 1 else next_day_start
+            buckets.append({"start_time": bucket_start, "end_time": bucket_end})
+            cursor_day_start = next_day_start
+
+        return buckets
+    def _build_common_filter(self, filters: FilterWorkItemModel) -> dict:
+        query: dict = {"is_deleted": {"$ne": True}}
+
+        if filters.project:
+            query["project"] = {"$in": filters.project}
+        if filters.group:
+            query["group"] = {"$in": filters.group}
+        if filters.sprint:
+            query["sprint"] = {"$in": filters.sprint}
+        if filters.owner_id:
+            query["owner_id"] = {"$in": filters.owner_id}
+        if filters.assigned_id:
+            query["assigned_id"] = {"$in": filters.assigned_id}
+        if filters.handler_id:
+            query["handler_id"] = {"$in": filters.handler_id}
+        if filters.is_in_sprint is not None:
+            query["is_in_sprint"] = filters.is_in_sprint
+        if filters.list_ids:
+            query["_id"] = {"$in": [PydanticObjectId(i) for i in filters.list_ids]}
+        if filters.search:
+            query["title"] = {"$regex": filters.search, "$options": "i"}
+
+        return query
+
+    async def _aggregate_bug_stats(
+        self,
+        base_match: dict,
+        extra_match: Optional[dict],
+        buckets: list[dict],
+    ) -> dict:
+        match_stage = dict(base_match)
+        if extra_match:
+            match_stage.update(extra_match)
+
+        facet: dict = {
+            "total": [{"$count": "count"}],
+            "total_resolve": [
+                {"$match": {"status": BugStatusEnum.VERIFIED.value}},
+                {"$count": "count"},
+            ],
+        }
+
+        for idx, bucket in enumerate(buckets):
+            upper_bound = (
+                bucket["end_time"] + 1
+                if idx == len(buckets) - 1
+                else bucket["end_time"]
+            )
+            facet[f"bucket_{idx}"] = [
+                {
+                    "$match": {
+                        "created_at": {
+                            "$gte": bucket["start_time"],
+                            "$lt": upper_bound,
+                        }
+                    }
+                },
+                {"$count": "count"},
+            ]
+
+        pipeline = [{"$match": match_stage}, {"$facet": facet}]
+
+        collection = WorkItemDocument.get_pymongo_collection()
+        cursor = await collection.aggregate(pipeline)
+        result = await cursor.to_list(length=1)
+        data = result[0] if result else {}
+
+        def _count(key: str) -> int:
+            arr = data.get(key) or []
+            return arr[0]["count"] if arr else 0
+
+        time_values = [
+            {
+                "start_time": bucket["start_time"],
+                "end_time": bucket["end_time"],
+                "value": _count(f"bucket_{idx}"),
+            }
+            for idx, bucket in enumerate(buckets)
+        ]
+
+        return {
+            "total": _count("total"),
+            "total_resolve": _count("total_resolve"),
+            "time": time_values,
+        }
+
+    def _vn_day_start(self, ts_ms: int) -> int:
+        """
+        Trả về mốc epoch (ms, UTC) tương ứng với 00:00:00 giờ VN
+        của ngày chứa ts_ms.
+        """
+        shifted = ts_ms + VN_OFFSET_MS
+        day_start_shifted = shifted - (shifted % DAY_MS)
+        return day_start_shifted - VN_OFFSET_MS
+    async def statistic_bug(self, filters: FilterWorkItemModel) -> dict:
+        """
+        Thống kê bug: summary (tổng quan), critical_bug (priority FTF),
+        feedback (bug_type FEEDBACK).
+        """
+        common_filter = self._build_common_filter(filters)
+        common_filter["type"] = WorkItemType.BUG.value  # chỉ lấy work item loại BUG
+
+        end_time = filters.end or int(datetime.now(timezone.utc).timestamp() * 1000)
+        start_time = filters.start or (end_time - 30 * DAY_MS)
+        common_filter["created_at"] = {"$gte": start_time, "$lte": end_time}
+
+        buckets = self._build_time_buckets(start_time, end_time)
+
+        summary = await self._aggregate_bug_stats(common_filter, None, buckets)
+
+        critical_bug = await self._aggregate_bug_stats(
+            common_filter,
+            {
+                # "bug_type": BUG_TYPE_BUG,
+                "priority": TaskPriorityEnum.FTF.value},
+            buckets,
+        )
+
+        feedback = await self._aggregate_bug_stats(
+            common_filter,
+            {"bug_type": BUG_TYPE_FEEDBACK},
+            buckets,
+        )
+
+        return {
+            "summary": summary,
+            "critical_bug": critical_bug,
+            "feedback": feedback,
+        }
+
+    async def count_total_tasks_in_sprint(self, filters: FilterWorkItemModel) -> int:
+        """
+        Đếm tổng số TASK (phẳng) thuộc 1 sprint, dựa trên FilterWorkItemModel:
+        - TASK có parent = filters.parent (task lẻ, không nằm trong story)
+        - TASK có parent = story_id, với story đó có parent = filters.parent
+        filters.parent bắt buộc phải có (chính là sprint_id).
+        Các field khác (status, deadline_start/end, priority, assigned_id) dùng để lọc task.
+        """
+        if not filters.parent:
+            return 0
+
+        motor_collection = WorkItemDocument.get_pymongo_collection()
+
+        # B1: lấy id các STORY thuộc sprint này
+        story_ids_raw = await motor_collection.distinct(
+            "_id",
+            {"parent": filters.parent, "type": WorkItemType.STORY, "deleted_at": None},
+        )
+        story_ids = [str(sid) for sid in story_ids_raw]
+
+        # B2: build điều kiện áp cho task, lấy trực tiếp từ filters
+        task_conditions: dict = {"type": WorkItemType.TASK}
+        if filters.status:
+            task_conditions["status"] = {"$in": filters.status}
+        if filters.priority:
+            task_conditions["priority"] = {"$in": filters.priority}
+        if filters.assigned_id:
+            task_conditions["assigned_id"] = {"$in": filters.assigned_id}
+        if filters.deadline_start and filters.deadline_end:
+            task_conditions["deadline"] = {"$gte": filters.deadline_start, "$lte": filters.deadline_end}
+        elif filters.deadline_start:
+            task_conditions["deadline"] = {"$gte": filters.deadline_start}
+        elif filters.deadline_end:
+            task_conditions["deadline"] = {"$lte": filters.deadline_end}
+
+        # B3: parent phải thuộc {sprint_id} hợp {story_ids}
+        parent_candidates = [filters.parent] + story_ids
+        query = {**task_conditions, "parent": {"$in": parent_candidates}}
+
+        count = await motor_collection.count_documents(query)
+        return count

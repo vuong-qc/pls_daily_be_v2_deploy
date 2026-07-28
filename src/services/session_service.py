@@ -146,13 +146,16 @@ class SessionService:
     async def checkout(self, user_id: str, session_id:str, session_data: CheckoutModel, background_tasks: BackgroundTasks) -> ResponseModel:
         session = await self.check_user_checkout(user_id, session_id)
         # update session
-        update_session_data = UpdateSessionModel(status=SessionStatusEnum.DONE, end_time=session_data.end_time, note_result=session_data.note_result)
+        update_session_data = UpdateSessionModel(**session_data.model_dump(exclude_unset=True), status=SessionStatusEnum.DONE)
         if not update_session_data.end_time:
             update_session_data.end_time = datetime.now()
         logger.info('session : %s', session)
-        logger.info('session update success with data: %s', session_data.model_dump(exclude_unset=True))
+        logger.info('session update success with data: %s', update_session_data)
         # check case end_time has diff date with start time
         await self._check_dif_date(session.start_time ,update_session_data.end_time)
+
+        # background job handle update
+        await self._handle_update_status_task_done(session_data, session_id)
 
         data_dump = update_session_data.model_dump(exclude_unset=True)
         updated_session = await self.session_repository.update_session(session_id, data_dump)
@@ -160,8 +163,6 @@ class SessionService:
             raise SessionException(SessionMessage.NOT_FOUND, SessionStatusCode.NOT_FOUND)
         response = SessionResponse.model_validate(updated_session)
 
-        #background job handle update
-        await self._handle_update_status_task_done(session_data, session_id)
         # inject call webhook
         # get token
         filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)

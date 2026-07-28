@@ -23,8 +23,8 @@ def get_work_item_service():
     return WorkItemService(beanie_work_item_repository, group_repository, user_repository, chatbot_token_repository)
 
 @router.post('/create-work-item',
-             summary='Create a new work item',
-             description='Create a new work item',
+             summary='Create  new work item',
+             description='Create  new work item',
              status_code=status.HTTP_201_CREATED,
              response_model=ResponseModel,
              )
@@ -37,8 +37,8 @@ async def create_work_item_model(work_item_model: CreateWorkItemModel,
     return await service.create_work_item_model( work_item_model, user_id)
 
 @router.put('/update-work-item/{work_item_id}',
-             summary='Update a work item',
-             description='Update a work item',
+             summary='Update  work item',
+             description='Update  work item',
              status_code=status.HTTP_202_ACCEPTED,
              response_model=ResponseModel,
              )
@@ -53,8 +53,8 @@ async def update_work_item_model(
 
 @router.delete('/delete-work-item/{work_id}',
 
-               summary='Delete a work item',
-               description='Delete a work item',
+               summary='Delete  work item',
+               description='Delete  work item',
                status_code=status.HTTP_204_NO_CONTENT,)
 async def delete_work_item_model(
         work_id: str,
@@ -78,8 +78,8 @@ async def get_list_work_items(
     return await service.list_work_item_model(filters)
 
 @router.post('/create-work-item-guest',
-             summary='Create a new work item for guest user',
-             description='Create a new work item by guest user',
+             summary='Create  new work item for guest user',
+             description='Create  new work item by guest user',
              status_code=status.HTTP_201_CREATED,
              response_model=ResponseModel,
              )
@@ -87,3 +87,14 @@ async def create_work_item_model(work_item_model: CreateWorkItemModel,
                            service: WorkItemService = Depends(get_work_item_service),
                            ):
     return await service.create_work_item_model(work_item_model)
+
+@router.get("/statistic-bug",
+            summary='Statistic bug',
+            description='Statistic bug',
+            status_code=status.HTTP_200_OK,)
+async def statistic_bug(
+        filters: Annotated[FilterWorkItemModel, Query()],
+        service: WorkItemService = Depends(get_work_item_service),
+        user_data: dict = Depends(get_current_user_by_token)
+        ):
+    return await service.statistic_bug(filters)

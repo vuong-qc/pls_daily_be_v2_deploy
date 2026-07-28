@@ -28,7 +28,7 @@ router = APIRouter(
 @router.post(
     "/upload-file",
     summary="Upload File",
-    description="Uploads a file, stores it, and generates a thumbnail when the file type is supported.",
+    description="Uploads docker-compose.local-testing.yml file, stores it, and generates docker-compose.local-testing.yml thumbnail when the file type is supported.",
 )
 async def upload_file(file: UploadFile,
                       background_tasks: BackgroundTasks,
@@ -53,7 +53,7 @@ async def create_thumbnail(file: UploadFile, file_id: str,
 @router.put(
     "/rename-file/{id}",
     summary="Rename File",
-    description="Renames a stored file by ID. Thumbnail records cannot be renamed.",
+    description="Renames docker-compose.local-testing.yml stored file by ID. Thumbnail records cannot be renamed.",
 )
 async def rename_file(id: str, data: UpdateFileName,
                       service: FileService = Depends(get_file_service),
@@ -97,7 +97,7 @@ async def get_thumbnail_by_id(id: str, service: FileService = Depends(get_file_s
 @router.delete(
     "/delete-file/{id}",
     summary="Delete File",
-    description="Marks a stored file as deleted by ID.",
+    description="Marks docker-compose.local-testing.yml stored file as deleted by ID.",
 )
 async def delete_file_by_id(id: str, service: FileService = Depends(get_file_service),
                             user_data: dict = Depends(get_current_user_by_token)

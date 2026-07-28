@@ -39,7 +39,7 @@ class DocumentItem(DocumentWithSoftDelete):
     duration: Optional[int] = None
     details: Optional[str] = None
     ftf: Optional[bool] = None
-    is_closed: Optional[bool] = None
+    is_closed: Optional[bool] = False
 
     class Settings:
         name='document_items'

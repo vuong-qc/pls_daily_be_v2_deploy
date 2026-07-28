@@ -4,7 +4,7 @@ from src.models.work_item.work_item_document import WorkItemDocument
 from src.models.user.user_document import UserDocument
 from src.models.document_item.document_item_document import DocumentItem
 from src.repositories.document_item.document_item_repository import DocumentItemRepository
-from beanie.operators import Set, In
+from beanie.operators import Set, In, LTE, GTE, And
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
 
@@ -58,6 +58,16 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         if filters.object_id:
             filter_dump.update(
                 In(DocumentItem.object_id, filters.object_id),
+            )
+
+        start_deadline = filter_dump.pop('start_deadline', None)
+        end_deadline = filter_dump.pop('end_deadline', None)
+        if start_deadline and end_deadline:
+            filter_dump.update(
+                And(
+                    GTE(DocumentItem.deadline, start_deadline),
+                    LTE(DocumentItem.deadline, end_deadline),
+                )
             )
     async def _add_link_document_item(self, data: dict, document: DocumentItem):
         handler: str | bool = data.get("handler", False)

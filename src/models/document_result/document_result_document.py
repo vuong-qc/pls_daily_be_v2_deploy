@@ -7,6 +7,8 @@ class DocumentResult(DocumentWithSoftDelete):
     evaluate: Optional[str] = None
     check: Optional[bool] = None
     evaluate_todo: Optional[str] = None
+    is_closed: Optional[bool] = False
+
     class Settings:
         name='document_result'
         indexes = {

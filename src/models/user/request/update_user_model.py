@@ -18,7 +18,7 @@ class UpdateUserModel(BaseModel):
     department: Optional[list[str]] = None
     daily_checkin: Optional[bool] = None
     nickname: Optional[str] = None
-
+    manager_department: Optional[list[str]] = None
 
     model_config = ConfigDict(extra='ignore')
 

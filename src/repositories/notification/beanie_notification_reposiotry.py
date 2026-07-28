@@ -1,7 +1,7 @@
 from src.repositories.notification.notification_repository import NotificationRepository
 from src.models.notification.notification_document import NotificationDocument
 from src.models.notification.request.filter_notification_model import FilterNotificationModel
-from beanie.operators import Set, In, RegEx, GTE ,LT, NotIn
+from beanie.operators import Set, In, RegEx, GTE ,LT, NotIn, Or, Eq
 import re
 from beanie import UpdateResponse, PydanticObjectId
 from src.utils.datetime_util import DateTimeUtil
@@ -38,16 +38,22 @@ class BeanieNotificationRepository(NotificationRepository):
             )
         if filters.departments:
             filter_dump.update(
-                In(NotificationDocument.departments, filter_dump.pop("departments"))
+                Or(
+                    In(NotificationDocument.departments, filter_dump.pop("departments")),
+                    Eq(NotificationDocument.departments, None)
+                )
             )
 
         if filters.search:
-            keyword = filter_dump.pop("keyword").strip().split()
+            keyword = filter_dump.pop("search").strip().split()
             normalized = " ".join(keyword)
             escaped = re.escape(normalized)
-            regex = f"*.{escaped}.*"
+            regex = f".*{escaped}.*"
             filter_dump.update(
-                RegEx(NotificationDocument.title, regex, "i"),
+                Or(
+                    RegEx(NotificationDocument.title, regex, "i"),
+                    RegEx(NotificationDocument.description, regex, "i"),
+                )
             )
         if is_expired:
             filter_dump.update(
@@ -72,7 +78,7 @@ class BeanieNotificationRepository(NotificationRepository):
                 projection_model=NotificationDocument
             ).to_list()
         else:
-            items = await query.sort("{-NotificationDocument.updated_at}").skip(offset).limit(limit).to_list()
+            items = await query.sort(f"+{NotificationDocument.updated_at}").skip(offset).limit(limit).to_list()
         return items, count
     async def add_viewer_noti(self, noti_id:str, user_id: str):
         pipeline_set = {

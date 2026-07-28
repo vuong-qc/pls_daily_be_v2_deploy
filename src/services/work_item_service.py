@@ -99,6 +99,10 @@ class WorkItemService:
             list_response.append(work_item_response)
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
+    async def statistic_bug(self, filters: FilterWorkItemModel):
+        result = await self.work_item_repository.statistic_bug(filters)
+        return ResponseModel(data=result)
+
     async def _format_work_item_response(self, work_item_response: WorkItemResponse):
         logger.debug(f"DEBUG work_item_response: {work_item_response}")
         if work_item_response.group:

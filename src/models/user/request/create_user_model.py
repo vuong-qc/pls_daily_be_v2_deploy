@@ -25,6 +25,7 @@ class CreateUserModel(BaseModel):
     traineeStatus: int
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
+    nickname: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

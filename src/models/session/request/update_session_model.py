@@ -12,6 +12,9 @@ class UpdateSessionModel(BaseModel):
     end_time: Optional[datetime] = None
     work_form: Optional[str] = None
     note_result: Optional[str] = None
+    checkout_late: Optional[bool] = None
+    departure_status: Optional[str] = None
+    evaluate_session: Optional[str] = None
 
 class UpdateSubTaskModel(BaseModel):
     status: TaskStatusEnum

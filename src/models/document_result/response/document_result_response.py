@@ -10,3 +10,4 @@ class DocumentResultResponse(BaseModel):
     evaluate: Optional[str] = None
     check: Optional[bool] = None
     evaluate_todo: Optional[str] = None
+    is_closed: Optional[bool] = False

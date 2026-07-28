@@ -1,3 +1,6 @@
+from src.enums.task_status_enum import TaskStatusEnum
+from src.models.task.request.filter_task_model import FilterTaskModel
+from src.enums.work_item_type import WorkItemType
 from src.models.meeting.meeting_document import MeetingDocument
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.repositories.meeting.meeting_repository import MeetingRepository
@@ -10,13 +13,18 @@ from src.enums.meeting_repeat_type import MeetingRepeatType
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.exception.meeting_exception import MeetingException, MeetingStatusCode, MeetingMessage
 from src.repositories.document_item.document_item_repository import DocumentItemRepository
+from src.services.document_item_service import DocumentItemService
 from src.enums.document_type_enum import DocumentTypeEnum
 from src.utils.datetime_util import DateTimeUtil
+from src.services.task_service import TaskService
+from src.models.meeting.response.meeting_todo_task_response_model import MeetingTodoTaskResponseModel
 
 class MeetingService:
-    def __init__(self, meeting_repository: MeetingRepository, document_item_repository: DocumentItemRepository) -> None:
+    def __init__(self, meeting_repository: MeetingRepository, document_item_repository: DocumentItemRepository, task_service: TaskService, document_service: DocumentItemService) -> None:
         self.meeting_repository = meeting_repository
         self.document_item_repository = document_item_repository
+        self.task_service = task_service
+        self.document_service = document_service
 
     async def create_meeting(self, data: CreateMeetingModel) -> ResponseModel:
         meeting = await self.meeting_repository.create_meeting(data.model_dump())
@@ -77,6 +85,31 @@ class MeetingService:
         # build filter document
         filters = FilterDocumentItem(offset=0, limit=1,type=[DocumentTypeEnum.MEETING_DOCUMENT], object_id=[meeting_id])
         await self.document_item_repository.copy_document_items(filters, new_meeting_id)
+
+    async def get_meeting_todo_task(self, user_id: str, filters: FilterMeetingModel) -> ResponseModel:
+        # task toi han, todo gap, meeting hny
+        end_of_today_vn = DateTimeUtil.get_start_time_today().replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+        filters.participant_ids = [user_id]
+        filters.end_date =int(end_of_today_vn.timestamp() * 1000)
+        filter_task = FilterTaskModel(offset=filters.offset,limit=filters.limit, deadline_end=filters.end_date, assigned_id=[user_id], type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
+        filter_todo = FilterDocumentItem(offset=filters.offset,limit=filters.limit, object_id=[user_id],  end_deadline=filters.end_date)
+
+        list_todo_response = await self.document_service.get_list_document(filter_todo)
+        task_response = await self.task_service.get_list_tasks(filter_task, user_id)
+
+        list_meeting, total = await self.meeting_repository.get_list_of_meetings(filters)
+        list_meeting_response = []
+        for meeting in list_meeting:
+            list_meeting_response.append(MeetingResponse.model_validate(meeting))
+
+        summary_response = MeetingTodoTaskResponseModel(
+            task=task_response.data,
+            todo=list_todo_response.data,
+            meeting=list_meeting_response,
+        )
+        return ResponseModel(data=summary_response)
 
     async def _create_next_meeting(self, meeting: MeetingDocument):
         # calc the next date
