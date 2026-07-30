@@ -540,4 +540,6 @@ class TaskService:
         #     return len(story_children) + count
         #
         # return total
+        if (filters.type and WorkItemType.SUBTASK in filters.type) or not filters.parent:
+            return total
         return await self.task_repository.count_total_tasks_in_sprint(filters)

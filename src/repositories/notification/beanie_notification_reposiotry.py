@@ -40,7 +40,7 @@ class BeanieNotificationRepository(NotificationRepository):
             filter_dump.update(
                 Or(
                     In(NotificationDocument.departments, filter_dump.pop("departments")),
-                    Eq(NotificationDocument.departments, None)
+                    Eq(NotificationDocument.departments, [])
                 )
             )
 

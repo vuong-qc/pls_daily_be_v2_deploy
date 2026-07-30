@@ -70,6 +70,9 @@ class BeanieUserRepository(UserRepository):
         if filters.get("department"):
             department = filters.pop("department", [])
             filters.update(In(UserDocument.department, department))
+        if filters.get("manager_department"):
+            manager_department = filters.pop("manager_department", [])
+            filters.update(In(UserDocument.manager_department, manager_department))
 
         query = UserDocument.find(filters,fetch_links=True)
         count = await query.count()

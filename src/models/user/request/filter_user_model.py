@@ -8,3 +8,4 @@ class FilterUserModel(BaseModel):
     roles: Optional[list[int]] = None
     status: Optional[int] = None
     department: Optional[list[str]] = None
+    manager_department: Optional[list[str]] = None

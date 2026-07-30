@@ -207,6 +207,12 @@ class SessionService:
             updated_subtask = await self.work_item_repository.update_work_item(item.id, update_data.model_dump(exclude_unset=True))
             if updated_subtask and updated_subtask.parent and updated_subtask.status == TaskStatusEnum.DONE:
                 list_task_id.add(str(updated_subtask.parent))
+            # update task to be process if change subtask status
+            elif updated_subtask and updated_subtask.parent and updated_subtask.status != TaskStatusEnum.DONE:
+                task = await self.work_item_repository.get_work_item_by_id(updated_subtask.parent)
+                if task and task.status == TaskStatusEnum.DONE:
+                    update_task_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING, session_id=None)
+                    await self.work_item_repository.update_work_item(str(task.id), update_task_data.model_dump(exclude_unset=True))
 
     async def get_work_item_by_id(self, work_item_id:str, list_title: list, list_data: list):
         work_item = await self.work_item_repository.get_work_item_by_id(work_item_id)
