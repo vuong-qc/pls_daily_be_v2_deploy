@@ -33,7 +33,7 @@ class TextFormatEnum(StrEnum):
     DEPARTMENT_ITEM = """&nbsp;&nbsp;&#8226; <font color="#197B32">{department}</font>"""
 
     EVALUATE_HEADER = """&#8226; <b>Đánh giá:</b>"""
-    EVALUATE_VALUE = """&#8226; <font color="#197B32">{evaluate}</font>"""
+    EVALUATE_VALUE = """<font color="#197B32"><b>{evaluate}</b></font>"""
     # ===== BUG NOTIFICATION =====
     BUG_NEW_HEADER = """⚠️ <b>[BUG MỚI]</b>"""
     BUG_UPDATED_HEADER = """<b>[BUG ĐÃ CẬP NHẬT]</b>"""

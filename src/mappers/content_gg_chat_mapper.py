@@ -12,10 +12,10 @@ DEPARTMENT_STATUS = {
 }
 
 EVALUATE_SESSION = {
-    "AHEAD" : "Vượt tiến độ",
-    "ON_TRACK" : "Đang đúng tiến độ đề ra",
-    "BEHIND" : "Chậm tiến độ được giao",
-    "UNFINISHED": "Không hoàn thành deadline"
+    "AHEAD" : "VƯỢT TIẾN ĐỘ",
+    "ON_TRACK" : "ĐANG ĐÚNG TIẾN ĐỘ ĐỀ RA",
+    "BEHIND" : "CHẬM TIẾN ĐỘ ĐỀ RA",
+    "UNFINISHED": "KHÔNG HOÀN THÀNH DEADLINE"
 }
 
 BUG_TYPE = {

@@ -17,7 +17,8 @@ class BeanieMeetingRepository(MeetingRepository):
         meet = await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting_id), fetch_links=True)
         if meet:
             await self._add_link_document_item( data, meet )
-            return await meet.update(Set(data))
+            await meet.update(Set(data))
+            return await MeetingDocument.find_one(MeetingDocument.id == PydanticObjectId(meeting_id), fetch_links=True)
         return None
 
     async def delete_meeting(self, meeting_id: str):

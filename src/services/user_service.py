@@ -60,7 +60,7 @@ class UserService:
                 if f"{role}" not in self.role_admin_create:
                     raise ExceptionMasterUpdateUserOutScope()
         if roles and  UserRole.ADMIN in roles:
-            if update_data.get("roles") and UserRole.ADMIN in roles:
+            if update_data.get("roles") and UserRole.ADMIN in update_data.get("roles"):
                 raise ExceptionMasterUpdateUserOutScope()
         updated_user = await self.user_repository.update_user(user_id, update_data)
         return ResponseModel(data=updated_user)

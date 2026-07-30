@@ -26,7 +26,7 @@ class NotificationService:
 
         create_notification_model.owner_id = user_id
         if create_notification_model.start_time and create_notification_model.end_time:
-            if create_notification_model.start_time >= create_notification_model.end_time:
+            if create_notification_model.start_time > create_notification_model.end_time:
                 raise NotificationException(NotificationMessage.START_TIME_GTE_END_TIME, NotificationStatusCode.START_TIME_GTE_END_TIME)
 
         noti = await self.notification_repository.create_noti(create_notification_model.model_dump())
