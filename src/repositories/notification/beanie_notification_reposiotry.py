@@ -55,7 +55,7 @@ class BeanieNotificationRepository(NotificationRepository):
                     RegEx(NotificationDocument.description, regex, "i"),
                 )
             )
-        ex_act_op = filter_dump.pop("expired_or_active")
+        ex_act_op = filter_dump.pop("expired_or_active", None)
 
         if is_expired:
             if ex_act_op:
