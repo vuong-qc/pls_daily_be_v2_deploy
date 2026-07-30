@@ -55,18 +55,39 @@ class BeanieNotificationRepository(NotificationRepository):
                     RegEx(NotificationDocument.description, regex, "i"),
                 )
             )
+        ex_act_op = filter_dump.pop("expired_or_active")
+
         if is_expired:
-            filter_dump.update(
-                LT(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
-            )
+            if ex_act_op:
+                is_active = filter_dump.pop("is_active", None)
+                if is_active is not None:
+                    filter_dump.update(
+                        Or(
+                            LT(NotificationDocument.end_time, DateTimeUtil.current_milli_time()),
+                            Eq(NotificationDocument.is_active, is_active)
+                        )
+                    )
+            else:
+                filter_dump.update(
+                    LT(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
+                )
         else:
             if is_expired is None:
                 pass
             else:
-                filter_dump.update(
-                        GTE(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
-
-                )
+                if ex_act_op:
+                    is_active = filter_dump.pop("is_active", None)
+                    if is_active is not None:
+                        filter_dump.update(
+                            Or(
+                                GTE(NotificationDocument.end_time, DateTimeUtil.current_milli_time()),
+                                Eq(NotificationDocument.is_active, is_active)
+                            )
+                        )
+                else:
+                    filter_dump.update(
+                            GTE(NotificationDocument.end_time, DateTimeUtil.current_milli_time())
+                    )
 
         query = NotificationDocument.find(filter_dump)
         print("filter", filter_dump)

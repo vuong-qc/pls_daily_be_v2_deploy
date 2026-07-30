@@ -22,28 +22,56 @@ echo "  ${SOURCE_REPO}"
 echo "to deploy repo:"
 echo "  ${DEPLOY_REPO}"
 
-rsync -a --delete \
-  --exclude '.git/' \
-  --exclude '.github/workflows/' \
-  --exclude '.env' \
-  --exclude '.env.*' \
-  --exclude '*_SSH_PRIVATE_KEY*' \
-  --exclude '.venv/' \
-  --exclude 'venv/' \
-  --exclude '__pycache__/' \
-  --exclude '.pytest_cache/' \
-  --exclude '.mypy_cache/' \
-  --exclude '.coverage' \
-  --exclude '.coverage.*' \
-  --exclude '.DS_Store' \
-  --exclude 'htmlcov/' \
-  --exclude 'credentials.json' \
-  --exclude '*deploy_key*' \
-  --exclude 'production_deploy_key*' \
-  --exclude 'backend_production_deploy_key*' \
-  --exclude 'ops/production-deploy-repo-template/' \
-  --exclude 'README.md' \
-  "${SOURCE_REPO}/" "${DEPLOY_REPO}/"
+if command -v rsync >/dev/null 2>&1; then
+  echo "Using rsync (macOS/Linux)..."
+
+  rsync -a --delete \
+    --exclude '.git/' \
+    --exclude '.github/workflows/' \
+    --exclude '.env' \
+    --exclude '.env.*' \
+    --exclude '*_SSH_PRIVATE_KEY*' \
+    --exclude '.venv/' \
+    --exclude 'venv/' \
+    --exclude '__pycache__/' \
+    --exclude '.pytest_cache/' \
+    --exclude '.mypy_cache/' \
+    --exclude '.coverage' \
+    --exclude '.coverage.*' \
+    --exclude '.DS_Store' \
+    --exclude 'htmlcov/' \
+    --exclude 'credentials.json' \
+    --exclude '*deploy_key*' \
+    --exclude 'production_deploy_key*' \
+    --exclude 'backend_production_deploy_key*' \
+    --exclude 'ops/production-deploy-repo-template/' \
+    --exclude 'README.md' \
+    "${SOURCE_REPO}/" "${DEPLOY_REPO}/"
+    
+elif command -v robocopy.exe >/dev/null 2>&1; then
+  echo "Using robocopy (Windows)..."
+
+  set +e
+
+  MSYS_NO_PATHCONV=1 robocopy.exe \
+    "$(cygpath -w "${SOURCE_REPO}")" \
+    "$(cygpath -w "${DEPLOY_REPO}")" \
+    /MIR \
+    /XD ".git" ".github\workflows" ".venv" "venv" "__pycache__" ".pytest_cache" ".mypy_cache" "htmlcov" "ops\production-deploy-repo-template" \
+    /XF ".env" ".env.*" ".coverage" ".coverage.*" ".DS_Store" "credentials.json" "*_SSH_PRIVATE_KEY*" "*deploy_key*" "production_deploy_key*" "backend_production_deploy_key*" "README.md"
+
+  RC=$?
+  set -e
+
+  if [ "$RC" -ge 8 ]; then
+    echo "Robocopy failed with exit code $RC" >&2
+    exit "$RC"
+  fi
+
+else
+  echo "Neither rsync nor robocopy is available." >&2
+  exit 1
+fi
 
 find "${DEPLOY_REPO}" -maxdepth 1 -type f \
   \( -name '*_SSH_PRIVATE_KEY*' -o -name '*deploy_key*' \) \

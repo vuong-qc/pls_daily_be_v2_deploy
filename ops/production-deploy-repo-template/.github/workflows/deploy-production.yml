@@ -1,0 +1,243 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-daily-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-production:
+    name: Deploy Production Daily Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PROD_DOMAIN: workingapi.pls.edu.vn
+      PROD_API_BASE_URL: https://workingapi.pls.edu.vn
+      PROD_HEALTHCHECK_URL: https://workingapi.pls.edu.vn/support/check-server
+      PROD_DOCS_URL: https://workingapi.pls.edu.vn/docs
+      PROD_OPENAPI_URL: https://workingapi.pls.edu.vn/openapi.json
+      PROD_HTTP_HEALTHCHECK_URL: http://workingapi.pls.edu.vn/support/check-server
+      PROD_HTTP_DOCS_URL: http://workingapi.pls.edu.vn/docs
+      PROD_HTTP_OPENAPI_URL: http://workingapi.pls.edu.vn/openapi.json
+      PROD_NGINX_CONF_PATH: /etc/nginx/conf.d/backend_daily.production.conf
+      PROD_SERVER_DEPLOY_DIR: /opt/backend_daily_production
+      PROD_APP_BLUE_HOST_PORT: 8011
+      PROD_APP_GREEN_HOST_PORT: 8013
+      PROD_COMPOSE_PROJECT_NAME: backend_daily_production
+      PROD_APP_IMAGE: backend-daily-production:local
+      PROD_EXPECTED_PUBLIC_IP: 139.180.128.111
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SERVER_IP: ${{ secrets.PROD_SERVER_IP }}
+      PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+
+    steps:
+      - name: Checkout deploy repo
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROD_SERVER_IP:-}" ] || [ -z "${PROD_SERVER_USER:-}" ]; then
+            echo "Missing PROD_SERVER_IP or PROD_SERVER_USER." >&2
+            exit 1
+          fi
+
+          if [ -z "${PROD_SSH_PRIVATE_KEY:-}" ]; then
+            echo "Missing PROD_SSH_PRIVATE_KEY." >&2
+            exit 1
+          fi
+
+          port="${PROD_SSH_PORT:-22}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          key = os.environ.get("PROD_SSH_PRIVATE_KEY", "").strip()
+          if "\\n" in key and "\n" not in key:
+              key = key.replace("\\n", "\n")
+          key = key.replace("\r\n", "\n").replace("\r", "\n")
+          Path("/home/runner/.ssh/prod_deploy_key").write_text(f"{key}\n")
+          PY
+
+          chmod 600 ~/.ssh/prod_deploy_key
+          ssh-keygen -y -f ~/.ssh/prod_deploy_key >/dev/null
+          ssh-keyscan -p "$port" -H "$PROD_SERVER_IP" >> ~/.ssh/known_hosts
+
+      - name: Write production env file
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/backend_daily.production.env <<'EOF_ENV'
+          ${{ secrets.PROD_APP_ENV_FILE }}
+          EOF_ENV
+
+          normalize_env_file() {
+            tmp_file="$(mktemp)"
+            awk '
+              /^[A-Za-z_][A-Za-z0-9_]*=/ {
+                key = $0
+                sub(/=.*/, "", key)
+                lines[NR] = $0
+                keys[NR] = key
+                last[key] = NR
+                next
+              }
+              {
+                lines[NR] = $0
+                keys[NR] = ""
+              }
+              END {
+                for (i = 1; i <= NR; i++) {
+                  if (keys[i] == "" || last[keys[i]] == i) {
+                    print lines[i]
+                  }
+                }
+              }
+            ' /tmp/backend_daily.production.env > "$tmp_file"
+            mv "$tmp_file" /tmp/backend_daily.production.env
+          }
+
+          set_env_key() {
+            key="$1"
+            value="$2"
+            tmp_file="$(mktemp)"
+            grep -vE "^${key}=" /tmp/backend_daily.production.env > "$tmp_file" || true
+            mv "$tmp_file" /tmp/backend_daily.production.env
+            printf '%s=%s\n' "$key" "$value" >> /tmp/backend_daily.production.env
+          }
+
+          normalize_env_file
+          set_env_key APP_IMAGE "$PROD_APP_IMAGE"
+          set_env_key APP_BLUE_HOST_PORT "$PROD_APP_BLUE_HOST_PORT"
+          set_env_key APP_GREEN_HOST_PORT "$PROD_APP_GREEN_HOST_PORT"
+          set_env_key COMPOSE_PROJECT_NAME "$PROD_COMPOSE_PROJECT_NAME"
+          set_env_key ENABLE_DOCS true
+          set_env_key GG_CHAT_API https://chat.googleapis.com/v1/spaces
+
+          chmod 600 /tmp/backend_daily.production.env
+
+      - name: Validate production env file
+        run: |
+          set -euo pipefail
+
+          if grep -Eq '^MONGO_URI=mongodb\+srv://' /tmp/backend_daily.production.env; then
+            echo "Invalid PROD_APP_ENV_FILE: MONGO_URI uses mongodb+srv://, but production expects the self-hosted mongodb service." >&2
+            exit 1
+          fi
+
+      - name: Upload source
+        run: |
+          set -euo pipefail
+
+          port="${PROD_SSH_PORT:-22}"
+
+          tar \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.idea' \
+            --exclude='__pycache__' \
+            --exclude='.pytest_cache' \
+            -czf /tmp/pls_daily_be_v2_production.tar.gz .
+
+          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
+            /tmp/pls_daily_be_v2_production.tar.gz \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:/tmp/pls_daily_be_v2_production.tar.gz"
+
+          scp -i ~/.ssh/prod_deploy_key -P "$port" -o StrictHostKeyChecking=yes \
+            /tmp/backend_daily.production.env \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}:/tmp/backend_daily.production.env"
+
+          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' bash -seu" <<'EOF_REMOTE'
+          set -euo pipefail
+          owner_user="$(id -un)"
+          owner_group="$(id -gn)"
+
+          sudo install -d -m 755 -o "$owner_user" -g "$owner_group" "${PROD_SERVER_DEPLOY_DIR}"
+
+          find "${PROD_SERVER_DEPLOY_DIR}" -mindepth 1 -maxdepth 1 \
+            ! -name '.active_color' \
+            -exec rm -rf {} +
+
+          mv /tmp/backend_daily.production.env "${PROD_SERVER_DEPLOY_DIR}/.env"
+          cd "${PROD_SERVER_DEPLOY_DIR}"
+          tar -xzf /tmp/pls_daily_be_v2_production.tar.gz
+          rm -f /tmp/pls_daily_be_v2_production.tar.gz
+
+          cp deploy/docker-compose.production.yml docker-compose.yml
+          cp deploy/nginx/backend_daily.production.conf backend_daily.production.conf
+          cp deploy/nginx/backend_daily.production.bootstrap.conf backend_daily.production.bootstrap.conf
+          chmod +x scripts/deploy_production_blue_green.sh
+          EOF_REMOTE
+
+      - name: Deploy backend stack on production server
+        run: |
+          set -euo pipefail
+
+          port="${PROD_SSH_PORT:-22}"
+
+          ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
+            "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_OPENAPI_URL='${PROD_OPENAPI_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_PUBLIC_HTTP_OPENAPI_URL='${PROD_HTTP_OPENAPI_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${PROD_APP_IMAGE}' bash -seu" <<'EOF_REMOTE'
+          set -euo pipefail
+          bash "${PROD_SERVER_DEPLOY_DIR}/scripts/deploy_production_blue_green.sh"
+          EOF_REMOTE
+
+      - name: Verify backend healthcheck
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --show-error --silent "$PROD_HEALTHCHECK_URL"; then
+              exit 0
+            fi
+
+            echo "Healthcheck attempt $attempt/30 failed; waiting for app startup..."
+            sleep 2
+          done
+
+          echo "Backend healthcheck did not become ready in time." >&2
+          exit 1
+
+      - name: Verify backend docs are available
+        run: |
+          set -euo pipefail
+
+          expect_available() {
+            label="$1"
+            url="$2"
+
+            for attempt in $(seq 1 30); do
+              if curl --fail --silent --show-error --output /dev/null "$url"; then
+                echo "${label} is available"
+                return 0
+              fi
+
+              echo "${label} is not available yet; waiting..."
+              sleep 2
+            done
+
+            echo "${label} was not available at ${url}." >&2
+            return 1
+          }
+
+          expect_available "Backend docs" "$PROD_DOCS_URL"
+          expect_available "Backend OpenAPI" "$PROD_OPENAPI_URL"

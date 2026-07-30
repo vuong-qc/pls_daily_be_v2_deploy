@@ -17,6 +17,7 @@ class BeanieMeetingRepository(MeetingRepository):
         meet = await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting_id), fetch_links=True)
         if meet:
             await self._add_link_document_item( data, meet )
+            await meet.save()
             await meet.update(Set(data))
             return await MeetingDocument.find_one(MeetingDocument.id == PydanticObjectId(meeting_id), fetch_links=True)
         return None
