@@ -42,7 +42,10 @@ class MeetingService:
         date_of_month = meeting.date_of_month if data.date_of_month is None else data.date_of_month
         if date_of_month is None and repeat_type == MeetingRepeatType.MONTHLY:
             raise MeetingException(MeetingMessage.REPEAT_TYPE_NOT_MATCH_DATE, MeetingStatusCode.REPEAT_TYPE_NOT_MATCH_DATE)
-        if date_of_month and repeat_type != MeetingRepeatType.MONTHLY:
+
+        if data.repeat_type != MeetingRepeatType.MONTHLY and data.date_of_month is None:
+            pass
+        elif date_of_month and repeat_type != MeetingRepeatType.MONTHLY:
             raise MeetingException(MeetingMessage.REPEAT_TYPE_NOT_MATCH_DATE, MeetingStatusCode.REPEAT_TYPE_NOT_MATCH_DATE)
 
         if meeting.status == MeetingStatusEnum.DONE or meeting.status == MeetingStatusEnum.CANCELED:

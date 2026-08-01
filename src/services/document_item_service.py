@@ -108,7 +108,7 @@ class DocumentItemService:
             if not result:
                 create_result_data = CreateDocumentResult(parent_id=str(response.id))
                 if response.created_by:
-                    result.owner_id = response.created_by
+                    create_result_data.owner_id = response.created_by
                 result = await self.document_result_repository.create_document_result(create_result_data.model_dump())
             response.result = DocumentResultResponse.model_validate(result)
             list_res.append(response)

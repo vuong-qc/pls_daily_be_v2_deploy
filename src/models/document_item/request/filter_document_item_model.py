@@ -16,3 +16,4 @@ class FilterDocumentItem(BaseModel):
     is_closed: Optional[bool] = None
     start_deadline: Optional[int] = None
     end_deadline: Optional[int] = None
+    no_object_id: Optional[list[str]] = None
