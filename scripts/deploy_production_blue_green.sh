@@ -162,28 +162,6 @@ wait_for_public_blocked() {
   return 1
 }
 
-wait_for_public_available() {
-  label="$1"
-  url="$2"
-  timeout_seconds="$3"
-  interval_seconds=2
-  elapsed=0
-
-  while [ "$elapsed" -lt "$timeout_seconds" ]; do
-    if curl --fail --silent --show-error --output /dev/null "$url"; then
-      echo "${label} is available"
-      return 0
-    fi
-
-    echo "${label} is not available yet; waiting..."
-    sleep "$interval_seconds"
-    elapsed=$((elapsed + interval_seconds))
-  done
-
-  echo "${label} was not available at $url" >&2
-  return 1
-}
-
 current_backend_port() {
   if [ -f "${PROD_NGINX_CONF_PATH}" ]; then
     grep -oE '127\.0\.0\.1:[0-9]+' "${PROD_NGINX_CONF_PATH}" | head -n 1 | cut -d: -f2
@@ -296,16 +274,16 @@ if ! curl --fail --silent --show-error --retry 10 --retry-delay 2 "$public_healt
   exit 1
 fi
 
-if ! wait_for_public_available "Public docs" "$public_docs_url" 30; then
-  echo "Public docs was not available after switching traffic to port ${target_port}" >&2
+if ! wait_for_public_blocked "Public docs" "$public_docs_url" 30; then
+  echo "Public docs remained accessible after switching traffic to port ${target_port}" >&2
   if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
     install_production_nginx "$current_backend_port"
   fi
   exit 1
 fi
 
-if ! wait_for_public_available "Public OpenAPI" "$public_openapi_url" 30; then
-  echo "Public OpenAPI was not available after switching traffic to port ${target_port}" >&2
+if ! wait_for_public_blocked "Public OpenAPI" "$public_openapi_url" 30; then
+  echo "Public OpenAPI remained accessible after switching traffic to port ${target_port}" >&2
   if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
     install_production_nginx "$current_backend_port"
   fi

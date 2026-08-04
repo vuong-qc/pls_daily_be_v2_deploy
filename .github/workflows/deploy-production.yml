@@ -126,7 +126,7 @@ jobs:
           set_env_key APP_BLUE_HOST_PORT "$PROD_APP_BLUE_HOST_PORT"
           set_env_key APP_GREEN_HOST_PORT "$PROD_APP_GREEN_HOST_PORT"
           set_env_key COMPOSE_PROJECT_NAME "$PROD_COMPOSE_PROJECT_NAME"
-          set_env_key ENABLE_DOCS true
+          set_env_key ENABLE_DOCS false
           set_env_key GG_CHAT_API https://chat.googleapis.com/v1/spaces
 
           chmod 600 /tmp/backend_daily.production.env
@@ -217,27 +217,30 @@ jobs:
           echo "Backend healthcheck did not become ready in time." >&2
           exit 1
 
-      - name: Verify backend docs are available
+      - name: Verify backend docs are blocked
         run: |
           set -euo pipefail
 
-          expect_available() {
+          expect_blocked() {
             label="$1"
             url="$2"
 
             for attempt in $(seq 1 30); do
-              if curl --fail --silent --show-error --output /dev/null "$url"; then
-                echo "${label} is available"
-                return 0
-              fi
+              status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url" || true)"
+              case "$status_code" in
+                403|404)
+                  echo "${label} is blocked with HTTP ${status_code}"
+                  return 0
+                  ;;
+              esac
 
-              echo "${label} is not available yet; waiting..."
+              echo "${label} returned HTTP ${status_code:-unknown}; waiting for block rule..."
               sleep 2
             done
 
-            echo "${label} was not available at ${url}." >&2
+            echo "${label} remained accessible at ${url}." >&2
             return 1
           }
 
-          expect_available "Backend docs" "$PROD_DOCS_URL"
-          expect_available "Backend OpenAPI" "$PROD_OPENAPI_URL"
+          expect_blocked "Backend docs" "$PROD_DOCS_URL"
+          expect_blocked "Backend OpenAPI" "$PROD_OPENAPI_URL"
