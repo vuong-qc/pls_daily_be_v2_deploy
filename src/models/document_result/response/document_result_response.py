@@ -11,3 +11,5 @@ class DocumentResultResponse(BaseModel):
     check: Optional[bool] = None
     evaluate_todo: Optional[str] = None
     is_closed: Optional[bool] = False
+    created_at: Optional[int] = None
+    updated_at: Optional[int] = None

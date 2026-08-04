@@ -65,6 +65,7 @@ class WorkItemDocument(DocumentWithSoftDelete):
             "type",
             IndexModel([("project", pymongo.ASCENDING), ("status", pymongo.ASCENDING)]),
             IndexModel([("status", pymongo.ASCENDING),("deadline", pymongo.ASCENDING)]),
+            IndexModel([("type", pymongo.ASCENDING), ("created_at", pymongo.ASCENDING)]),
         ]
 
 

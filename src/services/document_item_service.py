@@ -143,3 +143,11 @@ class DocumentItemService:
                             raise ProjectException(ProjectMessage.NOT_HANDLER_PROJECT, ProjectStatusCode.NOT_HANDLER_PROJECT)
         else:
             raise DocumentException(DocumentMessage.NOT_ENOUGH_DATA, DocumentStatusCode.NOT_ENOUGH_DATA)
+
+    async def statistic_todo(self, user_id:str, start: Optional[int] = None, end: Optional[int]= None):
+        total_todo = await self.repository.count_items_by_time_buckets(user_id, DocumentTypeEnum.TODO.value, start, end)
+        todo_done_todo = await self.repository.count_completed_items_by_time_buckets(user_id, DocumentTypeEnum.TODO.value, start, end)
+        return ResponseModel(data={
+            "total_todo": total_todo,
+            "todo_done_todo": todo_done_todo
+        })

@@ -10,5 +10,6 @@ class FilterMeetingModel(BaseModel):
     status: Optional[str] = None
     start_date: Optional[int] = None
     end_date: Optional[int] = None
+    is_in_meeting: Optional[list[str]] = None
     limit: int = Field(10, le=100)
     offset: int = 0

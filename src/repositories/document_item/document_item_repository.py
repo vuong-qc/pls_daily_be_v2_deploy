@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Optional
+
 from src.models.document_item.document_item_document import DocumentItem
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
@@ -25,3 +27,19 @@ class DocumentItemRepository(ABC):
     @abstractmethod
     async def copy_document_items(self, filters: FilterDocumentItem, new_object_id:str):
         pass
+    @abstractmethod
+    async def count_completed_items_by_time_buckets(
+            self,
+            object_id: str,
+            type: str,
+            start_time: Optional[int] = None,
+            end_time: Optional[int] = None,
+    ) -> dict: pass
+    @abstractmethod
+    async def count_items_by_time_buckets(
+            self,
+            object_id: str,
+            type: str,
+            start_time: Optional[int] = None,
+            end_time: Optional[int] = None,
+    ) -> dict: pass

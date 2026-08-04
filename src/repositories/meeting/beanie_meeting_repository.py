@@ -3,7 +3,7 @@ from src.models.meeting.request.filter_meeting_model import FilterMeetingModel
 from src.models.meeting.meeting_document import MeetingDocument
 from src.models.user.user_document import UserDocument
 from beanie import PydanticObjectId, UpdateResponse
-from beanie.operators import Set, In, LTE, GTE, And
+from beanie.operators import Set, In, LTE, GTE, And, Or
 
 
 class BeanieMeetingRepository(MeetingRepository):
@@ -59,6 +59,16 @@ class BeanieMeetingRepository(MeetingRepository):
         if filters.handler:
             filter_dump.update(
                 In(MeetingDocument.handler, filter_dump.pop('handler')),
+            )
+        join_user_ids = filter_dump.pop('is_in_meeting', [])
+        if join_user_ids:
+            filter_dump.update(
+                Or(
+                    In(MeetingDocument.participant_ids, join_user_ids),
+                    In(MeetingDocument.creator, join_user_ids),
+                    In(MeetingDocument.handler, join_user_ids),
+
+                )
             )
 
         query = MeetingDocument.find(filter_dump, fetch_links=True)

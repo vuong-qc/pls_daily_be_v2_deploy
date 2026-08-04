@@ -488,7 +488,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
         return buckets
     def _build_common_filter(self, filters: FilterWorkItemModel) -> dict:
-        query: dict = {"is_deleted": {"$ne": True}}
+        query: dict = {"deleted_at": {"$eq": None}}
 
         if filters.project:
             query["project"] = {"$in": filters.project}
@@ -590,7 +590,14 @@ class BeanieWorkItemRepository(WorkItemRepository):
         common_filter["type"] = WorkItemType.BUG.value  # chỉ lấy work item loại BUG
 
         end_time = filters.end or int(datetime.now(timezone.utc).timestamp() * 1000)
-        start_time = filters.start or (end_time - 30 * DAY_MS)
+
+        if filters.start is not None:
+            start_time = filters.start
+        else:
+            # Không truyền start -> lấy created_at nhỏ nhất trong tập đã match
+            # các filter khác (chưa có created_at) để làm mốc bắt đầu.
+            start_time = await self._get_earliest_created_at(common_filter, end_time)
+
         common_filter["created_at"] = {"$gte": start_time, "$lte": end_time}
 
         buckets = self._build_time_buckets(start_time, end_time)
@@ -617,6 +624,24 @@ class BeanieWorkItemRepository(WorkItemRepository):
             "feedback": feedback,
         }
 
+    async def _get_earliest_created_at(self, base_filter: dict, fallback: int) -> int:
+        """
+        Lấy created_at nhỏ nhất trong tập document match base_filter
+        (base_filter lúc này chưa có key created_at).
+        Nếu không có document nào, trả về fallback (thường là end_time)
+        để tránh bucket rỗng/âm.
+        """
+        collection = WorkItemDocument.get_pymongo_collection()
+        cursor = await collection.aggregate([
+            {"$match": base_filter},
+            {"$group": {"_id": None, "min_created_at": {"$min": "$created_at"}}},
+        ])
+        result = await cursor.to_list(length=1)
+
+        if not result or result[0].get("min_created_at") is None:
+            return fallback
+
+        return result[0]["min_created_at"]
     async def count_total_tasks_in_sprint(self, filters: FilterWorkItemModel) -> int:
         """
         Đếm tổng số TASK (phẳng) thuộc 1 sprint, dựa trên FilterWorkItemModel:
@@ -658,3 +683,153 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
         count = await motor_collection.count_documents(query)
         return count
+
+    def _build_bucket_switch_branches(self, buckets: list[dict]) -> list[dict]:
+        """
+        Tạo các branch cho $switch để map mỗi document vào đúng bucket_idx
+        dựa trên created_at. Bucket cuối dùng $lte để không bị rớt record
+        có created_at == end_time.
+        """
+        branches = []
+        for idx, bucket in enumerate(buckets):
+            branches.append({
+                "case": {
+                    "$and": [
+                        {"$gte": ["$created_at", bucket["start_time"]]},
+                        {"$lte": ["$created_at", bucket["end_time"]]},
+                    ]
+                },
+                "then": idx,
+            })
+        return branches
+
+    def _build_match_stage(
+            self,
+            type_: Optional[list[str]],
+            assigned_ids: Optional[list[str]],
+            parent: Optional[str],
+            status: Optional[list[str]],
+            start_time: int,
+            end_time: int,
+    ) -> dict:
+        match_stage: dict = {
+            "created_at": {"$gte": start_time, "$lte": end_time},
+        }
+        if type_:
+            match_stage["type"] = {"$in": type_}
+        if assigned_ids:
+            match_stage["assigned_id"] = {"$in": assigned_ids}
+        if parent:
+            match_stage["parent"] = parent
+        if status:
+            match_stage["status"] = {"$in": status}
+        return match_stage
+
+    async def count_by_time_buckets(
+            self,
+            filters: FilterWorkItemModel
+    ) -> dict:
+        """
+        Trả về số lượng work item theo từng bucket thời gian.
+        Kết quả: [{"start_time": ..., "end_time": ..., "count": ...}, ...]
+        """
+        end_time = filters.end or int(datetime.now(timezone.utc).timestamp() * 1000)
+        start_time = filters.start or (end_time - 30 * DAY_MS)
+        buckets = self._build_time_buckets(start_time, end_time)
+        branches = self._build_bucket_switch_branches(buckets)
+        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time)
+
+        pipeline = [
+            {"$match": match_stage},
+            {
+                "$addFields": {
+                    "bucket_idx": {
+                        "$switch": {"branches": branches, "default": None}
+                    }
+                }
+            },
+            {"$match": {"bucket_idx": {"$ne": None}}},
+            {"$group": {"_id": "$bucket_idx", "count": {"$sum": 1}}},
+        ]
+
+        cursor = await WorkItemDocument.get_pymongo_collection().aggregate(pipeline)
+        results = await cursor.to_list(None)
+        count_map = {r["_id"]: r["count"] for r in results}
+
+        # return [
+        #     {
+        #         "start_time": bucket["start_time"],
+        #         "end_time": bucket["end_time"],
+        #         "count": count_map.get(idx, 0),
+        #     }
+        #     for idx, bucket in enumerate(buckets)
+        # ]
+
+        response = [
+            {
+                "start_time": bucket["start_time"],
+                "end_time": bucket["end_time"],
+                "total_point": count_map.get(idx, 0),
+            }
+            for idx, bucket in enumerate(buckets)
+        ]
+        total = 0
+        for idx, bucket in enumerate(buckets):
+            total += count_map.get(idx, 0)
+
+        return {
+            "total": total,
+            "time": response
+        }
+
+    async def sum_point_by_time_buckets(
+            self,
+            filters: FilterWorkItemModel
+    ) -> dict:
+        """
+        Trả về tổng point của work item theo từng bucket thời gian.
+        Kết quả: [{"start_time": ..., "end_time": ..., "total_point": ...}, ...]
+        """
+        end_time = filters.end or int(datetime.now(timezone.utc).timestamp() * 1000)
+        start_time = filters.start or (end_time - 30 * DAY_MS)
+        buckets = self._build_time_buckets(start_time, end_time)
+        branches = self._build_bucket_switch_branches(buckets)
+        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time)
+
+        pipeline = [
+            {"$match": match_stage},
+            {
+                "$addFields": {
+                    "bucket_idx": {
+                        "$switch": {"branches": branches, "default": None}
+                    }
+                }
+            },
+            {"$match": {"bucket_idx": {"$ne": None}}},
+            {
+                "$group": {
+                    "_id": "$bucket_idx",
+                    "total_point": {"$sum": {"$ifNull": ["$point", 0]}},
+                }
+            },
+        ]
+
+        cursor = await WorkItemDocument.get_pymongo_collection().aggregate(pipeline)
+        results = await cursor.to_list(None)
+        point_map = {r["_id"]: r["total_point"] for r in results}
+        response = [
+            {
+                "start_time": bucket["start_time"],
+                "end_time": bucket["end_time"],
+                "total_point": point_map.get(idx, 0),
+            }
+            for idx, bucket in enumerate(buckets)
+        ]
+        total = 0
+        for idx, bucket in enumerate(buckets):
+            total += point_map.get(idx, 0)
+
+        return {
+            "total": total,
+            "time": response
+                }

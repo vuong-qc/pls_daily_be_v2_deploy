@@ -62,3 +62,13 @@ class WorkItemRepository(ABC):
         pass
     @abstractmethod
     async def count_total_tasks_in_sprint(self, filters: FilterWorkItemModel) -> int: pass
+    @abstractmethod
+    async def count_by_time_buckets(
+            self,
+            filters: FilterWorkItemModel
+    ) -> dict: pass
+    @abstractmethod
+    async def sum_point_by_time_buckets(
+            self,
+            filters: FilterWorkItemModel
+    ) -> dict: pass

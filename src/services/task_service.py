@@ -543,3 +543,21 @@ class TaskService:
         if (filters.type and WorkItemType.SUBTASK in filters.type) or not filters.parent:
             return total
         return await self.task_repository.count_total_tasks_in_sprint(filters)
+
+    async def statistic_task_summary(self, filters: FilterTaskModel):
+        filters.type = [WorkItemType.TASK.value]
+        filter_total_task = filters.model_copy(deep=True)
+        filter_total_task.status = None
+
+        filter_done_task = filters.model_copy(deep=True)
+        filter_done_task.status = [TaskStatusEnum.DONE.value]
+        total_task = await self.task_repository.count_by_time_buckets(filter_total_task)
+        total_done_tasks = await self.task_repository.count_by_time_buckets(filter_done_task)
+        total_point = await self.task_repository.sum_point_by_time_buckets(filter_total_task)
+        total_done_point = await self.task_repository.sum_point_by_time_buckets(filter_done_task)
+        response = {}
+        response["total_point"] = total_point
+        response["total_done_point"] = total_done_point
+        response["total_tasks"] = total_task
+        response["total_done_tasks"] = total_done_tasks
+        return ResponseModel(data=response)

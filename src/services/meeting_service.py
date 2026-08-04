@@ -136,3 +136,7 @@ class MeetingService:
         data.pop('id', None)
         new_data =await self.meeting_repository.create_meeting(data)
         await self.copy_document(str(new_meeting.id), str(new_data.id))
+
+    async def accept_meeting(self, meeting_id: str, user_id: str):
+        data = await self.meeting_repository.add_participant(meeting_id, user_id)
+        return ResponseModel(data=data)

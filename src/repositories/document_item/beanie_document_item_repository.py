@@ -8,8 +8,11 @@ from src.models.document_result.document_result_document import DocumentResult  
 from src.repositories.document_item.document_item_repository import DocumentItemRepository
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
+from datetime import datetime, timezone
+from typing import Optional
 
-
+DAY_MS = 24 * 60 * 60 * 1000
+VN_OFFSET_MS = 7 * 60 * 60 * 1000  # UTC+7
 class BeanieDocumentItemRepository(DocumentItemRepository):
     async def create_document(self, data: dict) -> DocumentItem:
         document = DocumentItem(**data)
@@ -177,7 +180,7 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop('offset', 0)
         limit = filter_dump.pop('limit', 10)
-        self._build_filter(filters, filter_dump)
+        self._build_match(filters, filter_dump)
         query = DocumentItem.find(filter_dump)
         list_document = await query.to_list()
         list_document_items = []
@@ -188,3 +191,214 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             data.object_id = new_object_id
             list_document_items.append(data)
         await DocumentItem.insert_many(list_document_items)
+    def _vn_day_start(self, ts_ms: int) -> int:
+        """
+        Trả về mốc epoch (ms, UTC) tương ứng với 00:00:00 giờ VN
+        của ngày chứa ts_ms.
+        """
+        shifted = ts_ms + VN_OFFSET_MS
+        day_start_shifted = shifted - (shifted % DAY_MS)
+        return day_start_shifted - VN_OFFSET_MS
+    def _build_time_buckets(self, start_time: int, end_time: int) -> list[dict]:
+        """
+        Chia [start_time, end_time] thành tối đa 7 bucket theo NGÀY LỊCH
+        GIỜ VIỆT NAM (00:00 -> 23:59:59.999 giờ VN).
+        - Số ngày <= 7  -> mỗi bucket đúng 1 ngày VN, số bucket = số ngày.
+        - Số ngày > 7   -> chia đúng 7 bucket, mỗi bucket số ngày nguyên,
+          không có bucket lẻ (vd 2.5 ngày). Ngày dư dồn vào các bucket cuối.
+        """
+        if end_time <= start_time:
+            return [{"start_time": start_time, "end_time": end_time}]
+
+        vn_start_day = self._vn_day_start(start_time)
+        vn_end_day = self._vn_day_start(end_time)
+
+        # Tổng số ngày lịch VN nằm trong khoảng (tính cả ngày bắt đầu và kết thúc)
+        total_days = max(1, round((vn_end_day - vn_start_day) / DAY_MS) + 1)
+        num_buckets = min(total_days, 7)
+
+        base_days = total_days // num_buckets
+        remainder = total_days % num_buckets
+
+        # remainder bucket cuối có (base_days + 1) ngày, còn lại base_days ngày
+        bucket_day_counts = [base_days] * (num_buckets - remainder) + [
+            base_days + 1
+        ] * remainder
+
+        buckets = []
+        cursor_day_start = vn_start_day  # mốc 00:00 VN của ngày đầu tiên
+        for idx, days in enumerate(bucket_day_counts):
+            bucket_start = start_time if idx == 0 else cursor_day_start
+            next_day_start = cursor_day_start + days * DAY_MS
+            bucket_end = end_time if idx == len(bucket_day_counts) - 1 else next_day_start
+            buckets.append({"start_time": bucket_start, "end_time": bucket_end})
+            cursor_day_start = next_day_start
+
+        return buckets
+    async def count_items_by_time_buckets(
+            self,
+            object_id: str,
+            type: str,
+            start_time: Optional[int] = None,
+            end_time: Optional[int] = None,
+    ) -> dict:
+        """
+        Thống kê số lượng DocumentItem theo bucket thời gian (VN).
+        Filter theo object_id, type và date_time trong [start_time, end_time].
+        """
+        end_time = end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
+        filters = {
+            "object_id": object_id,
+            "type": type,
+            "deleted_at": None,
+        }
+        if start_time is None:
+            start_time = await self._get_earliest_created_at(filters, end_time)
+
+        buckets = self._build_time_buckets(start_time, end_time)
+        facet_stage = self._build_facet_stage(buckets, f"{DocumentItem.date_time}")
+
+        pipeline = [
+            {
+                "$match": {
+                    "object_id": object_id,
+                    "type": type,
+                    "date_time": {"$gte": start_time, "$lte": end_time},
+                    "deleted_at": None,
+                }
+            },
+            {"$facet": facet_stage},
+        ]
+
+        result = await DocumentItem.aggregate(pipeline).to_list()
+        raw = result[0] if result else {}
+        res = self._map_bucket_result(buckets, raw)
+        total = 0
+        for item in res:
+            total+= item["count"]
+        return {"total": total, "time": res}
+
+    async def count_completed_items_by_time_buckets(
+            self,
+            object_id: str,
+            type: str,
+            start_time: Optional[int] = None,
+            end_time: Optional[int] = None,
+    ) -> dict:
+        """
+        Thống kê số lượng DocumentItem đã hoàn thành theo bucket thời gian.
+        "Hoàn thành" = tồn tại DocumentResult có:
+            - parent_id == str(document_item._id)
+            - owner_id == object_id
+            - check == True
+            - updated_at trong [start_time, end_time]
+        Bucket tính theo updated_at của DocumentResult (thời điểm hoàn thành),
+        KHÔNG dùng date_time của DocumentItem để filter/bucket.
+        """
+        end_time = end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
+        filters = {
+                    "object_id": object_id,
+                    "type": type,
+                    "deleted_at": None,
+                }
+        if start_time is  None:
+            start_time = await self._get_earliest_created_at(filters, end_time)
+        buckets = self._build_time_buckets(start_time, end_time)
+        facet_stage = self._build_facet_stage(
+            buckets, time_field="matched_result.updated_at"
+        )
+
+        pipeline = [
+            {
+                "$match": filters
+            },
+            {"$addFields": {"_id_str": {"$toString": "$_id"}}},
+            {
+                "$lookup": {
+                    "from": DocumentResult.Settings.name,
+                    "let": {"item_id": "$_id_str"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$and": [
+                                        {"$eq": ["$parent_id", "$$item_id"]},
+                                        {"$eq": ["$owner_id", object_id]},
+                                        {"$eq": ["$check", True]},
+                                        {"$eq": ["$deleted_at", None]},
+                                        {"$gte": ["$updated_at", start_time]},
+                                        {"$lte": ["$updated_at", end_time]},
+                                    ]
+                                }
+                            }
+                        },
+                        # có thể có nhiều bản ghi result thoả điều kiện, lấy 1 để đếm item
+                        {"$sort": {"updated_at": -1}},
+                        {"$limit": 1},
+                    ],
+                    "as": "matched_result",
+                }
+            },
+            # unwind để lấy matched_result.updated_at làm mốc bucket
+            {"$unwind": "$matched_result"},
+            {"$facet": facet_stage},
+        ]
+
+        result = await DocumentItem.aggregate(pipeline).to_list()
+        raw = result[0] if result else {}
+        res = self._map_bucket_result(buckets, raw)
+        total = 0
+        for item in res:
+            total += item["count"]
+        return {"total": total, "time": res}
+
+    @staticmethod
+    def _build_facet_stage(buckets: list[dict], time_field: str) -> dict:
+        facet_stage = {}
+        for idx, bucket in enumerate(buckets):
+            facet_stage[f"bucket_{idx}"] = [
+                {
+                    "$match": {
+                        time_field: {
+                            "$gte": bucket["start_time"],
+                            "$lte": bucket["end_time"],
+                        }
+                    }
+                },
+                {"$count": "count"},
+            ]
+        return facet_stage
+
+    @staticmethod
+    def _map_bucket_result(buckets: list[dict], raw: dict) -> list[dict]:
+        stats = []
+        for idx, bucket in enumerate(buckets):
+            bucket_result = raw.get(f"bucket_{idx}", [])
+            count = bucket_result[0]["count"] if bucket_result else 0
+            stats.append(
+                {
+                    "start_time": bucket["start_time"],
+                    "end_time": bucket["end_time"],
+                    "count": count,
+                }
+            )
+        return stats
+
+    async def _get_earliest_created_at(self, base_filter: dict, fallback: int) -> int:
+        """
+        Lấy created_at nhỏ nhất trong tập document match base_filter
+        (base_filter lúc này chưa có key created_at).
+        Nếu không có document nào, trả về fallback (thường là end_time)
+        để tránh bucket rỗng/âm.
+        """
+        collection = DocumentItem.get_pymongo_collection()
+        cursor = await collection.aggregate([
+            {"$match": base_filter},
+            {"$group": {"_id": None, "min_created_at": {"$min": "$date_time"}}},
+        ])
+        result = await cursor.to_list(length=1)
+
+        if not result or result[0].get("min_created_at") is None:
+            return fallback
+
+        return result[0]["min_created_at"]

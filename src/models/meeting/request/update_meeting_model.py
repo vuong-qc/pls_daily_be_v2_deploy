@@ -8,7 +8,7 @@ class UpdateMeetingModel(BaseModel):
     description: Optional[str] = None
     handler: Optional[list[str]] = None
     participant_ids: Optional[list[str]] = None
-    accepted_participant_ids: Optional[list[str]] = None
+    # accepted_participant_ids: Optional[list[str]] = None
     meeting_form: Optional[str] = None
     status: Optional[str] = None
     meeting_date: Optional[int] = None

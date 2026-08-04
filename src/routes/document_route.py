@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, status, Depends, Query
 
@@ -79,3 +79,16 @@ async def list_documents(
         user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.get_list_document(filters)
+
+@router.get('/statistic-todo',
+            response_model=ResponseModel,
+            status_code=status.HTTP_200_OK
+            )
+async def statistic_todo(
+        user_id: str,
+        start:Optional[int] = None,
+        end:Optional[int] = None,
+        service: DocumentItemService = Depends(get_document_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    return await service.statistic_todo(user_id, start, end)

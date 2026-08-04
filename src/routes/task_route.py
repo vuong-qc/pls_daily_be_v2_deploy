@@ -223,3 +223,15 @@ async def copy_task(
         user_data: dict = Depends(get_current_user_by_token),
 ):
     return await task_service.copy_task(task_id)
+
+@router.get('/statistics-task-summary',
+            status_code=status.HTTP_200_OK,
+            summary='Task summary',
+            response_model=ResponseModel,
+            )
+async def statistics_task_summary(
+        filters: Annotated[FilterTaskModel, Query()],
+        task_service: TaskService = Depends(get_task_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    return await task_service.statistic_task_summary(filters)
