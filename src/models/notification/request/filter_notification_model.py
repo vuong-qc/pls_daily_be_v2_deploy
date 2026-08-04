@@ -14,3 +14,4 @@ class FilterNotificationModel(BaseModel):
     departments: Optional[list[str]] = None
     viewer_ids: Optional[list[str]] = None
     expired_or_active: Optional[bool] = None
+    is_celebration: Optional[bool] = None

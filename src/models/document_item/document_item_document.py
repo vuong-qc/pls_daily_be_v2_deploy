@@ -2,7 +2,9 @@ from typing import Optional
 
 from src.models.work_item.work_item_document import WorkItemDocument
 from src.models.user.user_document import UserDocument
-from beanie import DocumentWithSoftDelete, Link
+from beanie import DocumentWithSoftDelete, Link, before_event, Update
+from src.utils.datetime_util import DateTimeUtil
+from pydantic import Field
 
 class DocumentItem(DocumentWithSoftDelete):
     group_id: Optional[str] = None
@@ -40,6 +42,11 @@ class DocumentItem(DocumentWithSoftDelete):
     details: Optional[str] = None
     ftf: Optional[bool] = None
     is_closed: Optional[bool] = False
+    updated_at: Optional[int] = Field(default_factory=DateTimeUtil.current_milli_time)
 
     class Settings:
         name='document_items'
+
+    @before_event(Update)
+    def updated_at_millisecond(self):
+        self.updated_at = DateTimeUtil.current_milli_time()

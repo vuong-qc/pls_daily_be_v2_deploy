@@ -30,16 +30,10 @@ class DocumentItemRepository(ABC):
     @abstractmethod
     async def count_completed_items_by_time_buckets(
             self,
-            object_id: str,
-            type: str,
-            start_time: Optional[int] = None,
-            end_time: Optional[int] = None,
+            filters: FilterDocumentItem,
     ) -> dict: pass
     @abstractmethod
     async def count_items_by_time_buckets(
             self,
-            object_id: str,
-            type: str,
-            start_time: Optional[int] = None,
-            end_time: Optional[int] = None,
+            filters: FilterDocumentItem,
     ) -> dict: pass

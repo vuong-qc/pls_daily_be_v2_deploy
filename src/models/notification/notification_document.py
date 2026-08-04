@@ -20,6 +20,7 @@ class NotificationDocument(DocumentWithSoftDelete):
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     viewer_ids: list[str] = []
+    is_celebration: Optional[bool] = None
     class Settings:
         name = "notifications"
 

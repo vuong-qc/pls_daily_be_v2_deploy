@@ -16,3 +16,4 @@ class CreateNotificationModel(BaseModel):
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     owner_id: Optional[str] = None
     departments: list[str]
+    is_celebration: Optional[bool] = None

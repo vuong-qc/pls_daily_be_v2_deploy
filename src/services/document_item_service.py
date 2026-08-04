@@ -98,17 +98,16 @@ class DocumentItemService:
         response = DocumentResponse.model_validate(document)
         return ResponseModel(data=response)
 
-    async def get_list_document(self, filters: FilterDocumentItem) -> ResponsePaginatedModel:
+    async def get_list_document(self, filters: FilterDocumentItem, user_id: str) -> ResponsePaginatedModel:
         list_document, total = await self.repository.get_list_document_items(filters)
         list_res = []
         for document in list_document:
             response = DocumentResponse.model_validate(document)
             # get result of doc
-            result = await self.document_result_repository.get_document_result_by_parent_id(str(response.id))
+            result = await self.document_result_repository.get_document_result_by_parent_id(str(response.id),user_id)
             if not result:
                 create_result_data = CreateDocumentResult(parent_id=str(response.id))
-                if response.created_by:
-                    create_result_data.owner_id = response.created_by
+                create_result_data.owner_id = user_id
                 result = await self.document_result_repository.create_document_result(create_result_data.model_dump())
             response.result = DocumentResultResponse.model_validate(result)
             list_res.append(response)
@@ -144,9 +143,10 @@ class DocumentItemService:
         else:
             raise DocumentException(DocumentMessage.NOT_ENOUGH_DATA, DocumentStatusCode.NOT_ENOUGH_DATA)
 
-    async def statistic_todo(self, user_id:str, start: Optional[int] = None, end: Optional[int]= None):
-        total_todo = await self.repository.count_items_by_time_buckets(user_id, DocumentTypeEnum.TODO.value, start, end)
-        todo_done_todo = await self.repository.count_completed_items_by_time_buckets(user_id, DocumentTypeEnum.TODO.value, start, end)
+    async def statistic_todo(self, query: FilterDocumentItem):
+        total_todo = await self.repository.count_items_by_time_buckets(query)
+        query.is_checked = True
+        todo_done_todo = await self.repository.count_completed_items_by_time_buckets(query)
         return ResponseModel(data={
             "total_todo": total_todo,
             "todo_done_todo": todo_done_todo

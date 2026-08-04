@@ -23,7 +23,9 @@ class BeanieMeetingRepository(MeetingRepository):
         return None
 
     async def delete_meeting(self, meeting_id: str):
-        return await MeetingDocument.find_one(MeetingDocument.id==PydanticObjectId(meeting_id)).delete()
+        meeting = await MeetingDocument.get(meeting_id)
+        if meeting:
+            await meeting.delete()
 
     async def get_list_of_meetings(self, filters: FilterMeetingModel) -> tuple[list[MeetingDocument],int]:
         filter_dump = filters.model_dump(exclude_unset=True)
@@ -102,9 +104,45 @@ class BeanieMeetingRepository(MeetingRepository):
 
         # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
         # Trả về document sau khi update
-        meeting = await MeetingDocument.find_one({"_id": PydanticObjectId(meeting_id)}, fetch_links=True).update(
-            [{"$set": pipeline_set}],
-            response_type=UpdateResponse.NEW_DOCUMENT  # Để hàm trả về doc mới nhất,
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
+        )
+        return meeting
+
+    async def remove_participant(self, meeting_id: str, user_id:str)->MeetingDocument:
+        pipeline_set = {
+
+            # Logic cập nhật update_user bằng DB
+            "accepted_participant_ids": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$accepted_participant_ids", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$ne": ["$$user", user_id]}
+                        }
+                    },
+                    []
+                ]
+            }
+        }
+
+        # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
+        # Trả về document sau khi update
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
         )
         return meeting
     async def _add_link_document_item(self, data: dict, document: MeetingDocument):

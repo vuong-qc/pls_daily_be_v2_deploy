@@ -26,3 +26,5 @@ class MeetingRepository(ABC):
     @abstractmethod
     async def add_participant(self, meeting_id: str, user_id:str)->MeetingDocument:
         pass
+    async def remove_participant(self, meeting_id: str, user_id:str)->MeetingDocument:
+        pass

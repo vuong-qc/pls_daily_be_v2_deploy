@@ -44,6 +44,6 @@ class BeanieDocumentResultRepository(DocumentResultRepository):
         list_document = await query.skip(offset).limit(limit).to_list()
         return list_document, count
 
-    async def get_document_result_by_parent_id(self, parent_id: str) ->DocumentResult|None:
-        document = await DocumentResult.find_one(DocumentResult.parent_id==parent_id)
+    async def get_document_result_by_parent_id(self, parent_id: str, owner_id:str) ->DocumentResult|None:
+        document = await DocumentResult.find_one(DocumentResult.parent_id==parent_id, DocumentResult.owner_id==owner_id)
         return document

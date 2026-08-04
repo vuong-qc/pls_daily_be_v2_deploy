@@ -11,3 +11,4 @@ class UpdateNotificationModel(BaseModel):
     duration: Optional[int] = None
     files: Optional[List[str]] = None
     departments: Optional[list[str]] = None
+    is_celebration: Optional[bool] = None

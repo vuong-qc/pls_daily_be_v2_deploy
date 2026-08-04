@@ -519,8 +519,24 @@ class TaskService:
         logger.info(f"count_total_subtask: %s{count_total_subtask}")
         if count_total_subtask == count_sub_task_done and count_sub_task_done > 0:
             update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
-            await self.task_repository.update_work_item(task, update_data.model_dump(
+            task_data =await self.task_repository.update_work_item(task, update_data.model_dump(
                 exclude_unset=True))
+            if not task_data:
+                raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
+            await self._handle_update_sprint_done(task_data.parent)
+
+    async def _handle_update_sprint_done(self, sprint_id: str):
+        filter_task_done = FilterWorkItemModel(status=[TaskStatusEnum.DONE], parent=str(sprint_id), offset=0, limit=1)
+        count_task_done = await self.task_repository.count_work_item(filter_task_done)
+
+        filter_all_subtask = FilterWorkItemModel(status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING],
+                                                 parent=str(sprint_id), offset=0, limit=1)
+        count_total_task = await self.task_repository.count_work_item(filter_all_subtask) + count_task_done
+        if count_total_task == count_task_done and count_task_done > 0:
+            update_data = UpdateTaskModel(status=TaskStatusEnum.DONE)
+            await self.task_repository.update_work_item(sprint_id, update_data.model_dump(
+                exclude_unset=True))
+
 
     async def _count_task(self, filters: FilterTaskModel, total: int):
         # count = 0

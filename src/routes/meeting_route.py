@@ -96,3 +96,14 @@ async def attend_meeting(
 ):
     user_id = user_data['sub']
     return await service.accept_meeting(meeting_id, user_id)
+
+@router.put("/reject-meeting/{meeting_id}",
+            status_code=status.HTTP_202_ACCEPTED,
+            response_model=ResponseModel,)
+async def reject_meeting(
+        meeting_id: str,
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.reject_meeting(meeting_id, user_id)

@@ -111,7 +111,7 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         no_object_id = filter_dump.pop('no_object_id', None)
 
         if filters.type:
-            filter_dump.update(In(DocumentItem.type, filters.type))
+            filter_dump.update(In(DocumentItem.type, [type_enum.value for type_enum in filters.type]))
         if filters.parent_type:
             filter_dump.update(In(DocumentItem.parent_type, filters.parent_type))
         if filters.group_id:
@@ -138,6 +138,16 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
                     LTE(DocumentItem.deadline, end_deadline),
                 )
             )
+        start_time = filter_dump.pop('start_time', None)
+        end_time = filter_dump.pop('end_time', None)
+        if start_time and end_time:
+            filter_dump.update(
+                And(
+                    GTE(DocumentItem.date_time, start_time),
+                    LTE(DocumentItem.date_time, end_time),
+                )
+            )
+        filter_dump["deleted_at"]= None
 
         return filter_dump
     async def _add_link_document_item(self, data: dict, document: DocumentItem):
@@ -237,35 +247,36 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         return buckets
     async def count_items_by_time_buckets(
             self,
-            object_id: str,
-            type: str,
-            start_time: Optional[int] = None,
-            end_time: Optional[int] = None,
+            filters: FilterDocumentItem,
     ) -> dict:
         """
         Thống kê số lượng DocumentItem theo bucket thời gian (VN).
         Filter theo object_id, type và date_time trong [start_time, end_time].
         """
-        end_time = end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
-        filters = {
-            "object_id": object_id,
-            "type": type,
-            "deleted_at": None,
-        }
-        if start_time is None:
-            start_time = await self._get_earliest_created_at(filters, end_time)
 
-        buckets = self._build_time_buckets(start_time, end_time)
+        end_time = filters.end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
+        filters.end_time = end_time
+
+        filter_dump = filters.model_dump(exclude_unset=True)
+        self._build_match(filters, filter_dump)
+        filter_dump.pop('offset', 0)
+        filter_dump.pop('limit', 10)
+
+        if filters.start_time is None:
+            start_time = await self._get_earliest_created_at(filter_dump, end_time)
+            filters.start_time = start_time
+            filter_dump = filters.model_dump(exclude_unset=True)
+            filter_dump.pop('offset', 0)
+            filter_dump.pop('limit', 10)
+            self._build_match(filters, filter_dump)
+
+        buckets = self._build_time_buckets(filters.start_time, end_time)
+
         facet_stage = self._build_facet_stage(buckets, f"{DocumentItem.date_time}")
-
+        print("filter", filter_dump)
         pipeline = [
             {
-                "$match": {
-                    "object_id": object_id,
-                    "type": type,
-                    "date_time": {"$gte": start_time, "$lte": end_time},
-                    "deleted_at": None,
-                }
+                "$match": filter_dump,
             },
             {"$facet": facet_stage},
         ]
@@ -280,10 +291,8 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
 
     async def count_completed_items_by_time_buckets(
             self,
-            object_id: str,
-            type: str,
-            start_time: Optional[int] = None,
-            end_time: Optional[int] = None,
+            filters: FilterDocumentItem,
+
     ) -> dict:
         """
         Thống kê số lượng DocumentItem đã hoàn thành theo bucket thời gian.
@@ -295,52 +304,39 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         Bucket tính theo updated_at của DocumentResult (thời điểm hoàn thành),
         KHÔNG dùng date_time của DocumentItem để filter/bucket.
         """
-        end_time = end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
-        filters = {
-                    "object_id": object_id,
-                    "type": type,
-                    "deleted_at": None,
-                }
-        if start_time is  None:
-            start_time = await self._get_earliest_created_at(filters, end_time)
-        buckets = self._build_time_buckets(start_time, end_time)
-        facet_stage = self._build_facet_stage(
-            buckets, time_field="matched_result.updated_at"
-        )
+        end_time = filters.end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
 
+        filter_dump = filters.model_dump(exclude_unset=True)
+        self._build_match(filters, filter_dump)
+        filter_dump.pop('offset', 0)
+        filter_dump.pop('limit', 10)
+        start_time = filters.start_time
+
+        if start_time is None:
+            start_time = await self._get_earliest_created_at(filter_dump, end_time)
+
+        buckets = self._build_time_buckets(start_time, end_time)
+
+        # change date_time to updated_at
+        filter_dump.pop("start_time", None)
+        filter_dump.pop("end_time", None)
+        filter_dump.pop('offset', 0)
+        filter_dump.pop('limit', 10)
+        filter_dump.update(
+            And(
+                GTE(DocumentItem.updated_at, start_time),
+                LTE(DocumentItem.updated_at, end_time),
+            )
+        )
+        facet_stage = self._build_facet_stage(
+            buckets, time_field=f"{DocumentItem.updated_at}"
+        )
+        print("filter done", filter_dump)
         pipeline = [
             {
-                "$match": filters
+                "$match": filter_dump
             },
-            {"$addFields": {"_id_str": {"$toString": "$_id"}}},
-            {
-                "$lookup": {
-                    "from": DocumentResult.Settings.name,
-                    "let": {"item_id": "$_id_str"},
-                    "pipeline": [
-                        {
-                            "$match": {
-                                "$expr": {
-                                    "$and": [
-                                        {"$eq": ["$parent_id", "$$item_id"]},
-                                        {"$eq": ["$owner_id", object_id]},
-                                        {"$eq": ["$check", True]},
-                                        {"$eq": ["$deleted_at", None]},
-                                        {"$gte": ["$updated_at", start_time]},
-                                        {"$lte": ["$updated_at", end_time]},
-                                    ]
-                                }
-                            }
-                        },
-                        # có thể có nhiều bản ghi result thoả điều kiện, lấy 1 để đếm item
-                        {"$sort": {"updated_at": -1}},
-                        {"$limit": 1},
-                    ],
-                    "as": "matched_result",
-                }
-            },
-            # unwind để lấy matched_result.updated_at làm mốc bucket
-            {"$unwind": "$matched_result"},
+
             {"$facet": facet_stage},
         ]
 

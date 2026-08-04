@@ -99,7 +99,7 @@ class MeetingService:
         filter_task = FilterTaskModel(offset=filters.offset,limit=filters.limit, deadline_end=filters.end_date, assigned_id=[user_id], type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
         filter_todo = FilterDocumentItem(offset=filters.offset,limit=filters.limit, object_id=[user_id],  end_deadline=filters.end_date)
 
-        list_todo_response = await self.document_service.get_list_document(filter_todo)
+        list_todo_response = await self.document_service.get_list_document(filter_todo, user_id)
         task_response = await self.task_service.get_list_tasks(filter_task, user_id)
 
         list_meeting, total = await self.meeting_repository.get_list_of_meetings(filters)
@@ -139,4 +139,7 @@ class MeetingService:
 
     async def accept_meeting(self, meeting_id: str, user_id: str):
         data = await self.meeting_repository.add_participant(meeting_id, user_id)
+        return ResponseModel(data=data)
+    async def reject_meeting(self, meeting_id: str, user_id: str):
+        data = await self.meeting_repository.remove_participant(meeting_id, user_id)
         return ResponseModel(data=data)

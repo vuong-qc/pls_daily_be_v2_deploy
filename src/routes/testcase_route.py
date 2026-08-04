@@ -71,4 +71,5 @@ async def list_documents(
         service: DocumentItemService = Depends(get_testcase_service),
         user_data: dict = Depends(get_current_user_by_token)
 ):
-    return await service.get_list_document(filters)
+    user_id = user_data.get('sub')
+    return await service.get_list_document(filters, user_id)

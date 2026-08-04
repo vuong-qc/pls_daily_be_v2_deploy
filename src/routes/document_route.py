@@ -78,17 +78,16 @@ async def list_documents(
         service: DocumentItemService = Depends(get_document_service),
         user_data: dict = Depends(get_current_user_by_token)
 ):
-    return await service.get_list_document(filters)
+    user_id = user_data.get('sub')
+    return await service.get_list_document(filters, user_id)
 
 @router.get('/statistic-todo',
             response_model=ResponseModel,
             status_code=status.HTTP_200_OK
             )
 async def statistic_todo(
-        user_id: str,
-        start:Optional[int] = None,
-        end:Optional[int] = None,
+        query: Annotated[FilterDocumentItem, Query()],
         service: DocumentItemService = Depends(get_document_service),
         user_data: dict = Depends(get_current_user_by_token)
 ):
-    return await service.statistic_todo(user_id, start, end)
+    return await service.statistic_todo(query)

@@ -24,5 +24,5 @@ class DocumentResultRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_document_result_by_parent_id(self, parent_id: str)->DocumentResult|None:
+    async def get_document_result_by_parent_id(self, parent_id: str, owner_id:str) ->DocumentResult|None:
         pass

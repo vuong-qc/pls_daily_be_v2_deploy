@@ -19,3 +19,4 @@ class NotificationResponse(BaseModel):
     departments: list[str]
     created_at: int
     updated_at: int
+    is_celebration: Optional[bool] = None

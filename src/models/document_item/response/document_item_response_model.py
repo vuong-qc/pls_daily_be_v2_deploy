@@ -46,6 +46,7 @@ class DocumentResponse(BaseModel):
     details: Optional[str] = None
     ftf: Optional[bool] = None
     is_closed: Optional[bool] = None
+    updated_at: Optional[int] = None
 
     @field_validator(
         'assignee_model', mode='before'
