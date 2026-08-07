@@ -8,6 +8,46 @@ from src.models.work_item.response.work_item_response_model import WorkItemRespo
 from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP, EVALUATE_SESSION
 import hashlib
 
+import json
+import re
+
+
+def extract_plain_text_from_delta(delta_raw) -> str:
+    """
+    delta_raw có thể là:
+    - chuỗi JSON: '[{"insert":"..."}]'
+    - hoặc dict: {"ops": [...]}
+    - hoặc list: [{"insert": "..."}]
+    """
+    try:
+        ops = json.loads(delta_raw) if isinstance(delta_raw, str) else delta_raw
+    except (json.JSONDecodeError, TypeError):
+        return str(delta_raw)  # fallback: không parse được thì trả nguyên text
+
+    if isinstance(ops, dict):
+        ops = ops.get("ops", [])
+    if not isinstance(ops, list):
+        return ""
+
+    text_parts = []
+    for op in ops:
+        insert = op.get("insert") if isinstance(op, dict) else None
+        if isinstance(insert, str):
+            text_parts.append(insert)
+        # insert là dict (image/video/embed) -> bỏ qua
+
+    return "".join(text_parts)
+
+
+def is_junk_text(text: str, max_len: int = 200) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return True
+    if re.search(r'(.)\1{19,}', stripped):   # 1 ký tự lặp liên tục >=20 lần
+        return True
+    if len(stripped) > max_len and ' ' not in stripped:  # dài mà không có space
+        return True
+    return False
 
 class FormatContentGgChatAPI:
     @staticmethod
@@ -285,12 +325,18 @@ class FormatContentGgChatAPI:
     @staticmethod
     def _bug_body_lines(item: "WorkItemResponse") -> list[str]:
         bug_type_label = BUG_TYPE.get(item.bug_type, item.bug_type or "")
-        return [
-            TextFormatEnum.BUG_META_LINE.format(bug_type=bug_type_label, screen=item.screen or ""),
-            TextFormatEnum.BUG_EXTRA_INFO.format(extra_info=item.extra_info or ""),
-            TextFormatEnum.BUG_DESCRIPTION.format(description=item.des or ""),
-            TextFormatEnum.BUG_EXPECTED_RESULT.format(expected_result=item.explanation or ""),
-        ]
+        res = []
+        if item.screen:
+            res.append(TextFormatEnum.BUG_META_LINE.format(bug_type=bug_type_label, screen=item.screen))
+        if item.extra_info:
+            res.append(TextFormatEnum.BUG_EXTRA_INFO.format(extra_info=item.extra_info))
+        if item.des:
+            plain_text = extract_plain_text_from_delta(item.des).strip()
+            if not is_junk_text(plain_text):
+                res.append(TextFormatEnum.BUG_DESCRIPTION.format(description=plain_text))
+        if item.explanation:
+            res.append(TextFormatEnum.BUG_EXPECTED_RESULT.format(expected_result=item.explanation))
+        return res
 
     @staticmethod
     def build_bug_new_message(user_name: str, item: "WorkItemResponse") -> str:
