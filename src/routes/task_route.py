@@ -113,7 +113,6 @@ async def get_task(
 
 @router.delete("/delete-task/{task_id}",
                status_code=status.HTTP_204_NO_CONTENT,
-               dependencies=[Depends(RoleCheckerUtil([UserRole.HANDLER.value]))],
                summary="Handler delete task of project",
                )
 async def delete_task(

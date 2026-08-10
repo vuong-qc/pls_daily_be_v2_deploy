@@ -418,7 +418,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         pipeline = [
             {
                 "$group": {
-                    "_id": {"parent": "$parent", "status": "$status"},
+                    "_id": {"parent": "$parent", "status": "$status", "deleted_at": None},
                     "count": {"$sum": 1},
                 }
             },
@@ -663,7 +663,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         story_ids = [str(sid) for sid in story_ids_raw]
 
         # B2: build điều kiện áp cho task, lấy trực tiếp từ filters
-        task_conditions: dict = {"type": WorkItemType.TASK}
+        task_conditions: dict = {"type": WorkItemType.TASK, "deleted_at": None}
         if filters.status:
             task_conditions["status"] = {"$in": filters.status}
         if filters.priority:

@@ -138,8 +138,11 @@ class TaskService:
         if task:
             sprint = await self.task_repository.get_work_item_by_id(task.parent)
             # check parent of task is print or story
-            if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
+            if sprint.type == WorkItemType.SPRINT:
                 await self._check_handler_of_project(sprint.parent, handler_id)
+            elif sprint.type == WorkItemType.BACKLOG:
+                if sprint.parent != handler_id:
+                    raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
             elif sprint.type == WorkItemType.STORY:
                 work_item = await self.task_repository.get_work_item_by_id(sprint.parent)
                 await self._check_handler_of_project(work_item.parent, handler_id)
@@ -384,9 +387,6 @@ class TaskService:
 
 
     async def _check_handler_of_project(self, project_id:str, user_id:str):
-        # check case backlog of user-> project_id is user_id -> not check
-        if project_id == user_id:
-            return
         project = await self.task_repository.get_work_item_by_id(project_id)
         if not project:
             raise ProjectException(ProjectMessage.NOT_FOUND, ProjectStatusCode.NOT_FOUND)
