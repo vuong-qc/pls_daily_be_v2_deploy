@@ -36,6 +36,7 @@ from src.models.department.department_document import DepartmentDocument
 from src.models.notification.notification_document import NotificationDocument
 from src.models.meeting.meeting_document import MeetingDocument
 from src.models.shift_schedule.shift_schedule_document import ShiftScheduleDocument
+from src.models.plan.plan_document import PlanDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
@@ -59,7 +60,7 @@ async def init_db():
                 , FileDocument, DocumentItem, DocumentResult, SessionDocument,
                              ChatbotTokenDocument, OrderDocument, DailySessionView,
                              DepartmentDocument, NotificationDocument, MeetingDocument,
-                             ShiftScheduleDocument
+                             ShiftScheduleDocument, PlanDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")

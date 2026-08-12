@@ -28,6 +28,7 @@ from src.routes.department_route import router as department_route
 from src.routes.notification_route import router as notification_route
 from src.routes.meeting_route import router as meeting_route
 from src.routes.shift_schedule_route import router as shift_schedule_route
+from src.routes.plan_route import router as plan_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -50,6 +51,7 @@ app.include_router(file_route, prefix="/files")
 app.include_router(group_route, prefix="/group")
 app.include_router(meeting_route, prefix="/meeting")
 app.include_router(notification_route, prefix="/notifications")
+app.include_router(plan_route, prefix="/plan")
 app.include_router(profile_route, prefix="/profile")
 app.include_router(project_route, prefix="/project")
 app.include_router(sprint_route, prefix="/sprint")

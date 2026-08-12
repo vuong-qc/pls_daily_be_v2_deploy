@@ -22,6 +22,7 @@ class MeetingDocument(DocumentWithSoftDelete):
     participant_models: Optional[list[Link[UserDocument]]] = None
     handler_models: Optional[list[Link[UserDocument]]] = None
     creator_model: Optional[Link[UserDocument]] = None
+    department_id: Optional[str] = None
 
     class Settings:
         name= 'meetings'

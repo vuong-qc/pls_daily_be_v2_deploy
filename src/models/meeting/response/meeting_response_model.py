@@ -23,3 +23,4 @@ class MeetingResponse(BaseModel):
     participant_models: Optional[list[UserResponse]] = None
     handler_models: Optional[list[UserResponse]] = None
     creator_model: Optional[UserResponse] = None
+    department_id: Optional[str] = None

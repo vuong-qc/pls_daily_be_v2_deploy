@@ -9,3 +9,4 @@ class FilterUserModel(BaseModel):
     status: Optional[int] = None
     department: Optional[list[str]] = None
     manager_department: Optional[list[str]] = None
+    ids: Optional[list[str]] = None

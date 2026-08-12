@@ -16,6 +16,7 @@ class CreateMeetingModel(BaseModel):
     repeat_type: str
     date_of_month: Optional[int] = Field(default=None, le=31)
     parent_id: Optional[str] = None
+    department_id: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_meeting_date(self):

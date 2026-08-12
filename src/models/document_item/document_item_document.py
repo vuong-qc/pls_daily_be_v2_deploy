@@ -43,6 +43,8 @@ class DocumentItem(DocumentWithSoftDelete):
     ftf: Optional[bool] = None
     is_closed: Optional[bool] = False
     updated_at: Optional[int] = Field(default_factory=DateTimeUtil.current_milli_time)
+    created_by_model: Optional[Link[UserDocument]] = None
+    parent_id: Optional[str] = None
 
     class Settings:
         name='document_items'

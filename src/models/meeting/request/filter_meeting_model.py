@@ -5,6 +5,7 @@ class FilterMeetingModel(BaseModel):
     handler: Optional[list[str]] = None
     participant_ids: Optional[list[str]] = None
     accepted_participant_ids: Optional[list[str]] = None
+    department_id: Optional[str] = None
     meeting_form: Optional[str] = None
     creator: Optional[str] = None
     status: Optional[str] = None

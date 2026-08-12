@@ -17,3 +17,4 @@ class UpdateMeetingModel(BaseModel):
     repeat_type: Optional[str] = None
     date_of_month: Optional[int] = Field(None, le=31)
     parent_id: Optional[int] = None
+    department_id: Optional[str] = None

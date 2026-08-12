@@ -157,6 +157,7 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         sprint: str | bool = data.get("sprint", False)
         task: str | bool = data.get("task", False)
         assignee: list[str] | bool = data.get("assignee", False)
+        created_by: str | bool = data.get("created_by", False)
 
         if type(handler) is not bool:
             if handler is None or not PydanticObjectId.is_valid(handler):
@@ -185,6 +186,12 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
                 document.sprint_model = None
             else:
                 document.sprint_model = WorkItemDocument.model_construct(id=PydanticObjectId(sprint))
+
+        if type(created_by) is not bool:
+            if created_by is None or not PydanticObjectId.is_valid(created_by):
+                document.created_by_model = None
+            else:
+                document.created_by_model = UserDocument.model_construct(id=PydanticObjectId(created_by))
 
     async def copy_document_items(self, filters: FilterDocumentItem, new_object_id:str):
         filter_dump = filters.model_dump(exclude_unset=True)

@@ -9,3 +9,7 @@ class DocumentTypeEnum(StrEnum):
     MEETING_DOCUMENT = 'MEETING_DOCUMENT'
     MEETING_REPORT = 'MEETING_REPORT'
     MEETING_CONTENT='MEETING_CONTENT'
+
+class DocumentParentType(StrEnum):
+    PROJECT = 'PROJECT'
+    DEPARTMENT = 'DEPARTMENT'

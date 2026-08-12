@@ -47,6 +47,7 @@ class DocumentResponse(BaseModel):
     ftf: Optional[bool] = None
     is_closed: Optional[bool] = None
     updated_at: Optional[int] = None
+    created_by_model: Optional[UserResponse] = None
 
     @field_validator(
         'assignee_model', mode='before'
@@ -89,6 +90,17 @@ class DocumentResponse(BaseModel):
         if isinstance(v, Link):
             return None
 
+        if isinstance(v, list) and all(isinstance(item, Link) for item in v):
+            return None
+        return v
+
+    @field_validator(
+        'created_by_model', mode='before'
+    )
+    @classmethod
+    def handle_created_by_model(cls, v):
+        if isinstance(v, Link):
+            return None
         if isinstance(v, list) and all(isinstance(item, Link) for item in v):
             return None
         return v
