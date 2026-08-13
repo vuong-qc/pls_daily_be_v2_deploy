@@ -313,11 +313,15 @@ class FormatContentGgChatAPI:
         return hashlib.md5(str(item_id).encode()).hexdigest()[:6].upper()
 
     @staticmethod
-    def _format_field_value(field_key: str, value: Any) -> str:
+    def _format_field_value(field_key: str, value: Any, root_data: "WorkItemResponse") -> str:
         if value is None or value == "":
             return "(trống)"
         if field_key == "bug_type":
             return BUG_TYPE.get(value, str(value))
+        if field_key == "handler_id":
+            return ", ".join(str(v.name) for v in root_data.handler) if root_data.handler else "(trống)"
+        if field_key == "assigned_id":
+            return ", ".join(str(v.name) for v in root_data.assignee) if root_data.assignee else "(trống)"
         if isinstance(value, list):
             return ", ".join(str(v) for v in value) if value else "(trống)"
         return str(value)
@@ -377,7 +381,7 @@ class FormatContentGgChatAPI:
                 lines.append(
                     TextFormatEnum.BUG_UPDATE_FIELD_LINE.format(
                         field_label=field_label,
-                        new_value=FormatContentGgChatAPI._format_field_value(field_key, new_value),
+                        new_value=FormatContentGgChatAPI._format_field_value(field_key, new_value, item),
                     )
                 )
 
