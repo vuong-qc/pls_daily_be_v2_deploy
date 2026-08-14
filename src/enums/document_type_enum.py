@@ -1,6 +1,6 @@
 from enum import StrEnum
 class DocumentTypeEnum(StrEnum):
-    BUG = 'BUG'
+    # BUG = 'BUG'
     DOCUMENT = 'DOCUMENT'
     TC = 'TC'
     QA = 'QA'

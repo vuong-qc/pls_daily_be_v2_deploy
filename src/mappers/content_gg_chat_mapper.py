@@ -22,6 +22,12 @@ BUG_TYPE = {
     "BUG": "BUG",
     "FEEDBACK" : "Góp ý"
 }
+BUG_STATUS = {
+    "NEW" : "Mới",
+    "FIXING" : "Đang sửa",
+    "VERIFIED" : "Đã xác nhận",
+    "FIXED" : "Đã sửa"
+}
 
 FIELD_LABEL_MAP: dict[str, str] = {
     "title": "Tên bug",
@@ -33,12 +39,22 @@ FIELD_LABEL_MAP: dict[str, str] = {
     "extra_info": "Thông tin thêm",
     "explanation": "Kết quả mong muốn",
     "deadline": "Deadline",
-    "handler_id": "Người xử lý",
-    "assigned_id": "Người được giao",
+    "handler_id": "Người sửa",
+    "assigned_id": "Người người gây lỗi",
     "platform": "Nền tảng",
     "device": "Thiết bị",
     "device_version": "Phiên bản thiết bị",
     "project_version": "Phiên bản dự án",
     "action": "Hành động",
     "blame": "Nguyên nhân",
+}
+PRIORITY: dict[str, str] = {
+    "HIGH" : "Ưu tiên cao",
+    "FTF": "Critical",
+    "LOW": "Ưu tiên thấp",
+    "MEDIUM": "Ưu tiên trung bình",
+    "NO_HANDLE" : "Không xử lý",
+    "LATER": "Để sau",
+    "DUPLICATE": "Trùng",
+    "UNKNOWN": "Không xác định"
 }

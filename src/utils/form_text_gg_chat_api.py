@@ -5,7 +5,10 @@ from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.response.work_item_response_model import WorkItemResponse
-from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP, EVALUATE_SESSION
+from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP, EVALUATE_SESSION, BUG_STATUS, PRIORITY
+from src.enums.bug_status_enum import BugStatusEnum
+from src.enums.bug_type_enum import BugTypeEnum
+from src.enums.task_priority_enum import TaskPriorityEnum
 import hashlib
 
 import json
@@ -314,17 +317,74 @@ class FormatContentGgChatAPI:
 
     @staticmethod
     def _format_field_value(field_key: str, value: Any, root_data: "WorkItemResponse") -> str:
+        print("field_key:", field_key)
+        print("value:", value)
+        print("root_data:", root_data)
         if value is None or value == "":
             return "(trống)"
         if field_key == "bug_type":
-            return BUG_TYPE.get(value, str(value))
+            # Lấy tên hiển thị của bug type (ví dụ: "Feedback", "Bug"...)
+            type_label = BUG_TYPE.get(value, str(value))
+
+            # 1. Dạng Feedback -> Màu vàng
+            if value == BugTypeEnum.BUG_TYPE_FEEDBACK:
+                return TextFormatEnum.BUG_TYPE_FEEDBACK.format(type=type_label)
+
+            # 2. Dạng Bug + Priority FTF -> Coi như Critical -> Màu đỏ
+            elif value == BugTypeEnum.BUG_TYPE_BUG and root_data.priority and root_data.priority == TaskPriorityEnum.FTF:
+                return TextFormatEnum.BUG_TYPE_CRITICAL.format(type=type_label)
+
+            # 3. Dạng Bug bình thường -> Màu cam
+            elif value == BugTypeEnum.BUG_TYPE_BUG:
+                return TextFormatEnum.BUG_TYPE_BUG.format(type=type_label)
+
+            # Fallback mặc định nếu không khớp điều kiện nào ở trên
+            return type_label
         if field_key == "handler_id":
-            return ", ".join(str(v.name) for v in root_data.handler) if root_data.handler else "(trống)"
+            return (
+                ", ".join(TextFormatEnum.USERNAME.format(username=v.name) for v in root_data.handler)
+                if root_data.handler else "(trống)"
+            )
+
         if field_key == "assigned_id":
-            return ", ".join(str(v.name) for v in root_data.assignee) if root_data.assignee else "(trống)"
+            return (
+                ", ".join(TextFormatEnum.USERNAME.format(username=v.name) for v in root_data.assignee)
+                if root_data.assignee else "(trống)"
+            )
         if isinstance(value, list):
             return ", ".join(str(v) for v in value) if value else "(trống)"
+        if field_key == "status":
+            status= BUG_STATUS.get(value, str(value))
+            if value == BugStatusEnum.NEW:
+                return TextFormatEnum.BUG_NEW.format(status=status)
+            if value == BugStatusEnum.FIXED:
+                return TextFormatEnum.BUG_FIXED.format(status=status)
+            if value == BugStatusEnum.FIXING:
+                print("status:", TextFormatEnum.BUG_FIXING.format(status=status))
+                return TextFormatEnum.BUG_FIXING.format(status=status)
+            if value == BugStatusEnum.VERIFIED:
+                return TextFormatEnum.BUG_VERIFIED.format(status=status)
+
+        if field_key == "priority":
+            return PRIORITY.get(value, str(value))
         return str(value)
+    @staticmethod
+    def _format_title(root_data: WorkItemResponse) -> str:
+        value = root_data.bug_type
+        # 1. Dạng Feedback -> Màu vàng
+        if value == BugTypeEnum.BUG_TYPE_FEEDBACK:
+            return TextFormatEnum.BUG_TYPE_FEEDBACK.format(type=root_data.title)
+
+        # 2. Dạng Bug + Priority FTF -> Coi như Critical -> Màu đỏ
+        elif value == BugTypeEnum.BUG_TYPE_BUG and root_data.priority and root_data.priority == TaskPriorityEnum.FTF:
+            return TextFormatEnum.BUG_TYPE_CRITICAL.format(type=root_data.title)
+
+        # 3. Dạng Bug bình thường -> Màu cam
+        elif value == BugTypeEnum.BUG_TYPE_BUG:
+            return TextFormatEnum.BUG_TYPE_BUG.format(type=root_data.title)
+
+        # Fallback mặc định nếu không khớp điều kiện nào ở trên
+        return root_data.title
 
     @staticmethod
     def _bug_body_lines(item: "WorkItemResponse") -> list[str]:
@@ -344,13 +404,13 @@ class FormatContentGgChatAPI:
 
     @staticmethod
     def build_bug_new_message(user_name: str, item: "WorkItemResponse") -> str:
-        user_display = user_name or TextFormatEnum.GUEST
+        user_display = TextFormatEnum.BOLD.format(username= user_name)  or TextFormatEnum.GUEST
         bug_code = FormatContentGgChatAPI._get_bug_code(item.id)
 
         lines = [
             TextFormatEnum.BUG_NEW_HEADER,
             TextFormatEnum.BUG_CREATE_LINE.format(
-                user=user_display, bug_code=bug_code, title=item.title or ""
+                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item)
             ),
             *FormatContentGgChatAPI._bug_body_lines(item),
         ]
@@ -362,25 +422,24 @@ class FormatContentGgChatAPI:
             item: "WorkItemResponse",
             changed_fields: Optional[dict[str, Any]] = None,
     ) -> str:
-        user_display = user_name or TextFormatEnum.GUEST
+        user_display = TextFormatEnum.BOLD.format(username= user_name) or TextFormatEnum.GUEST
         bug_code = FormatContentGgChatAPI._get_bug_code(item.id)
 
         lines = [
             TextFormatEnum.BUG_UPDATED_HEADER,
             TextFormatEnum.BUG_UPDATE_LINE.format(
-                user=user_display, bug_code=bug_code, title=item.title or ""
+                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item)
             ),
             *FormatContentGgChatAPI._bug_body_lines(item),
         ]
 
         if changed_fields:
             lines.append("")  # dòng trống ngăn cách 2 block
-            lines.append(TextFormatEnum.BUG_UPDATE_FIELDS_HEADER.format(user=user_display))
             for field_key, new_value in changed_fields.items():
                 field_label = FIELD_LABEL_MAP.get(field_key, field_key)
                 lines.append(
                     TextFormatEnum.BUG_UPDATE_FIELD_LINE.format(
-                        field_label=field_label,
+                        field_label=TextFormatEnum.BOLD.format(username=field_label),
                         new_value=FormatContentGgChatAPI._format_field_value(field_key, new_value, item),
                     )
                 )

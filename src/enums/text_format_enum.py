@@ -42,6 +42,14 @@ class TextFormatEnum(StrEnum):
     BUG_CREATE_LINE = """<font color="#CB1D21"><b>{user}</b></font> vừa tạo bug #{bug_code} - {title}"""
     BUG_UPDATE_LINE = """<font color="#F2994A"><b>{user}</b></font> vừa cập nhật bug #{bug_code} - {title}"""
     BUG_DELETE_LINE = """<font color="#828282"><b>{user}</b></font> vừa xóa bug #{bug_code} - {title}"""
+    BUG_NEW = """<font color="#dc3545"><b>{status}</b></font>"""
+    BUG_FIXING = """<font color="#fd7e14"><b>{status}</b></font>"""
+    BUG_FIXED = """<font color="#0d6efd"><b>{status}</b></font>"""
+    BUG_VERIFIED = """<font color="#198754"><b>{status}</b></font>"""
+
+    BUG_TYPE_FEEDBACK = """<font color="#d97706"><b>{type}</b></font>"""
+    BUG_TYPE_BUG = """<font color="#fd7e14"><b>{type}</b></font>"""
+    BUG_TYPE_CRITICAL = """<font color="#dc3545"><b>{type}</b></font>"""
 
     BUG_META_LINE = """{bug_type} &#8226; {screen}"""
     BUG_EXTRA_INFO = """Thông tin thêm: {extra_info}"""
@@ -49,7 +57,9 @@ class TextFormatEnum(StrEnum):
     BUG_EXPECTED_RESULT = """Kết quả mong muốn: {expected_result}"""
 
     BUG_UPDATE_FIELDS_HEADER = """<font color="#F2994A"><b>{user}</b></font> vừa cập nhật:"""
-    BUG_UPDATE_FIELD_LINE = """&nbsp;&nbsp;&#8226; {field_label} &rarr; {new_value}"""
+    BUG_UPDATE_FIELD_LINE = """&nbsp;&nbsp; {field_label} &rarr; {new_value}"""
+
 
     GUEST = """🐣Người dùng ẩn danh🐣"""
-
+    USERNAME = """<font color=#dc3545><b>{username}</b></font>"""
+    BOLD = """<b>{username}</b>"""

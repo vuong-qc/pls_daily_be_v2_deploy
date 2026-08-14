@@ -151,3 +151,9 @@ class DocumentItemService:
             "total_todo": total_todo,
             "todo_done_todo": todo_done_todo
         })
+    #
+    # async def count_checklist_doc_qa(self, query: FilterDocumentItem):
+    #     DocumentTypeEnum.CHECKLIST # total and resolve
+    #     DocumentTypeEnum.QA # total and resolve
+    #     WorkItemType.BUG # total and resolve
+    #     DocumentTypeEnum.DOCUMENT # total
