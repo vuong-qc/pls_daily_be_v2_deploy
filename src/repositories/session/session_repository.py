@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
+from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel, FilterSessionByDateRangeModel
 from src.models.session.response.project_session_model import UserIdOnly
 from src.models.session.session_document import SessionDocument
 from src.models.session.session_view import DailySessionView
@@ -32,5 +32,5 @@ class SessionRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_session_by_date_range(self, user_id: str, start_date: str, end_date: str)->list[DailySessionView]:
+    async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel)->list[DailySessionView]:
         pass

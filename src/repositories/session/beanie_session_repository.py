@@ -1,6 +1,6 @@
 from beanie import PydanticObjectId
 from zoneinfo import ZoneInfo
-from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel
+from src.models.session.request.filter_session_model import FilterSessionModel, FilterCheckInSessionModel, FilterSessionByDateRangeModel
 from src.models.session.session_document import SessionDocument
 from src.models.user.user_document import UserDocument
 from src.repositories.session.session_repository import SessionRepository
@@ -85,21 +85,59 @@ class BeanieSessionRepository(SessionRepository):
         query = SessionDocument.distinct(SessionDocument.user_id, filter_dump)
         return await query
 
-    async def get_session_by_date_range(self, user_id: str, start_date: str, end_date: str):
-        results = await DailySessionView.find(
-            DailySessionView.user_id == user_id,
-            DailySessionView.id >= start_date,  # Lớn hơn hoặc bằng ngày bắt đầu
-            DailySessionView.id <= end_date  # Nhỏ hơn hoặc bằng ngày kết thúc
-        ).sort("-id").to_list()
+    async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel):
+        pipeline: list[dict] = [
+            {
+                "$match": {
+                    "user_id": filters.user_id,
+                    "id": {"$gte": filters.start_time, "$lte": filters.end_time},
+                }
+            }
+        ]
+        session_conditions = []
+        if filters.checkin_late is not None:
+            session_conditions.append({"$eq": ["$$s.checkin_late", filters.checkin_late]})
+        if filters.checkout_late is not None:
+            session_conditions.append({"$eq": ["$$s.checkout_late", filters.checkout_late]})
+        if filters.arrival_status is not None:
+            session_conditions.append({"$eq": ["$$s.arrival_status", filters.arrival_status]})
+        if filters.departure_status is not None:
+            session_conditions.append({"$eq": ["$$s.departure_status", filters.departure_status]})
+        if filters.evaluate_session is not None:
+            session_conditions.append({"$eq": ["$$s.evaluate_session", filters.evaluate_session]})
+        if filters.work_form is not None:
+            session_conditions.append({"$eq": ["$$s.work_form", filters.work_form]})
+
+        if session_conditions:
+            pipeline.append({
+                "$addFields": {
+                    "sessions": {
+                        "$filter": {
+                            "input": "$sessions",
+                            "as" : "s",
+                            "cond": {"$and": session_conditions},
+                        }
+                    }
+                }
+            })
+            pipeline.append({"$addFields": {"total_sessions": {"$size": "$sessions"}}})
+
+            pipeline.append({"$match": {"total_sessions": {"$gt": 0}}})
+
+        pipeline.append({"$sort": {"id": -1}})
+
+        results = await DailySessionView.aggregate(
+            pipeline, projection_model=DailySessionView
+        ).to_list()
         print("results: ",results)
         data_dict = {item.id: item for item in results}
         list_result = []
-        all_dates = DateTimeUtil.generate_date_range(start_date, end_date)
+        all_dates = DateTimeUtil.generate_date_range(filters.start_time, filters.end_time)
         for date in all_dates:
             if date not in data_dict:
                 list_result.append(DailySessionView(
                     id=date,
-                    user_id=user_id,
+                    user_id=filters.user_id,
                     total_sessions=0,
                     sessions=[],
                 ))

@@ -25,7 +25,7 @@ BUG_TYPE = {
 BUG_STATUS = {
     "NEW" : "Mới",
     "FIXING" : "Đang sửa",
-    "VERIFIED" : "Đã xác nhận",
+    "VERIFIED" : "Xác nhận đã sửa",
     "FIXED" : "Đã sửa"
 }
 

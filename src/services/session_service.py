@@ -305,7 +305,7 @@ class SessionService:
             raise SessionException(SessionMessage.CHECKOUT_DIFF_DATE, SessionStatusCode.CHECKOUT_DIFF_DATE)
 
     async def get_session_by_date_range(self, filters: FilterSessionByDateRangeModel):
-        list_date_session = await self.session_repository.get_session_by_date_range(filters.user_id, filters.start_time, filters.end_time)
+        list_date_session = await self.session_repository.get_session_by_date_range(filters)
         # handle add task, subtask to each session
         # cal point estimate, % process
         # iterate over date -> sessions ->list subtask in session

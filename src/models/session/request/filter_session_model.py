@@ -21,3 +21,9 @@ class FilterSessionByDateRangeModel(BaseModel):
     start_time: str
     end_time: str
     user_id:  str
+    checkin_late: Optional[bool] = None
+    checkout_late: Optional[bool] = None
+    arrival_status: Optional[str] = None
+    departure_status: Optional[str] = None
+    evaluate_session: Optional[str] = None
+    work_form: Optional[str] = None
