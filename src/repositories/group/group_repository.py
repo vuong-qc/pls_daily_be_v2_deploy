@@ -18,3 +18,6 @@ class GroupRepository(ABC):
     @abstractmethod
     async def get_group_by_id(self, group_id: str)->GroupResponse|None:
         pass
+    @abstractmethod
+    async def get_all_groups(self, filters: FilterGroupModel) -> tuple[list[GroupResponse],int]:
+        pass

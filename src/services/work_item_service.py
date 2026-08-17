@@ -53,13 +53,16 @@ class WorkItemService:
         return ResponseModel(data=response)
 
     async def update_work_item_model(self, user_id:str, work_item_id:str, work_item_model: UpdateWorkItemModel):
+        old_work_item_model = await self.work_item_repository.get_work_item_by_id(work_item_id)
+        if not old_work_item_model:
+            raise WorkItemException(WorkItemMessage.WORK_ITEM_NOT_FOUND, WorkItemStatusCode.WORK_ITEM_NOT_FOUND)
         work_item = await self.work_item_repository.update_work_item(work_item_id,work_item_model.model_dump(exclude_unset=True))
         if not work_item:
             raise WorkItemException(WorkItemMessage.WORK_ITEM_NOT_FOUND, WorkItemStatusCode.WORK_ITEM_NOT_FOUND)
         response = WorkItemResponse.model_validate(work_item)
         if work_item.type == WorkItemType.BUG:
             user = await self.user_repository.get_user_by_id(user_id)
-            content = FormatContentGgChatAPI.build_bug_updated_message(user.name, response, work_item_model.model_dump(exclude_unset=True))
+            content = FormatContentGgChatAPI.build_bug_updated_message(user.name, response, WorkItemResponse.model_validate(old_work_item_model), work_item_model.model_dump(exclude_unset=True))
             if response.project:
                 tokens = await self._get_tokens(ChatbotTypeEnum.BUG, self._convert_position(response.project))
                 if tokens:

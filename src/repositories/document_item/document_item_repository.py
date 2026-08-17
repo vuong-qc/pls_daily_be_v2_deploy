@@ -37,3 +37,5 @@ class DocumentItemRepository(ABC):
             self,
             filters: FilterDocumentItem,
     ) -> dict: pass
+    async def get_all_document_items(self, filters: FilterDocumentItem) -> tuple[list[DocumentItem], int]:
+        pass

@@ -26,7 +26,11 @@ BUG_STATUS = {
     "NEW" : "Mới",
     "FIXING" : "Đang sửa",
     "VERIFIED" : "Xác nhận đã sửa",
-    "FIXED" : "Đã sửa"
+    "FIXED" : "Đã sửa",
+    "NO_HANDLE":  "Không xử lý",
+    "LATER" : "Để sau",
+    "DUPLICATE": "Trùng",
+    "UNKNOWN": "Không xác định",
 }
 
 FIELD_LABEL_MAP: dict[str, str] = {
@@ -40,7 +44,7 @@ FIELD_LABEL_MAP: dict[str, str] = {
     "explanation": "Kết quả mong muốn",
     "deadline": "Deadline",
     "handler_id": "Người sửa",
-    "assigned_id": "Người người gây lỗi",
+    "assigned_id": "Người gây lỗi",
     "platform": "Nền tảng",
     "device": "Thiết bị",
     "device_version": "Phiên bản thiết bị",

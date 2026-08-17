@@ -35,6 +35,10 @@ class BeanieGroupRepository(GroupRepository):
         data_dump = filters.model_dump(exclude_unset=True)
         offset = data_dump.pop("offset",0)
         limit = data_dump.pop("limit",10)
+        if filters.parent_ids:
+            data_dump.update(In(
+                GroupDocument.parent_id, filters.parent_ids
+            ))
         if filters.type:
             data_dump.update(In(GroupDocument.type,filters.type))
         if filters.search:
@@ -47,6 +51,29 @@ class BeanieGroupRepository(GroupRepository):
         count = await query.count()
         print("query:",data_dump)
         list_group = await query.skip(offset).limit(limit).to_list()
+        # if can t convert -> change
+        result = [GroupResponse.model_validate(item.model_dump(mode="json")) for item in list_group]
+        return result, count
+    async def get_all_groups(self, filters: FilterGroupModel) -> tuple[list[GroupResponse],int]:
+        data_dump = filters.model_dump(exclude_unset=True)
+        parent_ids = data_dump.pop("parent_ids", [])
+        offset = data_dump.pop("offset",0)
+        limit = data_dump.pop("limit",10)
+
+        if filters.type:
+            data_dump.update(In(GroupDocument.type,filters.type))
+        if filters.search:
+            data_dump.update(RegEx(GroupDocument.name,data_dump.pop("search"),"i"))
+        if filters.parent_ids:
+            data_dump.update(In(GroupDocument.parent_id, parent_ids))
+        if filters.ids:
+            data_dump.update(In(
+                GroupDocument.id, [PydanticObjectId(id_group) for id_group in data_dump.pop("ids",[])]
+                                ))
+        query = GroupDocument.find(data_dump)
+        count = await query.count()
+        print("query:",data_dump)
+        list_group = await query.to_list()
         # if can t convert -> change
         result = [GroupResponse.model_validate(item.model_dump(mode="json")) for item in list_group]
         return result, count

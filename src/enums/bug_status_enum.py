@@ -8,3 +8,4 @@ class BugStatusEnum(StrEnum):
     LATER = "LATER"
     DUPLICATE = "DUPLICATE"
     UNKNOWN = "UNKNOWN"
+    CONFIRMED = "CONFIRMED"

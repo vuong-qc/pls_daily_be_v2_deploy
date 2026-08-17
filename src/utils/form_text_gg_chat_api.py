@@ -369,29 +369,37 @@ class FormatContentGgChatAPI:
             return PRIORITY.get(value, str(value))
         return str(value)
     @staticmethod
-    def _format_title(root_data: WorkItemResponse) -> str:
+    def _format_title(root_data: WorkItemResponse, name:str) -> str:
         value = root_data.bug_type
         # 1. Dạng Feedback -> Màu vàng
         if value == BugTypeEnum.BUG_TYPE_FEEDBACK:
-            return TextFormatEnum.BUG_TYPE_FEEDBACK.format(type=root_data.title)
+            return TextFormatEnum.BUG_TYPE_FEEDBACK.format(type=name)
 
         # 2. Dạng Bug + Priority FTF -> Coi như Critical -> Màu đỏ
         elif value == BugTypeEnum.BUG_TYPE_BUG and root_data.priority and root_data.priority == TaskPriorityEnum.FTF:
-            return TextFormatEnum.BUG_TYPE_CRITICAL.format(type=root_data.title)
+            return TextFormatEnum.BUG_TYPE_CRITICAL.format(type=name)
 
         # 3. Dạng Bug bình thường -> Màu cam
         elif value == BugTypeEnum.BUG_TYPE_BUG:
-            return TextFormatEnum.BUG_TYPE_BUG.format(type=root_data.title)
+            return TextFormatEnum.BUG_TYPE_BUG.format(type=name)
 
         # Fallback mặc định nếu không khớp điều kiện nào ở trên
-        return root_data.title
+        return name
+    @staticmethod
+    def _format_bug_type(root_data: WorkItemResponse) -> str:
+        if root_data.bug_type == BugTypeEnum.BUG_TYPE_FEEDBACK:
+            return TextFormatEnum.BUG_TYPE_FEEDBACK.format(type=TextFormatEnum.BUG_FEEDBACK)
+        else:
+            if root_data.priority and root_data.priority == TaskPriorityEnum.FTF:
+                return TextFormatEnum.BUG_CRITICAL.format(priority=PRIORITY[root_data.priority])
+            return TextFormatEnum.BUG_NORMAL
 
     @staticmethod
     def _bug_body_lines(item: "WorkItemResponse") -> list[str]:
         bug_type_label = BUG_TYPE.get(item.bug_type, item.bug_type or "")
         res = []
         if item.screen:
-            res.append(TextFormatEnum.BUG_META_LINE.format(bug_type=bug_type_label, screen=item.screen))
+            res.append(TextFormatEnum.BUG_SCREEN.format(screen=item.screen))
         if item.extra_info:
             res.append(TextFormatEnum.BUG_EXTRA_INFO.format(extra_info=item.extra_info))
         if item.des:
@@ -406,13 +414,13 @@ class FormatContentGgChatAPI:
     def build_bug_new_message(user_name: str, item: "WorkItemResponse") -> str:
         user_display = TextFormatEnum.BOLD.format(username= user_name)  or TextFormatEnum.GUEST
         bug_code = FormatContentGgChatAPI._get_bug_code(item.id)
-
+        bug_type = FormatContentGgChatAPI._format_bug_type(item)
         lines = [
-            TextFormatEnum.BUG_NEW_HEADER,
+            # TextFormatEnum.BUG_NEW_HEADER,
             TextFormatEnum.BUG_CREATE_LINE.format(
-                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item)
+                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item, item.title), bug = bug_type
             ),
-            *FormatContentGgChatAPI._bug_body_lines(item),
+            # *FormatContentGgChatAPI._bug_body_lines(item),
         ]
         return TextFormatEnum.NEWLINE.join(lines)
 
@@ -420,21 +428,45 @@ class FormatContentGgChatAPI:
     def build_bug_updated_message(
             user_name: str,
             item: "WorkItemResponse",
+            old_item: "WorkItemResponse",
             changed_fields: Optional[dict[str, Any]] = None,
     ) -> str:
         user_display = TextFormatEnum.BOLD.format(username= user_name) or TextFormatEnum.GUEST
         bug_code = FormatContentGgChatAPI._get_bug_code(item.id)
+        owner = item.owner
+        bug_type = FormatContentGgChatAPI._format_bug_type(item)
+        update_line = TextFormatEnum.BUG_UPDATE_LINE.format(
+                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item, item.title), bug=bug_type
+            )
+        if owner:
+            update_line = update_line + TextFormatEnum.SPACE+ TextFormatEnum.OWNER.format(username=owner.name)
 
         lines = [
-            TextFormatEnum.BUG_UPDATED_HEADER,
-            TextFormatEnum.BUG_UPDATE_LINE.format(
-                user=user_display, bug_code=bug_code, title= FormatContentGgChatAPI._format_title(item)
-            ),
-            *FormatContentGgChatAPI._bug_body_lines(item),
+            # TextFormatEnum.BUG_UPDATED_HEADER,
+            update_line,
+            # *FormatContentGgChatAPI._bug_body_lines(item),
+
         ]
 
         if changed_fields:
             lines.append("")  # dòng trống ngăn cách 2 block
+
+            lines.append(
+                TextFormatEnum.BUG_UPDATE_FIELD_LINE_BULLET.format(
+                    field_label=FIELD_LABEL_MAP["handler_id"],
+                    new_value=FormatContentGgChatAPI._format_field_value("handler_id", "", old_item),
+                )
+            )
+            lines.append(
+                TextFormatEnum.BUG_UPDATE_FIELD_LINE_BULLET.format(
+                    field_label=FIELD_LABEL_MAP["status"],
+                    new_value=FormatContentGgChatAPI._format_field_value("status", old_item.status, old_item),
+                )
+            )
+            lines.append(
+                ""
+            )
+
             for field_key, new_value in changed_fields.items():
                 field_label = FIELD_LABEL_MAP.get(field_key, field_key)
                 lines.append(

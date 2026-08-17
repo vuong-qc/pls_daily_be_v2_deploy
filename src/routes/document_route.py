@@ -12,6 +12,7 @@ from src.utils.proxy_util import get_current_user_by_token
 from src.models.document_result.request.update_document_result_model import UpdateDocumentResult
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
 from src.repositories.document_result.beanie_document_result_repository import BeanieDocumentResultRepository
+from src.repositories.group.beanie_group_repository import BeanieGroupRepository
 
 router = APIRouter(
     tags=["document"],
@@ -21,7 +22,8 @@ def get_document_service():
     repository = BeanieDocumentItemRepository()
     work_item_repository = BeanieWorkItemRepository()
     document_result_repository = BeanieDocumentResultRepository()
-    return DocumentItemService(repository, work_item_repository, document_result_repository)
+    group_repository = BeanieGroupRepository()
+    return DocumentItemService(repository, work_item_repository, document_result_repository, group_repository)
 
 @router.post('/create_document',
              status_code=status.HTTP_201_CREATED,
@@ -91,3 +93,14 @@ async def statistic_todo(
         user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.statistic_todo(query)
+
+@router.get('/count-todo-bug-tc-doc',
+            response_model=ResponseModel,
+            status_code=status.HTTP_200_OK)
+async def count_todo_bug_tc(
+        project_id: str,
+        service: DocumentItemService = Depends(get_document_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data.get('sub')
+    return await service.count_checklist_doc_qa(project_id, user_id)

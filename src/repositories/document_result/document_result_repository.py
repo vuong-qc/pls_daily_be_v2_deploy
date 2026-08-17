@@ -26,3 +26,6 @@ class DocumentResultRepository(ABC):
     @abstractmethod
     async def get_document_result_by_parent_id(self, parent_id: str, owner_id:str) ->DocumentResult|None:
         pass
+    @abstractmethod
+    async def get_all_document_result(self, filters: FilterDocumentResult)->tuple[list[DocumentResult], int]:
+        pass

@@ -105,6 +105,16 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         ).sort("+date_time").to_list()
 
         return list_document, count
+    async def get_all_document_items(self, filters: FilterDocumentItem) -> tuple[list[DocumentItem], int]:
+        filter_dump = filters.model_dump(exclude_unset=True)
+        offset = filter_dump.pop('offset', 0)
+        limit = filter_dump.pop('limit', 10)
+        is_closed = filter_dump.pop('is_closed', None)
+        match_stage = self._build_match(filters, filter_dump)
+        query = DocumentItem.find(match_stage)
+        count = await query.count()
+        list_document = await query.to_list()
+        return list_document, count
 
     def _build_match(self, filters: FilterDocumentItem, filter_dump: dict) -> dict:
         """Xây dựng match dict thuần cho aggregation (không còn is_closed, offset, limit)."""
