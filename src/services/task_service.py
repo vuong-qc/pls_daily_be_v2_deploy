@@ -39,6 +39,7 @@ class TaskService:
         self.session_repository = session_repository
 
     async def create_task(self, task_data: CreateTaskModel, handler_id:str = None):
+        task_data.owner_id = handler_id
         if task_data.assigned_id:
             for tasker in task_data.assigned_id:
                 await self.user_service.get_user_by_id(tasker)
@@ -262,6 +263,7 @@ class TaskService:
         raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
 
     async def create_user_task(self, task_data: CreateUserTaskModel, user_id:str):
+        task_data.owner_id = user_id
         sprint = await self.task_repository.get_work_item_by_id(task_data.parent)
         if not sprint:
             raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
@@ -567,9 +569,9 @@ class TaskService:
 
         filter_done_task = filters.model_copy(deep=True)
         filter_done_task.status = [TaskStatusEnum.DONE.value]
-        total_task = await self.task_repository.count_by_time_buckets(filter_total_task)
+        total_task = await self.task_repository.count_by_time_buckets(filter_total_task, True)
         total_done_tasks = await self.task_repository.count_by_time_buckets(filter_done_task)
-        total_point = await self.task_repository.sum_point_by_time_buckets(filter_total_task)
+        total_point = await self.task_repository.sum_point_by_time_buckets(filter_total_task, True)
         total_done_point = await self.task_repository.sum_point_by_time_buckets(filter_done_task)
         response = {}
         response["total_point"] = total_point

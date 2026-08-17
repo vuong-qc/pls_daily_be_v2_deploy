@@ -132,3 +132,8 @@ class WorkItemService:
 
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
         return chat_token
+
+    async def statistic_work_item(self, filters: FilterWorkItemModel):
+
+        date_statistic_summary = await self.work_item_repository.statistic_in_date_range(filters, True)
+        return ResponsePaginatedModel(data=date_statistic_summary, offset=filters.offset, total=len(date_statistic_summary))

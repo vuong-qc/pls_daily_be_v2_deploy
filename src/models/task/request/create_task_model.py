@@ -25,6 +25,7 @@ class CreateUserTaskModel(BaseModel):
     next_order: Optional[str] = None
     prev_order: Optional[str] = None
     point: Optional[int] = None
+    owner_id: Optional[str] = None
 
     @field_validator("type", mode="before")
     @classmethod

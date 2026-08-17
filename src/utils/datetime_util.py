@@ -42,3 +42,9 @@ class DateTimeUtil:
             next_month -= timedelta(days=2)
 
         return int(next_month.timestamp() * 1000)
+
+    @staticmethod
+    def to_date_str(ts_ms: int) -> str:
+        return datetime.fromtimestamp(ts_ms / 1000, tz=ZoneInfo(settings.TZ)).strftime(
+            "%Y-%m-%d"
+        )

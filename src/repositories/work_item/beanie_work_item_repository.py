@@ -5,6 +5,7 @@ from src.models.work_item.request.filter_work_item import FilterWorkItemModel, P
 from src.models.project.response.project_response_model import ProjectResponse
 from src.repositories.work_item.work_item_repository import WorkItemRepository
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
+from src.models.reuse.date_count_result_model import DateCountResult
 from beanie.operators import Set, In, RegEx, LTE, GTE, And, Or
 from beanie import PydanticObjectId
 from src.enums.task_priority_enum import TaskPriorityEnum
@@ -12,6 +13,8 @@ from src.enums.bug_type_enum import BugTypeEnum
 from src.enums.bug_status_enum import BugStatusEnum
 from datetime import datetime, timezone
 from src.models.user.user_document import UserDocument
+from src.configs import settings
+from src.utils.datetime_util import DateTimeUtil
 import re
 import logging
 logger = logging.getLogger(__name__)
@@ -401,7 +404,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         offset = filter_dump.pop("offset", 0)
         limit = filter_dump.pop("limit", 10)
         await self._update_query_by_form(filters, filter_dump)
-        query = WorkItemDocument.find(filter_dump, fetch_links=True)
+        query = WorkItemDocument.find(filter_dump, fetch_links=True, nesting_depth=1)
         list_work_item = await query.to_list()
         return list_work_item
     async def update_many(self, list_ids:list[str], data: dict):
@@ -711,10 +714,13 @@ class BeanieWorkItemRepository(WorkItemRepository):
             status: Optional[list[str]],
             start_time: int,
             end_time: int,
+            is_summary: Optional[bool]=None,
     ) -> dict:
         match_stage: dict = {
             "created_at": {"$gte": start_time, "$lte": end_time},
-        }
+        } if is_summary else {
+            f"{WorkItemDocument.updated_at}": {"$gte": start_time, "$lte": end_time},
+            }
         if type_:
             match_stage["type"] = {"$in": type_}
         if assigned_ids:
@@ -727,7 +733,9 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
     async def count_by_time_buckets(
             self,
-            filters: FilterWorkItemModel
+            filters: FilterWorkItemModel,
+            is_summary: Optional[bool]=None,
+
     ) -> dict:
         """
         Trả về số lượng work item theo từng bucket thời gian.
@@ -737,7 +745,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         start_time = filters.start or (end_time - 30 * DAY_MS)
         buckets = self._build_time_buckets(start_time, end_time)
         branches = self._build_bucket_switch_branches(buckets)
-        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time)
+        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time, is_summary)
 
         pipeline = [
             {"$match": match_stage},
@@ -784,7 +792,8 @@ class BeanieWorkItemRepository(WorkItemRepository):
 
     async def sum_point_by_time_buckets(
             self,
-            filters: FilterWorkItemModel
+            filters: FilterWorkItemModel,
+            is_summary: Optional[bool]=None,
     ) -> dict:
         """
         Trả về tổng point của work item theo từng bucket thời gian.
@@ -794,7 +803,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
         start_time = filters.start or (end_time - 30 * DAY_MS)
         buckets = self._build_time_buckets(start_time, end_time)
         branches = self._build_bucket_switch_branches(buckets)
-        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time)
+        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time, is_summary)
 
         pipeline = [
             {"$match": match_stage},
@@ -833,3 +842,36 @@ class BeanieWorkItemRepository(WorkItemRepository):
             "total": total,
             "time": response
                 }
+    async def statistic_in_date_range(self, filters: FilterWorkItemModel, is_summary: Optional[bool]= None):
+        end_time = filters.end or int(datetime.now(timezone.utc).timestamp() * 1000)
+        start_time = filters.start or (end_time - 30 * DAY_MS)
+        match_stage = self._build_match_stage(filters.type, filters.assigned_id, filters.parent, filters.status,start_time, end_time, is_summary)
+        time_field = f"{WorkItemDocument.created_at}" if is_summary else f"{WorkItemDocument.updated_at}"
+        pipeline = [
+            {
+                "$group": {
+                    "_id":{
+                        "date":{
+                            "$dateToString":{
+                                "format": "%Y-%m-%d",
+                                "date": {"$toDate": f"${time_field}"},
+                                "timezone": settings.TZ
+                            }
+                        }
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$project": {"_id":0, "date": "$_id.date", "count": 1}},
+            {"$sort": {"date": 1}},
+        ]
+        rows = await WorkItemDocument.find(match_stage).aggregate(pipeline, projection_model=DateCountResult).to_list()
+
+        count_by_date = {row.date: row.count for row in rows}
+        start_str = DateTimeUtil.to_date_str(start_time)
+        end_str = DateTimeUtil.to_date_str(end_time)
+        full_range = DateTimeUtil.generate_date_range(start_str, end_str)
+
+        return [
+            DateCountResult(date=d, count=count_by_date.get(d, 0)) for d in full_range
+        ]

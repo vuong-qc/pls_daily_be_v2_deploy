@@ -3,7 +3,7 @@ from typing import Optional
 from src.enums.document_type_enum import DocumentTypeEnum
 
 class FilterDocumentItem(BaseModel):
-    group_id: Optional[list[str]] = None
+    group_id: Optional[list[str|None]] = None
     object_id: Optional[list[str]] = None
     type: Optional[list[DocumentTypeEnum]] = None
     limit: int = Field(10, le=100)

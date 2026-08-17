@@ -98,3 +98,15 @@ async def statistic_bug(
         user_data: dict = Depends(get_current_user_by_token)
         ):
     return await service.statistic_bug(filters)
+
+@router.get('/statistic-work-item',
+            summary='Statistic work item',
+            description='Statistic work item',
+            status_code=status.HTTP_200_OK,
+)
+async def statistic_work_item_model(
+        filters: Annotated[FilterWorkItemModel, Query()],
+        service: WorkItemService = Depends(get_work_item_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    return await service.statistic_work_item(filters)

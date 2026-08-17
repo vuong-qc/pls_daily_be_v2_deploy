@@ -9,6 +9,7 @@ class FilterMeetingModel(BaseModel):
     meeting_form: Optional[str] = None
     creator: Optional[str] = None
     status: Optional[str] = None
+    statuses: Optional[list[str]] = None
     start_date: Optional[int] = None
     end_date: Optional[int] = None
     is_in_meeting: Optional[list[str]] = None

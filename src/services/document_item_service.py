@@ -205,7 +205,7 @@ class DocumentItemService:
         filter_todo_child = filter_groups.model_copy(deep=True)
         todo_ids = [str(g.id) for g in todo_groups]
         filter_todo_child.parent_ids = todo_ids
-        filter_summary_tdo = FilterDocumentItem(offset=0, limit=1,object_id=[project_id],type=[DocumentTypeEnum.TODO])
+        filter_summary_tdo = FilterDocumentItem(offset=0, limit=1,object_id=[project_id],type=[DocumentTypeEnum.TODO], group_id=[None])
         # count
         (
             (docs_children, total),
@@ -409,3 +409,7 @@ class DocumentItemService:
             if r.evaluate and r.evaluate == DocumentResultEvaluate.PASS:
                 bucket["resolve"] += 1
         return counts
+
+    async def statistic_doc_item(self, filters: FilterDocumentItem):
+        statistic_doc_item = await self.repository.statistic_document_item(filters)
+        return ResponsePaginatedModel(data=statistic_doc_item, total=len(statistic_doc_item), offset=filters.offset,)

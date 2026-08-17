@@ -104,3 +104,15 @@ async def count_todo_bug_tc(
 ):
     user_id = user_data.get('sub')
     return await service.count_checklist_doc_qa(project_id, user_id)
+
+@router.get("/statistic-item-date-range",
+            response_model=ResponsePaginatedModel,
+            status_code=status.HTTP_200_OK,
+            summary="Get list date range with doc item",
+            )
+async def statistic_item_date_range(
+        query: Annotated[FilterDocumentItem, Query()],
+        service: DocumentItemService = Depends(get_document_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    return await service.statistic_doc_item(query)

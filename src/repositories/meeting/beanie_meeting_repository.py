@@ -72,6 +72,11 @@ class BeanieMeetingRepository(MeetingRepository):
 
                 )
             )
+        if filters.statuses:
+            filter_dump.update(
+                In(MeetingDocument.status, filter_dump.pop('statuses')),
+            )
+        # print("filter_dump", filter_dump)
 
         query = MeetingDocument.find(filter_dump, fetch_links=True)
         count = await query.count()

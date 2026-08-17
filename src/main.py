@@ -17,6 +17,7 @@ from src.routes.testcase_route import router as testcase_route
 from src.routes.session_route import router as session_route
 from src.routes.work_item_route import router as work_item_route
 from src.routes.profile_route import router as profile_route
+from src.routes.log_route import router as log_route
 from src.configs import settings
 import logging
 
@@ -49,6 +50,7 @@ app.include_router(department_route, prefix="/department")
 app.include_router(user_routes, prefix="/users")
 app.include_router(file_route, prefix="/files")
 app.include_router(group_route, prefix="/group")
+app.include_router(log_route, prefix="/log")
 app.include_router(meeting_route, prefix="/meeting")
 app.include_router(notification_route, prefix="/notifications")
 app.include_router(plan_route, prefix="/plan")

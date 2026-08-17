@@ -95,9 +95,10 @@ class MeetingService:
             hour=23, minute=59, second=59, microsecond=999999
         )
         filters.participant_ids = [user_id]
+        filters.statuses = [MeetingStatusEnum.NEW.value, MeetingStatusEnum.IN_PROGRESS.value]
         filters.end_date =int(end_of_today_vn.timestamp() * 1000)
         filter_task = FilterTaskModel(offset=filters.offset,limit=filters.limit, deadline_end=filters.end_date, assigned_id=[user_id], type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
-        filter_todo = FilterDocumentItem(offset=filters.offset,limit=filters.limit, object_id=[user_id],  end_deadline=filters.end_date)
+        filter_todo = FilterDocumentItem(offset=filters.offset,limit=filters.limit, object_id=[user_id],  end_deadline=filters.end_date, is_checked=False, type=[DocumentTypeEnum.TODO])
 
         list_todo_response = await self.document_service.get_list_document(filter_todo, user_id)
         task_response = await self.task_service.get_list_tasks(filter_task, user_id)

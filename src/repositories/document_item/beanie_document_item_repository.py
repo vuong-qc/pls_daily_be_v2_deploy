@@ -1,15 +1,18 @@
 from beanie import PydanticObjectId
 from beanie.operators import Set, In, LTE, GTE, And, NotIn
 
+from src.configs import settings
 from src.models.work_item.work_item_document import WorkItemDocument
 from src.models.user.user_document import UserDocument
 from src.models.document_item.document_item_document import DocumentItem
-from src.models.document_result.document_result_document import DocumentResult  # TODO: sửa path đúng thực tế
+from src.models.document_result.document_result_document import DocumentResult
 from src.repositories.document_item.document_item_repository import DocumentItemRepository
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
 from datetime import datetime, timezone
+from src.models.reuse.date_count_result_model import DateCountResult
 from typing import Optional
+from src.utils.datetime_util import DateTimeUtil
 
 DAY_MS = 24 * 60 * 60 * 1000
 VN_OFFSET_MS = 7 * 60 * 60 * 1000  # UTC+7
@@ -147,6 +150,14 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
                     GTE(DocumentItem.deadline, start_deadline),
                     LTE(DocumentItem.deadline, end_deadline),
                 )
+            )
+        elif end_deadline:
+            filter_dump.update(
+                LTE(DocumentItem.deadline, end_deadline),
+            )
+        elif start_deadline:
+            filter_dump.update(
+                GTE(DocumentItem.deadline, start_deadline),
             )
         start_time = filter_dump.pop('start_time', None)
         end_time = filter_dump.pop('end_time', None)
@@ -337,6 +348,7 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         # change date_time to updated_at
         filter_dump.pop("start_time", None)
         filter_dump.pop("end_time", None)
+        filter_dump.pop("date_time", None)
         filter_dump.pop('offset', 0)
         filter_dump.pop('limit', 10)
         filter_dump.update(
@@ -415,3 +427,57 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             return fallback
 
         return result[0]["min_created_at"]
+    async def statistic_document_item(self, filters: FilterDocumentItem)->list[DateCountResult]:
+        end_time = filters.end_time or int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        filter_dump = filters.model_dump(exclude_unset=True)
+        self._build_match(filters, filter_dump)
+        filter_dump.pop('offset', 0)
+        filter_dump.pop('limit', 10)
+        start_time = filters.start_time
+
+        if start_time is None:
+            start_time = await self._get_earliest_created_at(filter_dump, end_time)
+
+
+        # change date_time to updated_at
+        filter_dump.pop("start_time", None)
+        filter_dump.pop("end_time", None)
+        filter_dump.pop('offset', 0)
+        filter_dump.pop('limit', 10)
+        filter_dump.update(
+            And(
+                GTE(DocumentItem.updated_at, start_time),
+                LTE(DocumentItem.updated_at, end_time),
+            )
+        )
+
+        # print("filter done", filter_dump)
+        pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "date": {
+                            "$dateToString": {
+                                "format": "%Y-%m-%d",
+                                "date": {"$toDate": f"${DocumentItem.updated_at}"},
+                                "timezone": settings.TZ
+                            }
+                        }
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$project": {"_id": 0, "date": "$_id.date", "count": 1}},
+            {"$sort": {"date": 1}},
+        ]
+        # print("pipeline done", pipeline)
+        rows = await DocumentItem.find(filter_dump).aggregate(pipeline, projection_model=DateCountResult).to_list()
+        count_by_date = {row.date: row.count for row in rows}
+        start_str = DateTimeUtil.to_date_str(start_time)
+        end_str = DateTimeUtil.to_date_str(end_time)
+        full_range = DateTimeUtil.generate_date_range(start_str, end_str)
+
+        return [
+            DateCountResult(date=d, count=count_by_date.get(d, 0)) for d in full_range
+        ]

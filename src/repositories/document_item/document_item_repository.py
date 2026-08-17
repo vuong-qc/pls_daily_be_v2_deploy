@@ -4,6 +4,7 @@ from typing import Optional
 from src.models.document_item.document_item_document import DocumentItem
 from src.models.document_item.request.filter_document_item_model import FilterDocumentItem
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
+from src.models.reuse.date_count_result_model import DateCountResult
 
 class DocumentItemRepository(ABC):
     @abstractmethod
@@ -38,4 +39,7 @@ class DocumentItemRepository(ABC):
             filters: FilterDocumentItem,
     ) -> dict: pass
     async def get_all_document_items(self, filters: FilterDocumentItem) -> tuple[list[DocumentItem], int]:
+        pass
+    @abstractmethod
+    async def statistic_document_item(self, filters: FilterDocumentItem)->list[DateCountResult]:
         pass

@@ -65,10 +65,14 @@ class WorkItemRepository(ABC):
     @abstractmethod
     async def count_by_time_buckets(
             self,
-            filters: FilterWorkItemModel
+            filters: FilterWorkItemModel,
+            is_summary: Optional[bool] = None
     ) -> dict: pass
     @abstractmethod
     async def sum_point_by_time_buckets(
             self,
-            filters: FilterWorkItemModel
+            filters: FilterWorkItemModel,
+            is_summary: Optional[bool] = None
     ) -> dict: pass
+    async def statistic_in_date_range(self, filters: FilterWorkItemModel, is_summary: Optional[bool]= None):
+        pass

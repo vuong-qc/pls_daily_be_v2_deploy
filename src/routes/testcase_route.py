@@ -3,25 +3,19 @@ from typing import Annotated
 from fastapi import APIRouter, status, Depends, Query
 
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
-from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
-from src.repositories.document_result.beanie_document_result_repository import BeanieDocumentResultRepository
-from src.repositories.document_item.beanie_document_item_repository import BeanieDocumentItemRepository
 from src.models.testcase.request.create_testcase_model import CreateTestcaseModel
 from src.models.testcase.request.filter_testcase_model import FilterTestCaseModel
 from src.models.document_item.request.update_document_item_model import UpdateDocumentItem
-from src.services.document_item_service import DocumentItemService
 from src.utils.proxy_util import get_current_user_by_token
+from src.routes.document_route import get_document_service, DocumentItemService
 
 router = APIRouter(
     tags=["testcase"],
 )
 
 
-def get_testcase_service():
-    repository = BeanieDocumentItemRepository()
-    work_item_repository = BeanieWorkItemRepository()
-    document_result_repository = BeanieDocumentResultRepository()
-    return DocumentItemService(repository, work_item_repository, document_result_repository)
+def get_testcase_service(doc_service: DocumentItemService = Depends(get_document_service)):
+    return doc_service
 
 
 @router.post('/create_testcase',

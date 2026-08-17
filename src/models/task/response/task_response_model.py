@@ -31,6 +31,8 @@ class TaskResponse(BaseModel):
     order: Optional[str] = None
     percent_process: Optional[float] = None
     session_id: Optional[str] = None
+    owner: Optional[UserResponse] = None
+    owner_id: Optional[str] = None
     estimated_point: Optional[int] = None
     total_subtask: Optional[int] = None
 
@@ -63,6 +65,16 @@ class TaskResponse(BaseModel):
 
         if isinstance(v, list) and all(isinstance(item, Link) for item in v):
             return None
+        return v
+
+    @field_validator(
+        'owner', mode='before'
+    )
+    @classmethod
+    def handle_owner(cls, v):
+        if isinstance(v, Link):
+            return None
+
         return v
 
 class ResponseSprintStatisticTask(ResponsePaginatedModel):
