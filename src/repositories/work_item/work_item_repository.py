@@ -28,6 +28,10 @@ class WorkItemRepository(ABC):
         pass
 
     @abstractmethod
+    async def count_work_items_or_logic(self, filters: FilterWorkItemModel) ->int:
+        pass
+
+    @abstractmethod
     async def get_children(self, parent_id:str, status: Optional[list[str]]= None, user_id: Optional[str]= None) ->list[WorkItemDocument]:
         pass
 

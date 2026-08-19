@@ -55,6 +55,7 @@ class WorkItemDocument(DocumentWithSoftDelete):
     device_version: Optional[str] = None
     project_version: Optional[str] = None
     bug_type: Optional[str] = None
+    department_id: Optional[str] = None
 
     class Settings:
         name = "work_items"

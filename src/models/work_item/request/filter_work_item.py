@@ -28,6 +28,7 @@ class FilterWorkItemModel(BaseModel):
     bug_type: Optional[str] = None
     start: Optional[int] = None
     end: Optional[int] = None
+    department_id: Optional[list[str]] = None
 
 class ParentStatusCount(BaseModel):
     parent: str

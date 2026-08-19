@@ -93,6 +93,24 @@ class BeanieWorkItemRepository(WorkItemRepository):
         query = WorkItemDocument.find(filter_dump)
         count = await query.count()
         return count
+    async def count_work_items_or_logic(self, filters: FilterWorkItemModel) ->int:
+        conditions = []
+        and_conditions = []
+        if filters.status:
+            and_conditions.append(In(WorkItemDocument.status, filters.status))
+        if filters.assigned_id:
+            conditions.append(In(WorkItemDocument.assigned_id, filters.assigned_id))
+        if filters.handler_id:
+            conditions.append(In(WorkItemDocument.handler_id, filters.handler_id))
+        if filters.owner_id:
+            conditions.append(In(WorkItemDocument.owner_id, filters.owner_id))
+        if filters.type:
+            and_conditions.append(In(WorkItemDocument.type, filters.type))
+        if conditions:
+            and_conditions.append(Or(*conditions))
+        query = WorkItemDocument.find(And(*and_conditions)) if and_conditions else WorkItemDocument.find()
+        count = await query.count()
+        return count
     async def get_children(self, parent_id:str, status: Optional[list[str]]= None, user_id: Optional[str]= None) ->list[WorkItemDocument]:
         filters = FilterWorkItemModel(offset=0, limit=10, parent=parent_id)
 
@@ -133,6 +151,10 @@ class BeanieWorkItemRepository(WorkItemRepository):
     async def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
+        if filters.department_id:
+            filter_dump.update(
+                In(WorkItemDocument.department_id, filter_dump.pop("department_id"))
+            )
         filter_dump.pop('is_today', None)
         if not filters.status:
             filter_dump.pop("status", None)

@@ -110,3 +110,14 @@ async def statistic_work_item_model(
         user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.statistic_work_item(filters)
+@router.get('/get-my-bug',
+            summary='Get my bug',
+            description='Get my bug',
+            status_code=status.HTTP_200_OK,
+            response_model=ResponseModel,)
+async def get_my_bug_model(
+        service: WorkItemService = Depends(get_work_item_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data.get('sub')
+    return await service.count_my_bugs(user_id)

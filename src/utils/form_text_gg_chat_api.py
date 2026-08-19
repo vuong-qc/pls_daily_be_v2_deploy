@@ -454,7 +454,7 @@ class FormatContentGgChatAPI:
             lines.append(
                 TextFormatEnum.BUG_UPDATE_FIELD_LINE_BULLET.format(
                     field_label=FIELD_LABEL_MAP["handler_id"],
-                    new_value=FormatContentGgChatAPI._format_field_value("handler_id", "", old_item),
+                    new_value=FormatContentGgChatAPI._format_field_value("handler_id", old_item.handler_id, old_item),
                 )
             )
             lines.append(
