@@ -83,7 +83,7 @@ class TaskService:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
         if task_data.assigned_id and (task.des is None and task.point is None and task.point is None and task.deadline is None):
             raise TaskException(TaskMessage.CANT_ASSIGN_TASK, TaskStatusCode.CANT_ASSIGN_TASK)
-        if not PydanticObjectId.is_valid(task_data.parent):
+        if task_data.parent and not PydanticObjectId.is_valid(task_data.parent):
             raise TaskException(TaskMessage.PARENT_TASK_NOT_FOUND, TaskStatusCode.PARENT_TASK_NOT_FOUND)
         if handler_id:
             # if user_id not in user assign => check role

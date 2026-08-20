@@ -238,7 +238,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
             motor_collection = WorkItemDocument.get_pymongo_collection()
             story_ids_raw = await motor_collection.distinct(
                 "parent",
-                {**child_raw_query, "parent": {"$ne": None}},
+                {**child_raw_query, "parent": {"$ne": None}, "deleted_at": None},
             )
             story_ids = [
                 PydanticObjectId(pid) if not isinstance(pid, PydanticObjectId) else pid
