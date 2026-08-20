@@ -73,6 +73,9 @@ class BeanieUserRepository(UserRepository):
         if filters.get("manager_department"):
             manager_department = filters.pop("manager_department", [])
             filters.update(In(UserDocument.manager_department, manager_department))
+        if filters.get("ids"):
+            ids = filters.pop("ids")
+            filters.update(In(UserDocument.id, [PydanticObjectId(uid) for uid in ids]))
 
         query = UserDocument.find(filters,fetch_links=True)
         count = await query.count()

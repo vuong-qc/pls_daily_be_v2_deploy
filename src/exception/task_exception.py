@@ -12,6 +12,7 @@ class TaskMessage(StrEnum):
     NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN = 'Can not change type of task/story has children'
     CANCELED_TASK = 'Canceled task'
     CANT_ASSIGN_TASK = 'Cant assign task to user, miss des, point, deadline'
+    PARENT_TASK_NOT_FOUND = 'Parent task not found'
 class TaskStatusCode(IntEnum):
     TASK_NOT_FOUND = status.HTTP_404_NOT_FOUND
     SUBTASK_NOT_FOUND = status.HTTP_404_NOT_FOUND
@@ -23,6 +24,7 @@ class TaskStatusCode(IntEnum):
     NOT_CHANGE_TYPE_ITEM_HAS_CHILDREN = status.HTTP_400_BAD_REQUEST
     CANCELED_TASK = status.HTTP_400_BAD_REQUEST
     CANT_ASSIGN_TASK = status.HTTP_400_BAD_REQUEST
+    PARENT_TASK_NOT_FOUND = status.HTTP_404_NOT_FOUND
 
 class TaskException(HTTPException):
     def __init__(self, message:TaskMessage, code: TaskStatusCode):

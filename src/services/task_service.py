@@ -1,4 +1,5 @@
 from typing import Optional
+from beanie import PydanticObjectId
 
 from src.enums.session_status_enum import SessionStatusEnum
 from src.models.session.request.filter_session_model import FilterSessionModel
@@ -82,16 +83,20 @@ class TaskService:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
         if task_data.assigned_id and (task.des is None and task.point is None and task.point is None and task.deadline is None):
             raise TaskException(TaskMessage.CANT_ASSIGN_TASK, TaskStatusCode.CANT_ASSIGN_TASK)
+        if not PydanticObjectId.is_valid(task_data.parent):
+            raise TaskException(TaskMessage.PARENT_TASK_NOT_FOUND, TaskStatusCode.PARENT_TASK_NOT_FOUND)
         if handler_id:
             # if user_id not in user assign => check role
             if handler_id not in task.assigned_id:
                 sprint = await self.task_repository.get_work_item_by_id(task.parent)
                 if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
+                    logger.info("update task in case sprint backlog")
                     await self._check_handler_of_project(sprint.parent, handler_id)
                 # case story
                 if sprint.type == WorkItemType.STORY:
                     # get sprint/backlog
                     # check param type exist => raise error
+                    logger.info("update task in case story")
                     if task_data.type and task_data.type != WorkItemType.TASK:
                         raise TaskException(TaskMessage.NOT_UPDATE_TASK_TYPE_IN_STORY, TaskStatusCode.NOT_UPDATE_TASK_TYPE_IN_STORY)
                     parent = await self.task_repository.get_work_item_by_id(sprint.parent)
@@ -118,7 +123,6 @@ class TaskService:
                 logger.info("check filter order: %s", filter_order)
                 if not order_model:
                     raise
-
                 parent_id = task_data.parent if task_data.parent else task.parent
                 update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
                 updated_order = await self.order_repository.update_order(str(order_model.id),
@@ -139,11 +143,11 @@ class TaskService:
         if task:
             sprint = await self.task_repository.get_work_item_by_id(task.parent)
             # check parent of task is print or story
-            if sprint.type == WorkItemType.SPRINT:
+            if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
                 await self._check_handler_of_project(sprint.parent, handler_id)
-            elif sprint.type == WorkItemType.BACKLOG:
-                if sprint.parent != handler_id:
-                    raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
+            # elif sprint.type == WorkItemType.BACKLOG:
+            #     if sprint.parent != handler_id:
+            #         raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
             elif sprint.type == WorkItemType.STORY:
                 work_item = await self.task_repository.get_work_item_by_id(sprint.parent)
                 await self._check_handler_of_project(work_item.parent, handler_id)
@@ -389,6 +393,9 @@ class TaskService:
 
 
     async def _check_handler_of_project(self, project_id:str, user_id:str):
+        if user_id == project_id:
+            # case backlog
+            return
         project = await self.task_repository.get_work_item_by_id(project_id)
         if not project:
             raise ProjectException(ProjectMessage.NOT_FOUND, ProjectStatusCode.NOT_FOUND)

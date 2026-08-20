@@ -533,6 +533,8 @@ class BeanieWorkItemRepository(WorkItemRepository):
             query["_id"] = {"$in": [PydanticObjectId(i) for i in filters.list_ids]}
         if filters.search:
             query["title"] = {"$regex": filters.search, "$options": "i"}
+        if filters.department_id:
+            query["department_id"] = {"$in": filters.department_id}
 
         return query
 

@@ -23,7 +23,7 @@ def extract_plain_text_from_delta(delta_raw) -> str:
     - hoặc list: [{"insert": "..."}]
     """
     try:
-        ops = json.loads(delta_raw) if isinstance(delta_raw, str) else delta_raw
+        ops = json.loads(delta_raw, strict=False) if isinstance(delta_raw, str) else delta_raw
     except (json.JSONDecodeError, TypeError):
         return str(delta_raw)  # fallback: không parse được thì trả nguyên text
 
@@ -367,6 +367,19 @@ class FormatContentGgChatAPI:
 
         if field_key == "priority":
             return PRIORITY.get(value, str(value))
+
+        if field_key == "screen":
+            return TextFormatEnum.BUG_SCREEN.format(screen=value)
+        if field_key == "extra_info":
+            return TextFormatEnum.BUG_EXTRA_INFO.format(extra_info=value)
+        if field_key == "des":
+            plain_text = extract_plain_text_from_delta(value).strip()
+            return TextFormatEnum.BUG_DESCRIPTION.format(description=plain_text)
+        if field_key == "explanation":
+            return TextFormatEnum.BUG_EXPECTED_RESULT.format(expected_result= value)
+        if field_key == "note":
+            plain_text = extract_plain_text_from_delta(value).strip()
+            return plain_text
         return str(value)
     @staticmethod
     def _format_title(root_data: WorkItemResponse, name:str) -> str:

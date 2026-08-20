@@ -28,7 +28,7 @@ class BeanieEvaluateRepository(EvaluateRepository):
         return
 
     async def get_evaluate_by_id(self, evaluate_id: str) -> EvaluateDocument | None:
-        return await EvaluateDocument.find_one(EvaluateDocument.id==evaluate_id, fetch_links=True)
+        return await EvaluateDocument.find_one(EvaluateDocument.id==PydanticObjectId(evaluate_id), fetch_links=True)
 
     async def get_list_evaluate(self, filter_evaluate_model: FilterEvaluateModel) -> tuple[list[EvaluateDocument], int]:
         filter_dump = filter_evaluate_model.model_dump(exclude_unset=True)

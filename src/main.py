@@ -31,6 +31,7 @@ from src.routes.meeting_route import router as meeting_route
 from src.routes.shift_schedule_route import router as shift_schedule_route
 from src.routes.plan_route import router as plan_route
 from src.routes.evaluate_route import router as evaluate_route
+from src.routes.comment_route import router as comment_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -46,6 +47,7 @@ app = FastAPI(
 app.include_router(support_route, prefix="/support")
 app.include_router(auth_routes, prefix="/auths")
 app.include_router(chatbot_token_route, prefix="/chatbot")
+app.include_router(comment_route, prefix="/comment")
 app.include_router(document_route, prefix="/document")
 app.include_router(department_route, prefix="/department")
 app.include_router(evaluate_route, prefix="/evaluate")

@@ -86,7 +86,7 @@ class DocumentItemService:
             raise DocumentException(DocumentMessage.DOCUMENT_RESULT_NOT_FOUND, DocumentStatusCode.DOCUMENT_RESULT_NOT_FOUND)
         # if doc_result.owner_id != user_id:
         #     raise DocumentException(DocumentMessage.NOT_CREATOR, DocumentStatusCode.NOT_CREATOR)
-        print("doc result", doc_result)
+        # print("doc result", doc_result)
         updated_document = await self.document_result_repository.update_document_result(document_result_id, data.model_dump(exclude_unset=True))
         if not updated_document:
             raise DocumentException(DocumentMessage.DOCUMENT_RESULT_NOT_FOUND, DocumentStatusCode.DOCUMENT_RESULT_NOT_FOUND)
@@ -189,13 +189,13 @@ class DocumentItemService:
             groups_by_type.setdefault(g.type, []).append(g)
 
         todo_groups = groups_by_type.get(GroupType.TODO, [])
-        print("todo_groups:", todo_groups)
+        # print("todo_groups:", todo_groups)
         doc_groups = groups_by_type.get(GroupType.DOCUMENT, [])
-        print("doc_groups:", doc_groups)
+        # print("doc_groups:", doc_groups)
         tc_groups = groups_by_type.get(GroupType.TC, [])
-        print("tc_groups:", tc_groups)
+        # print("tc_groups:", tc_groups)
         bug_groups = groups_by_type.get(GroupType.BUG, [])
-        print("bug_groups:", bug_groups)
+        # print("bug_groups:", bug_groups)
 
         # 2) Todo có 2 cấp -> query lần 2: lấy group con theo list id group cha vừa lấy
         doc_ids = [str(g.id) for g in doc_groups]
@@ -331,7 +331,7 @@ class DocumentItemService:
             return {}
         filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=1)
         items, total = await self.repository.get_all_document_items(filters)
-        print("items:", items)
+        # print("items:", items)
         print("filters:", filters)
         counts: dict = {}
         for item in items:
