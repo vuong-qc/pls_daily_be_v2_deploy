@@ -188,7 +188,7 @@ class SessionService:
 
         chat_token.extend(token_master)
         print("chat token", chat_token)
-        if total > 0:
+        if total + total_master > 0:
             list_subtasks = [ subtask.id for subtask in session_data.list_subtasks]
             list_task_data = await self._handle_subtask_form_checkout(list_subtasks)
             if not list_task_data:

@@ -9,3 +9,4 @@ class BugStatusEnum(StrEnum):
     DUPLICATE = "DUPLICATE"
     UNKNOWN = "UNKNOWN"
     CONFIRMED = "CONFIRMED"
+    NEW_FUNCTION = "NEW_FUNCTION"

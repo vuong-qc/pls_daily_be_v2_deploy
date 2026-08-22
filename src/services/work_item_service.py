@@ -145,7 +145,7 @@ class WorkItemService:
         filters_summary= FilterWorkItemModel(offset=0, limit=10, handler_id=[user_id], type=[WorkItemType.BUG], assigned_id=[user_id], owner_id=[user_id])
         filters_fixed_summary = filters_summary.model_copy(deep=True)
         fix_status = [BugStatusEnum.FIXED, BugStatusEnum.VERIFIED]
-        not_resolved_status = [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXED, BugStatusEnum.NEW]
+        not_resolved_status = [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXING, BugStatusEnum.NEW]
         filters_fixed_summary.status= fix_status
         filters_not_resolved_status_summary = filters_fixed_summary.model_copy(deep=True)
         filters_not_resolved_status_summary.status = not_resolved_status

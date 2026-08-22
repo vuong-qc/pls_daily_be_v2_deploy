@@ -384,7 +384,7 @@ class DocumentItemService:
         for bug in all_bugs:
             if bug.status == BugStatusEnum.VERIFIED:
                 resolve += 1
-            if bug.status in [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXED, BugStatusEnum.NEW]:
+            if bug.status in [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXING, BugStatusEnum.NEW]:
                 not_resolved += 1
 
         return {"total": total, "resolve": resolve, "not_resolved": not_resolved}
