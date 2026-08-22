@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 
 import pymongo
-from beanie import DocumentWithSoftDelete, Link
+from beanie import DocumentWithSoftDelete, Link, before_event, Update
 from beanie import PydanticObjectId
 from pydantic import BaseModel, Field
 from pymongo import IndexModel
+
+from src.utils.datetime_util import DateTimeUtil
 
 if TYPE_CHECKING:
     from src.models.user.user_document import UserDocument
@@ -68,7 +70,9 @@ class WorkItemDocument(DocumentWithSoftDelete):
             IndexModel([("status", pymongo.ASCENDING),("deadline", pymongo.ASCENDING)]),
             IndexModel([("type", pymongo.ASCENDING), ("created_at", pymongo.ASCENDING)]),
         ]
-
+    @before_event(Update)
+    def handle_update(self):
+        self.updated_at = DateTimeUtil.current_milli_time()
 
 class SprintTaskStatsResult(BaseModel):
     id: PydanticObjectId = Field(alias="_id")

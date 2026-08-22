@@ -1,5 +1,5 @@
 from beanie import PydanticObjectId
-from beanie.operators import Set, In, LTE, GTE, And, NotIn
+from beanie.operators import Set, In, LTE, GTE, And, NotIn, Or
 
 from src.configs import settings
 from src.models.work_item.work_item_document import WorkItemDocument
@@ -129,7 +129,18 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             filter_dump.update(In(DocumentItem.parent_type, filters.parent_type))
         if filters.group_id:
             filter_dump.update(In(DocumentItem.group_id, filters.group_id))
-
+        if filters.assignee:
+            filter_dump.update(In(DocumentItem.assignee, filter_dump.pop('assignee')))
+        if filters.created_by:
+            filter_dump.update(In(DocumentItem.created_by, filter_dump.pop('created_by')))
+        if filters.creator_or_assignee:
+            creator_assignee = filter_dump.pop('creator_or_assignee')
+            filter_dump.update(
+                Or(
+                    In(DocumentItem.created_by, creator_assignee),
+                    In(DocumentItem.assignee, creator_assignee),
+                )
+            )
         if filters.object_id and no_object_id:
             filter_dump.update(
                 And(

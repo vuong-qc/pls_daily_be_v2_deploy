@@ -364,6 +364,7 @@ class FormatContentGgChatAPI:
                 return TextFormatEnum.BUG_FIXING.format(status=status)
             if value == BugStatusEnum.VERIFIED:
                 return TextFormatEnum.BUG_VERIFIED.format(status=status)
+            return TextFormatEnum.BOLD.format(username=BUG_STATUS.get(value, str(value)))
 
         if field_key == "priority":
             return PRIORITY.get(value, str(value))

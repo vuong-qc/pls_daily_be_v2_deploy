@@ -31,6 +31,7 @@ BUG_STATUS = {
     "LATER" : "Để sau",
     "DUPLICATE": "Trùng",
     "UNKNOWN": "Không xác định",
+    "CONFIRMED": "Sẽ sửa"
 }
 
 FIELD_LABEL_MAP: dict[str, str] = {

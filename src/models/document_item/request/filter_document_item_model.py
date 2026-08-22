@@ -19,3 +19,6 @@ class FilterDocumentItem(BaseModel):
     no_object_id: Optional[list[str]] = None
     start_time: Optional[int] = None
     end_time: Optional[int] = None
+    assignee: Optional[list[str]] = None
+    created_by: Optional[list[str]] = None
+    creator_or_assignee: Optional[list[str]] = None

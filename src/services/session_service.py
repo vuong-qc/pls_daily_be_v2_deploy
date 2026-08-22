@@ -1,4 +1,5 @@
 # from src.enums.chatbot_type_enum import ChatbotTypeEnum
+from src.enums.chatbot_type_enum import ChatbotTypeEnum
 from src.exception.user_exception import ExceptionUserNotFound
 from src.configs import settings
 from src.enums.user_role_enum import UserRole
@@ -57,11 +58,18 @@ class SessionService:
         response = SessionResponse.model_validate(created_session)
         # inject call webhook
         # get token
-        # filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
+        departments = [f"DEPARTMENT_{department}" for  department in response.user.department] if response.user.department else []
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[ChatbotTypeEnum.DEFAULT]) if response.user.department is not None else FilterChatbotTokenModel(offset=0, limit=1)
+        # print("filter_chat_token : ",filter_chat_token)
 
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
-        if total > 0:
+        token_master, total_master = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token_master)
+
+        chat_token.extend(token_master)
+        print("chat token", chat_token)
+        # print("chat_token : ",chat_token)
+        if total+ total_master > 0:
             list_task = []
             list_task_data = []
             await asyncio.gather(*[
@@ -79,7 +87,8 @@ class SessionService:
                 else:
                     departments = None
             content = FormatContentGgChatAPI.format_content_checkin(response.user.name, list_task,session_data.notes, departments, session_data.start_time, response.user.nickname, session_data.checkin_late, session_data.arrival_status, session_data.work_form)
-            GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+            for token in chat_token:
+                GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
 
@@ -165,8 +174,20 @@ class SessionService:
 
         # inject call webhook
         # get token
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        departments = [f"DEPARTMENT_{department}" for department in
+                       response.user.department] if response.user.department else []
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[
+            ChatbotTypeEnum.DEFAULT]) if response.user.department is not None else FilterChatbotTokenModel(offset=0,
+                                                                                                           limit=1)
+        # print("filter_chat_token : ",filter_chat_token)
+        filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
+
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        token_master, total_master = await self.chatbot_token_repository.get_list_chatbot_tokens(
+            filter_chat_token_master)
+
+        chat_token.extend(token_master)
+        print("chat token", chat_token)
         if total > 0:
             list_subtasks = [ subtask.id for subtask in session_data.list_subtasks]
             list_task_data = await self._handle_subtask_form_checkout(list_subtasks)
@@ -186,7 +207,8 @@ class SessionService:
                 else:
                     departments = None
             content = FormatContentGgChatAPI.format_content_checkout(response.user.name, list_task_data, session_data.note_result, departments, session_data.end_time, response.user.nickname, session_data.checkout_late, session_data.departure_status, response.work_form, response.evaluate_session)
-            GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+            for token in chat_token:
+                GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
             response.list_tasks_data = list_task_data
         return ResponseModel(data=response)
 

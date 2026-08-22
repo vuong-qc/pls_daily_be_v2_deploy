@@ -15,4 +15,5 @@ class GroupResponse(BaseModel):
 class GroupSummaryResponseModel(GroupResponse):
     total: Optional[int] = None
     resolve: Optional[int] = None
+    not_resolved: Optional[int] = None
     children: Optional[list["GroupSummaryResponseModel"]] = None

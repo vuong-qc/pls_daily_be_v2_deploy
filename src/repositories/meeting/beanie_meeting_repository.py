@@ -80,7 +80,7 @@ class BeanieMeetingRepository(MeetingRepository):
 
         query = MeetingDocument.find(filter_dump, fetch_links=True)
         count = await query.count()
-        list_meeting = await query.skip(offset).limit(limit).to_list()
+        list_meeting = await query.sort(f"+{MeetingDocument.meeting_date}").skip(offset).limit(limit).to_list()
         return list_meeting, count
 
     async def get_meeting_by_id(self, meeting_id: str)->MeetingDocument|None:

@@ -249,6 +249,7 @@ class DocumentItemService:
                 name="DEFAULT",
                 total=bug_default_counts["total"],
                 resolve=bug_default_counts["resolve"],
+                not_resolved=bug_default_counts["not_resolved"],
             )
         )
         summary_todo = []
@@ -256,7 +257,9 @@ class DocumentItemService:
             GroupSummaryResponseModel(
                 type=GroupType.TODO,
                 name="SUMMARY",
-                total=total_summary_todo
+                total=total_summary_todo,
+                resolve=0,
+                not_resolved=0,
             )
         )
 
@@ -283,6 +286,7 @@ class DocumentItemService:
             is_archived=g.is_archived,
             total=counts.get("total", 0),
             resolve=counts.get("resolve"),
+            not_resolved=counts.get("not_resolved"),
             children=[],
         )
 
@@ -306,18 +310,16 @@ class DocumentItemService:
     def _build_bug(self, bug_groups, counts_by_group, dict_group):
         result = []
         for g in bug_groups:
-            node = self._to_node(g, counts_by_group.get(str(g.id), {"total": 0, "resolve": 0}))
+            node = self._to_node(g, counts_by_group.get(str(g.id), {"total": 0, "resolve": 0, "not_resolved": 0}))
             dict_group[str(g.id)] = node
             result.append(node)
-
-        # bug không thuộc group nào -> node ảo "DEFAULT" (id=None), lấy từ nguồn đếm riêng
 
         return result
 
     def _build_tc(self, tc_groups, counts_by_group, dict_group):
         result = []
         for g in tc_groups:
-            node = self._to_node(g, counts_by_group.get(str(g.id), {"total": 0, "resolve": 0}))
+            node = self._to_node(g, counts_by_group.get(str(g.id), {"total": 0, "resolve": 0, "not_resolved": 0}))
             dict_group[str(g.id)] = node
             result.append(node)
         return result
@@ -354,10 +356,12 @@ class DocumentItemService:
 
         counts: dict[str, dict] = {}
         for bug in all_bugs:
-            bucket = counts.setdefault(bug.group, {"total": 0, "resolve": 0})
+            bucket = counts.setdefault(bug.group, {"total": 0, "resolve": 0, "not_resolved": 0})
             bucket["total"] += 1
             if bug.status == BugStatusEnum.VERIFIED:
                 bucket["resolve"] += 1
+            elif bug.status in [BugStatusEnum.NEW, BugStatusEnum.FIXING, BugStatusEnum.CONFIRMED]:
+                bucket["not_resolved"] += 1
 
         return counts
 
@@ -375,12 +379,15 @@ class DocumentItemService:
 
         total = len(all_bugs)
         resolve = 0
+        not_resolved = 0
 
         for bug in all_bugs:
             if bug.status == BugStatusEnum.VERIFIED:
                 resolve += 1
+            if bug.status in [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXED, BugStatusEnum.NEW]:
+                not_resolved += 1
 
-        return {"total": total, "resolve": resolve}
+        return {"total": total, "resolve": resolve, "not_resolved": not_resolved}
 
     async def _count_tc_results_by_group(self,group_ids: list[str], owner_id:str) -> dict[str, dict]:
         """
@@ -404,10 +411,12 @@ class DocumentItemService:
             group_id = item_id_to_group.get(r.parent_id)
             if group_id is None:
                 continue
-            bucket = counts.setdefault(group_id, {"total": 0, "resolve": 0})
+            bucket = counts.setdefault(group_id, {"total": 0, "resolve": 0, "not_resolved": 0})
             bucket["total"] += 1
             if r.evaluate and r.evaluate == DocumentResultEvaluate.PASS:
                 bucket["resolve"] += 1
+            else:
+                bucket["not_resolved"] += 1
         return counts
 
     async def statistic_doc_item(self, filters: FilterDocumentItem):

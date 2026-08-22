@@ -153,6 +153,22 @@ class TaskService:
                 await self._check_handler_of_project(work_item.parent, handler_id)
         else:
             raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
+        if task.type == WorkItemType.SUBTASK and task.parent:
+            # check task child
+            all_subtask = await self.task_repository.get_children(task.parent)
+            total_sub = len(all_subtask)
+            done_sub = 0
+            session_id = None
+            max_update = 0
+            for subtask in all_subtask:
+                if subtask.status == TaskStatusEnum.DONE and str(subtask.id) != task_id:
+                    done_sub += 1
+                    if subtask.updated_at > max_update:
+                        max_update = subtask.updated_at
+                        session_id = subtask.session_id
+            if done_sub == total_sub -1 and session_id is not None and max_update > 0:
+                update_data = UpdateTaskModel(status=TaskStatusEnum.DONE, session_id=session_id)
+                await self.task_repository.update_work_item(task.parent, update_data.model_dump(exclude_unset=True))
         await self.task_repository.delete_work_item(task_id)
 
     async def get_task_by_id(self, task_id:str):
@@ -239,7 +255,7 @@ class TaskService:
 
             if task.status == TaskStatusEnum.NEW or task.status == TaskStatusEnum.DONE:
                 # update task status is In processing
-                update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
+                update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING,session_id=None)
                 await self.task_repository.update_work_item(data.parent, update_data.model_dump(exclude_unset=True))
 
         subtask = await self.task_repository.create_work_item(data.model_dump())

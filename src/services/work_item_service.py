@@ -145,44 +145,64 @@ class WorkItemService:
         filters_summary= FilterWorkItemModel(offset=0, limit=10, handler_id=[user_id], type=[WorkItemType.BUG], assigned_id=[user_id], owner_id=[user_id])
         filters_fixed_summary = filters_summary.model_copy(deep=True)
         fix_status = [BugStatusEnum.FIXED, BugStatusEnum.VERIFIED]
+        not_resolved_status = [BugStatusEnum.CONFIRMED, BugStatusEnum.FIXED, BugStatusEnum.NEW]
         filters_fixed_summary.status= fix_status
+        filters_not_resolved_status_summary = filters_fixed_summary.model_copy(deep=True)
+        filters_not_resolved_status_summary.status = not_resolved_status
 
         filters_assignee = FilterWorkItemModel(offset=0, limit=10, assigned_id=[user_id], type=[WorkItemType.BUG])
         filters_fixed_assignee = filters_assignee.model_copy(deep=True)
         filters_fixed_assignee.status = fix_status
+        filters_not_resolved_status_assignee = filters_fixed_assignee.model_copy(deep=True)
+        filters_not_resolved_status_assignee.status = not_resolved_status
 
         filters_handler = FilterWorkItemModel(offset=0, limit=10, handler_id=[user_id], type=[WorkItemType.BUG])
         filters_fixed_handler = filters_handler.model_copy(deep=True)
         filters_fixed_handler.status = fix_status
+        filters_not_resolved_status_handler = filters_fixed_handler.model_copy(deep=True)
+        filters_not_resolved_status_handler.status = not_resolved_status
 
         filters_owner = FilterWorkItemModel(offset=0, limit=10, owner_id=[user_id], type=[WorkItemType.BUG])
         filters_fixed_owner = filters_owner.model_copy(deep=True)
         filters_fixed_owner.status = fix_status
+        filters_not_resolved_status_ower = filters_owner.model_copy(deep=True)
+        filters_not_resolved_status_ower.status = not_resolved_status
 
         (
-            summary, fix_summary,
-            assignee, fix_assignee,
-            owner, fix_owner,
-            handler, fix_handler
+            summary, fix_summary, not_resolved_summary,
+            assignee, fix_assignee, not_resolved_assignee,
+            owner, fix_owner, not_resolved_owner,
+            handler, fix_handler, not_resolved_handler,
          ) = await asyncio.gather(
             self.work_item_repository.count_work_items_or_logic(filters_summary),
             self.work_item_repository.count_work_items_or_logic(filters_fixed_summary),
+            self.work_item_repository.count_work_items_or_logic(filters_not_resolved_status_summary),
+
             self.work_item_repository.count_work_items_or_logic(filters_assignee),
             self.work_item_repository.count_work_items_or_logic(filters_fixed_assignee),
+            self.work_item_repository.count_work_items_or_logic(filters_not_resolved_status_assignee),
+
             self.work_item_repository.count_work_items_or_logic(filters_owner),
             self.work_item_repository.count_work_items_or_logic(filters_fixed_owner),
+            self.work_item_repository.count_work_items_or_logic(filters_not_resolved_status_ower),
+
             self.work_item_repository.count_work_items_or_logic(filters_handler),
-            self.work_item_repository.count_work_items_or_logic(filters_fixed_handler)
+            self.work_item_repository.count_work_items_or_logic(filters_fixed_handler),
+            self.work_item_repository.count_work_items_or_logic(filters_not_resolved_status_handler)
         )
         return ResponseModel(
             data={
                 "summary": summary,
                 "fix_summary": fix_summary,
+                "not_resolved_summary": not_resolved_summary,
                 "assignee": assignee,
                 "fix_assignee": fix_assignee,
+                "not_resolved_assignee": not_resolved_assignee,
                 "owner": owner,
                 "fix_owner": fix_owner,
+                "not_resolved_owner": not_resolved_owner,
                 "handler": handler,
-                "fix_handler": fix_handler
+                "fix_handler": fix_handler,
+                "not_resolved_handler": not_resolved_handler,
             }
         )

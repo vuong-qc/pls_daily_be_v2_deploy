@@ -53,6 +53,11 @@ class BeanieWorkItemRepository(WorkItemRepository):
         if project:
             if project.type == WorkItemType.BACKLOG:
                 return
+            if project.type == WorkItemType.STORY:
+                # get all task to delete
+                tasks = await WorkItemDocument.find(WorkItemDocument.parent == project_id, WorkItemDocument.type == WorkItemType.TASK).to_list()
+                for task in tasks:
+                    await task.delete()
             await project.delete()
     async def get_list_work_items(self, filters: FilterWorkItemModel) ->tuple[list[WorkItemDocument], int]:
         filter_dump = filters.model_dump(exclude_unset=True)
