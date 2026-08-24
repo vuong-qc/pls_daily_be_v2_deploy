@@ -1,5 +1,5 @@
 from beanie import PydanticObjectId
-from beanie.operators import Set
+from beanie.operators import Set, Eq
 from src.models.comment.comment_document import CommentDocument
 from src.models.comment.request.filter_comment_model import FilterCommentModel
 from src.repositories.comment.comment_repository import CommentRepository
@@ -36,6 +36,9 @@ class BeanieCommentRepository(CommentRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset", 0)
         limit = filter_dump.pop("limit", 10)
+        filter_dump.pop("is_root", None)
+        if filters.is_root and not filters.parent_id:
+            filter_dump.update(Eq(CommentDocument.parent_id, None))
         query = CommentDocument.find(filter_dump, fetch_links=True)
         count = await query.count()
         list_comments = await query.sort(f"-{CommentDocument.created_at}").skip(offset).limit(limit).to_list()
