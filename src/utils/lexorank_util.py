@@ -24,14 +24,14 @@ class LexorankUtil:
     @staticmethod
     async def auto_gen_order(filters: FilterOrderModel, filter_item: FilterWorkItemModel, response_model: Type[T],task_repository: WorkItemRepository, order_repository: OrderRepository)->tuple[list[T], int]:
         # check has any order
-        logger.info('check gen order')
+        # logger.info('check gen order')
         filters.offset = filter_item.offset
         filters.limit = filter_item.limit
         total = await order_repository.count_orders(filters.model_dump(exclude_unset=True))
         count_task = await task_repository.count_work_item(filter_item)
         list_response = []
-        logger.info('total order: %s', total)
-        logger.info('total task: %s', count_task)
+        # logger.info('total order: %s', total)
+        # logger.info('total task: %s', count_task)
         list_task = await task_repository.filter_work_item_for_order(
             filter_item)
         list_order = await order_repository.get_all_orders(filters.model_dump(exclude_unset=True))

@@ -60,7 +60,7 @@ class SessionService:
         # get token
         filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
         departments = [f"DEPARTMENT_{department}" for  department in response.user.department] if response.user.department else []
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[ChatbotTypeEnum.DEFAULT]) if response.user.department is not None else FilterChatbotTokenModel(offset=0, limit=1)
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[ChatbotTypeEnum.DEFAULT])
         # print("filter_chat_token : ",filter_chat_token)
 
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
@@ -176,9 +176,7 @@ class SessionService:
         # get token
         departments = [f"DEPARTMENT_{department}" for department in
                        response.user.department] if response.user.department else []
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[
-            ChatbotTypeEnum.DEFAULT]) if response.user.department is not None else FilterChatbotTokenModel(offset=0,
-                                                                                                           limit=1)
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments, type=[ChatbotTypeEnum.DEFAULT])
         # print("filter_chat_token : ",filter_chat_token)
         filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
 
@@ -403,6 +401,7 @@ class SessionService:
             # print("percent_process:", parent_map[key].percent_process)
             parent_map[key].estimated_point = math.floor(percent_process * parent_map[key].point + 0.5)
             # print("check task",parent_map[key].estimated_point)
+            parent_map[key].total_subtask = len(all_subtasks)
 
         list_task[:] = list(parent_map.values())
         return list_task

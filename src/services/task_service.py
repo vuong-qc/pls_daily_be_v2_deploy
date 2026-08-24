@@ -122,13 +122,17 @@ class TaskService:
                 order_model = await self.order_repository.find_one_order(filter_order.model_dump(exclude_unset=True))
                 logger.info("check filter order: %s", filter_order)
                 if not order_model:
-                    raise
-                parent_id = task_data.parent if task_data.parent else task.parent
-                update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
-                updated_order = await self.order_repository.update_order(str(order_model.id),
-                                                         update_data_order.model_dump(exclude_unset=True),
-                                                         task_data.prev_order, task_data.next_order)
-                response.order = updated_order.order if updated_order else updated_order
+                    # upsert
+                    create_order = CreateOrderModel(parent_id=task.parent, owner_id=handler_id, object_id=task_id, type=task_data.order_type)
+                    new_order = await self.order_repository.create_order(create_order.model_dump(), task_data.prev_order, task_data.next_order)
+                    response.order = new_order.order
+                else:
+                    parent_id = task_data.parent if task_data.parent else task.parent
+                    update_data_order = UpdateOrderModel(type=task_data.order_type, parent_id=parent_id)
+                    updated_order = await self.order_repository.update_order(str(order_model.id),
+                                                             update_data_order.model_dump(exclude_unset=True),
+                                                             task_data.prev_order, task_data.next_order)
+                    response.order = updated_order.order
             else:
                 filter_order = FilterOrderModel(parent_id=task.parent, owner_id=handler_id,
                                                 object_id=task_id)
