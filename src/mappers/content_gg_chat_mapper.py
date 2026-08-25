@@ -1,21 +1,25 @@
 ARRIVAL_STATUS = {
-    "ARRIVE_LATE" : "Đến trễ",
-    "ARRIVE_ON_TIME": "Đến đúng giờ",
-    "LOGTIME_TIME": "Giờ log time"
+    "ARRIVE_LATE": '<font color="#FF0000"><b>ĐI LÀM TRỄ</b></font>',
+    "ARRIVE_ON_TIME": '<font color="#2D9732"><b>Đến đúng giờ</b></font>',
+    "LOGTIME_TIME": '<font color="#2D9732"><b>Giờ log time</b></font>',
 }
 
 DEPARTMENT_STATUS = {
-    "LEAVE_EARLY" : "Về sớm",
-    "LEAVE_ON_TIME" : "Về đúng giờ",
-    "OT": "Làm thêm giờ, chạy task",
-    "LOGTIME_TIME": "Giờ log time"
+    "LEAVE_EARLY": '<font color="#FF0000"><b>VỀ SỚM</b></font>',
+    "LEAVE_ON_TIME": '<font color="#2D9732"><b>Về đúng giờ</b></font>',
+    "OT": '<font color="#2D9732"><b>Làm thêm giờ, chạy task</b></font>',
+    "LOGTIME_TIME": '<font color="#2D9732"><b>Giờ log time</b></font>',
 }
 
 EVALUATE_SESSION = {
-    "AHEAD" : "VƯỢT TIẾN ĐỘ",
-    "ON_TRACK" : "ĐANG ĐÚNG TIẾN ĐỘ ĐỀ RA",
-    "BEHIND" : "CHẬM TIẾN ĐỘ ĐỀ RA",
-    "UNFINISHED": "KHÔNG HOÀN THÀNH DEADLINE"
+    "AHEAD": '<font color="#2D9732"><b>VƯỢT TIẾN ĐỘ</b></font>',
+    "ON_TRACK": '<font color="#2D9732"><b>ĐANG ĐÚNG TIẾN ĐỘ ĐỀ RA</b></font>',
+    "BEHIND": '<font color="#FF0000"><b>CHẬM TIẾN ĐỘ ĐỀ RA</b></font>',
+    "UNFINISHED": '<font color="#FF0000"><b>KHÔNG HOÀN THÀNH DEADLINE</b></font>',
+}
+WORK_FORM = {
+    "WFH": '<font color="#FF0000"><b>WFH</b></font>',
+    "IN_OFFICE" : """<font color="#2D9732"><b>IN OFFICE</b></font>"""
 }
 
 BUG_TYPE = {

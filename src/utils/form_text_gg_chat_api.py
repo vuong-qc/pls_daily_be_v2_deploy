@@ -5,10 +5,13 @@ from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.response.work_item_response_model import WorkItemResponse
-from src.mappers.content_gg_chat_mapper import ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE, FIELD_LABEL_MAP, EVALUATE_SESSION, BUG_STATUS, PRIORITY
+from src.mappers.content_gg_chat_mapper import (ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE,
+                                                FIELD_LABEL_MAP, EVALUATE_SESSION, BUG_STATUS,
+                                                PRIORITY, WORK_FORM)
 from src.enums.bug_status_enum import BugStatusEnum
 from src.enums.bug_type_enum import BugTypeEnum
 from src.enums.task_priority_enum import TaskPriorityEnum
+from src.enums.session_status_enum import ArrivalStatusEnum, DepartmentStatusEnum, WorkFormEnum
 import hashlib
 
 import json
@@ -70,29 +73,35 @@ class FormatContentGgChatAPI:
 
 
         content = TextFormatEnum.CHECKIN.format(
-                time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name
+                time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, checkin_time=now_vn.strftime("%-I:%M %p"),
             )
 
         if department:
             # Nối các phòng ban bằng NEWLINE để mỗi phòng ban xuống 1 dòng
-            department_text = TextFormatEnum.NEWLINE.join(
-                TextFormatEnum.DEPARTMENT_ITEM.format(department=dep) for dep in department
+            department_text = ", ".join(
+                dep
+                for dep in department
             )
 
             # Ghép chữ "Phòng ban:" với danh sách phòng ban ở dưới
-            department_lines = f"{TextFormatEnum.DEPARTMENT_HEADER}{TextFormatEnum.NEWLINE}{department_text}"
+            department_lines = f"{TextFormatEnum.DEPARTMENT_HEADER}{TextFormatEnum.NEWLINE}{TextFormatEnum.DEPARTMENT_ITEM.format(department=department_text)}"
 
             # Đưa toàn bộ block phòng ban xuống dưới content chính
             content = TextFormatEnum.NEWLINE.join([content, department_lines])
         first_line = ""
         if checkin_late:
             first_line = f"[{TextFormatEnum.CHECKIN_LATE}]"
-        else:
-            first_line = f"[{TextFormatEnum.CHECKIN_ON_TIME}]"
+
         if arrival_status is not None:
-            first_line = first_line + TextFormatEnum.TASK_PREFIX+ f"[{ARRIVAL_STATUS.get(arrival_status)}]"
+            if first_line and arrival_status == ArrivalStatusEnum.ARRIVE_LATE:
+                first_line = first_line + TextFormatEnum.TASK_PREFIX+ f"[{ARRIVAL_STATUS.get(arrival_status)}]"
+            elif arrival_status == ArrivalStatusEnum.ARRIVE_LATE:
+                first_line = f"[{ARRIVAL_STATUS.get(arrival_status)}]"
         if work_form is not None:
-            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{work_form}]"
+            if first_line and work_form == WorkFormEnum.WFH:
+                first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{WORK_FORM.get(work_form)}]"
+            elif work_form == WorkFormEnum.WFH:
+                first_line = f"[{WORK_FORM.get(work_form)}]"
         # Build HTML text cho Task
         if tasks:
             task_list_str = TextFormatEnum.NEWLINE.join(f'{TextFormatEnum.TASK_PREFIX}{task}' for task in tasks)
@@ -126,11 +135,12 @@ class FormatContentGgChatAPI:
 
         # Nối tất cả lại bằng thẻ <br>
         full_html_text = TextFormatEnum.NEWLINE.join([
-            first_line,
+            item for item in [first_line,
             content,
             task_lines,
             TextFormatEnum.NOTE,
-            note_line
+            note_line]
+            if item
         ])
 
         # Trả về format Card V2 của Google Chat
@@ -160,28 +170,84 @@ class FormatContentGgChatAPI:
                                 department: Optional[list[str]] = None, end_time: Optional[datetime] = None,
                                 nickname: Optional[str] = None, checkout_late: Optional[bool] = False,
                                 departure_status: Optional[str] = None, work_form: Optional[str] = None,
-                                evaluate: Optional[str] = None
+                                evaluate: Optional[str] = None, start_time: Optional[datetime] = None,
                                 ) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
+
+        # =========================
+        # Format end time
+        # =========================
         now_vn = datetime.now(tz_vn)
+
         if end_time and end_time.tzinfo is None:
             now_vn = end_time.replace(tzinfo=tz_vn)
         elif end_time:
             now_vn = end_time.astimezone(tz_vn)
-        if nickname:
-            user_name = f"{user_name} ({nickname})"
-        content = TextFormatEnum.CHECKOUT.format(
-                time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name
+
+        # =========================
+        # Format username
+        # =========================
+        if nickname and nickname.strip():
+            user_name = f"{user_name} ({nickname.strip()})"
+
+        # =========================
+        # Format start time
+        # =========================
+        start_vn = None
+
+        if start_time:
+            if start_time.tzinfo is None:
+                start_vn = start_time.replace(tzinfo=tz_vn)
+            else:
+                start_vn = start_time.astimezone(tz_vn)
+
+        # =========================
+        # Calculate working time
+        # =========================
+        work_time = ""
+        duration = ""
+
+        if start_vn:
+            # Ví dụ: 9h00 - 18h30
+            start_str = f"{start_vn.hour}h{start_vn.minute:02d}"
+            end_str = f"{now_vn.hour}h{now_vn.minute:02d}"
+
+            work_time = f"{start_str} - {end_str}"
+
+            # Tổng thời gian làm việc
+            total_minutes = int(
+                (now_vn - start_vn).total_seconds() // 60
             )
+
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+
+            if hours and minutes:
+                duration = f"{hours} giờ {minutes} phút"
+            elif hours:
+                duration = f"{hours} giờ"
+            else:
+                duration = f"{minutes} phút"
+
+        # =========================
+        # Build checkout content
+        # =========================
+        content = TextFormatEnum.CHECKOUT.format(
+            time=now_vn.strftime("%d.%m.%Y %H:%M"),
+            user=user_name,
+            work_time=work_time,
+            duration=duration,
+        )
 
         if department:
             # Nối các phòng ban bằng NEWLINE để mỗi phòng ban xuống 1 dòng
-            department_text = TextFormatEnum.NEWLINE.join(
-                TextFormatEnum.DEPARTMENT_ITEM.format(department=dep) for dep in department
+            department_text = ", ".join(
+                dep
+                for dep in department
             )
 
             # Ghép chữ "Phòng ban:" với danh sách phòng ban ở dưới
-            department_lines = f"{TextFormatEnum.DEPARTMENT_HEADER}{TextFormatEnum.NEWLINE}{department_text}"
+            department_lines = f"{TextFormatEnum.DEPARTMENT_HEADER}{TextFormatEnum.NEWLINE}{TextFormatEnum.DEPARTMENT_ITEM.format(department=department_text)}"
 
             # Đưa toàn bộ block phòng ban xuống dưới content chính
             content = TextFormatEnum.NEWLINE.join([content, department_lines])
@@ -212,11 +278,18 @@ class FormatContentGgChatAPI:
         else:
             task_lines = f"{TextFormatEnum.TASK_HEADER} {TextFormatEnum.TASK_EMPTY}"
 
-        first_line = f"[{TextFormatEnum.CHECKOUT_LATE}]" if checkout_late else f"[{TextFormatEnum.CHECKOUT_ON_TIME}]"
+        first_line = f"[{TextFormatEnum.CHECKOUT_LATE}]" if checkout_late else ""
         if departure_status is not None:
-            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
-        if work_form:
-            first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{work_form}]"
+            if first_line and (departure_status == DepartmentStatusEnum.LEAVE_EARLY or departure_status == DepartmentStatusEnum.OT):
+                first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
+            if departure_status == DepartmentStatusEnum.LEAVE_EARLY or departure_status == DepartmentStatusEnum.OT:
+                first_line = f"[{DEPARTMENT_STATUS.get(departure_status)}]"
+
+        if work_form is not None:
+            if first_line and work_form == WorkFormEnum.WFH:
+                first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{WORK_FORM.get(work_form)}]"
+            elif work_form == WorkFormEnum.WFH:
+                first_line = f"[{WORK_FORM.get(work_form)}]"
         # Thêm dòng Đánh giá (in đậm) nếu có
         if evaluate:
             department_lines = f"{TextFormatEnum.EVALUATE_VALUE.format(evaluate=EVALUATE_SESSION[evaluate])}"
@@ -227,11 +300,12 @@ class FormatContentGgChatAPI:
 
         # Ghép các dòng chính
         body_lines = [
-            first_line,
+            item for item in[first_line,
             content,
             task_lines,
             TextFormatEnum.RESULT_NOTE,
-            note_line,
+            note_line]
+            if item
         ]
 
 

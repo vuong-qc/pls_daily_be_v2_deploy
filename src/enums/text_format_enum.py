@@ -2,7 +2,7 @@ from enum import StrEnum
 
 class TextFormatEnum(StrEnum):
     # Dùng thẻ <font> và <b> thoải mái vì chúng ta sẽ đưa nó vào Card
-    CHECKIN = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked in!"""
+    CHECKIN = """<b>{time}</b>, <font color="#3B82F6"><b>{user}</b></font> checked in lúc <font color="#2D9732"><b>{checkin_time}</b></font>!"""
     CHECKIN_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked in!"""
     TASK_HEADER = "&#8226; <b>Task</b>:"
     SUBTASK_HEADER = "&#8226; <b>Subtask</b>:"
@@ -15,14 +15,19 @@ class TextFormatEnum(StrEnum):
     SPACE = ' '
     RESULT_NOTE = "&#8226; <b>Ghi chú kết quả</b>:"
 
-    CHECKOUT = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> checked out!"""
+    CHECKOUT = (
+        '<b>{time}</b>, '
+        '<font color="#3B82F6"><b>{user}</b></font> checked out! '
+        '<font color="#2D9732"><b>{work_time}</b></font> '
+        '<b>({duration})</b>'
+    )
     CHECKOUT_DEPART = """<b>{time}</b>, <font color="#CB1D21"><b>{user}</b></font> {department} checked out!"""
 
     SUBTASK_EMPTY = "Không tạo subtask"
     SUBTASK_NOT_DONE = "Chưa hoàn thành subtask"
-    CHECKIN_LATE = "Check in trễ"
+    CHECKIN_LATE = """<font color="#FF0000"><b>SAI QUY TRÌNH</b></font>"""
     CHECKIN_ON_TIME = "Check in đúng giờ"
-    CHECKOUT_LATE = "Check out trễ"
+    CHECKOUT_LATE = "SAI QUY TRÌNH"
     CHECKOUT_ON_TIME = "Check out đúng giờ"
 
     DEPARTMENT_SEPARATOR = " &#8226; "
