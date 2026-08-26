@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
 
+from src.models.user.user_document import UserDocument
 from src.models.group.group_document import GroupDocument
 from src.models.group.response.group_reponse_model import GroupResponse
 from src.repositories.group.group_repository import GroupRepository
@@ -9,17 +10,19 @@ import re
 class BeanieGroupRepository(GroupRepository):
     async def create_group(self, data: dict) ->GroupResponse:
         group = GroupDocument(**data)
+        self._add_link_doc(data, group)
         await group.insert()
-        safe_data = group.model_dump(mode="json")
+        response = await GroupDocument.get(group.id, fetch_links=True)
+        safe_data = response.model_dump(mode="json")
         return GroupResponse(**safe_data)
     async def get_group_by_id(self, group_id: str) -> GroupResponse|None:
-        group = await GroupDocument.get(group_id)
+        group = await GroupDocument.get(group_id, fetch_links=True)
         if group:
             return GroupResponse(**group.model_dump(mode="json"))
         return None
 
     async def update_group(self, group_id: str, data: dict) ->GroupResponse|None:
-        group = await GroupDocument.get(group_id)
+        group = await GroupDocument.get(group_id, fetch_links=True)
         if group:
             await group.update(Set(data))
             safe_data = group.model_dump(mode="json")
@@ -77,3 +80,8 @@ class BeanieGroupRepository(GroupRepository):
         # if can t convert -> change
         result = [GroupResponse.model_validate(item.model_dump(mode="json")) for item in list_group]
         return result, count
+    def _add_link_doc(self, data: dict, group: GroupDocument):
+        created_by: str | bool = data.get("created_by", False)
+        if type(created_by) is not bool:
+            if created_by is not None and PydanticObjectId.is_valid(created_by):
+                group.creator_model = UserDocument.model_construct(id=PydanticObjectId(created_by))

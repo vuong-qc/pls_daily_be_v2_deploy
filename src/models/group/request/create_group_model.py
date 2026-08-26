@@ -11,3 +11,4 @@ class CreateGroupModel(BaseModel):
     created_by: Optional[str] = None
     parent_type: Optional[str] = None
     is_archived: Optional[bool] = None
+    des: Optional[str] = None

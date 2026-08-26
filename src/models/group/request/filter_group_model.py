@@ -13,3 +13,4 @@ class FilterGroupModel(BaseModel):
     is_archived: Optional[bool] = None
     ids: Optional[list[str]] = None
     parent_ids: Optional[list[str]] = None
+    mode: Optional[str] = None

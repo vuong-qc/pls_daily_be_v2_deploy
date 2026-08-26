@@ -27,7 +27,7 @@ class TextFormatEnum(StrEnum):
     SUBTASK_NOT_DONE = "Chưa hoàn thành subtask"
     CHECKIN_LATE = """<font color="#FF0000"><b>SAI QUY TRÌNH</b></font>"""
     CHECKIN_ON_TIME = "Check in đúng giờ"
-    CHECKOUT_LATE = "SAI QUY TRÌNH"
+    CHECKOUT_LATE = """<font color="#FF0000"><b>SAI QUY TRÌNH</b></font>"""
     CHECKOUT_ON_TIME = "Check out đúng giờ"
 
     DEPARTMENT_SEPARATOR = " &#8226; "
