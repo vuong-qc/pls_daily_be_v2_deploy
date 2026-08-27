@@ -50,7 +50,7 @@ class BeanieGroupRepository(GroupRepository):
             data_dump.update(In(
                 GroupDocument.id, [PydanticObjectId(id_group) for id_group in data_dump.pop("ids",[])]
                                 ))
-        query = GroupDocument.find(data_dump)
+        query = GroupDocument.find(data_dump,fetch_links=True)
         count = await query.count()
         print("query:",data_dump)
         list_group = await query.skip(offset).limit(limit).to_list()

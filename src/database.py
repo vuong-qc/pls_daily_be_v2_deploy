@@ -40,6 +40,7 @@ from src.models.plan.plan_document import PlanDocument
 from src.models.log.log_document import LogDocument
 from src.models.evaluate.evaluate_document import EvaluateDocument
 from src.models.comment.comment_document import CommentDocument
+from src.models.template.template_document import TemplateDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
@@ -64,7 +65,7 @@ async def init_db():
                              ChatbotTokenDocument, OrderDocument, DailySessionView,
                              DepartmentDocument, NotificationDocument, MeetingDocument,
                              ShiftScheduleDocument, PlanDocument, LogDocument, EvaluateDocument,
-                             CommentDocument
+                             CommentDocument, TemplateDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")

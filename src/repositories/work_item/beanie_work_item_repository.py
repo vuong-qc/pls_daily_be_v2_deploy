@@ -75,7 +75,7 @@ class BeanieWorkItemRepository(WorkItemRepository):
                                       )
         count = await query.count()
         results = await query.skip(offset).limit(limit).to_list()
-        logger.info("test link doc: %s", results)
+        logger.info("test link docs: %s", results)
         for link in results:
             print("project",link)
 

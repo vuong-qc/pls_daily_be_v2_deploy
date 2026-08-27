@@ -126,6 +126,6 @@ class BeanieNotificationRepository(NotificationRepository):
         # Trả về document sau khi update
         noti = await NotificationDocument.find_one({"_id": PydanticObjectId(noti_id)}).update(
             [{"$set": pipeline_set}],
-            response_type=UpdateResponse.NEW_DOCUMENT  # Để hàm trả về doc mới nhất
+            response_type=UpdateResponse.NEW_DOCUMENT  # Để hàm trả về docs mới nhất
         )
         return noti

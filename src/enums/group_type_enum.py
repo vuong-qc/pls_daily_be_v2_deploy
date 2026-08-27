@@ -9,6 +9,7 @@ class GroupType(StrEnum):
     BUG = 'BUG'
     CHECKLIST = 'CHECKLIST'
     TODO = 'TODO'
+    TEMPLATE = 'TEMPLATE'
 
 class GroupSubType(StrEnum):
     SUB_DOCUMENT = "SUB_DOCUMENT"

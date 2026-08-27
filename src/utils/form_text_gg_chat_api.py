@@ -282,7 +282,7 @@ class FormatContentGgChatAPI:
         if departure_status is not None:
             if first_line and (departure_status == DepartmentStatusEnum.LEAVE_EARLY or departure_status == DepartmentStatusEnum.OT):
                 first_line = first_line + TextFormatEnum.TASK_PREFIX + f"[{DEPARTMENT_STATUS.get(departure_status)}]"
-            if departure_status == DepartmentStatusEnum.LEAVE_EARLY or departure_status == DepartmentStatusEnum.OT:
+            elif departure_status == DepartmentStatusEnum.LEAVE_EARLY or departure_status == DepartmentStatusEnum.OT:
                 first_line = f"[{DEPARTMENT_STATUS.get(departure_status)}]"
 
         if work_form is not None:

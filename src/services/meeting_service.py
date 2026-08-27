@@ -117,7 +117,7 @@ class MeetingService:
 
     async def _create_next_meeting(self, meeting: MeetingDocument):
         # calc the next date
-        # create new doc
+        # create new docs
         new_meeting = meeting.model_copy(deep=True)
         if new_meeting.repeat_type == MeetingRepeatType.ONCE:
             return

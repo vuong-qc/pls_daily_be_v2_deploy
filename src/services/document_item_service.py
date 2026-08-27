@@ -53,7 +53,7 @@ class DocumentItemService:
         #     await self._check_role_with_doc_type(data.type, roles, data.created_by,data.object_id, data.parent_type)
         document = await self.repository.create_document(data.model_dump())
         response = DocumentResponse.model_validate(document)
-        # auto create doc result
+        # auto create docs result
         create_result_data = CreateDocumentResult(parent_id = str(response.id), owner_id=user_id)
         result = await self.document_result_repository.create_document_result(create_result_data.model_dump())
         response.result = DocumentResultResponse.model_validate(result)
@@ -86,7 +86,7 @@ class DocumentItemService:
             raise DocumentException(DocumentMessage.DOCUMENT_RESULT_NOT_FOUND, DocumentStatusCode.DOCUMENT_RESULT_NOT_FOUND)
         # if doc_result.owner_id != user_id:
         #     raise DocumentException(DocumentMessage.NOT_CREATOR, DocumentStatusCode.NOT_CREATOR)
-        # print("doc result", doc_result)
+        # print("docs result", doc_result)
         updated_document = await self.document_result_repository.update_document_result(document_result_id, data.model_dump(exclude_unset=True))
         if not updated_document:
             raise DocumentException(DocumentMessage.DOCUMENT_RESULT_NOT_FOUND, DocumentStatusCode.DOCUMENT_RESULT_NOT_FOUND)
@@ -113,7 +113,7 @@ class DocumentItemService:
         list_res = []
         for document in list_document:
             response = DocumentResponse.model_validate(document)
-            # get result of doc
+            # get result of docs
             result = await self.document_result_repository.get_document_result_by_parent_id(str(response.id),user_id)
             if not result:
                 create_result_data = CreateDocumentResult(parent_id=str(response.id))
@@ -267,7 +267,7 @@ class DocumentItemService:
         # count them checklist tong quan cua toi
         return ResponseModel(data={
             "todo": todo_result,
-            "doc": doc_result,
+            "docs": doc_result,
             "bug": bug_result,
             "bug_default": default,
             "tc": tc_result,
@@ -328,7 +328,7 @@ class DocumentItemService:
     # Đếm theo group - chỉ dùng find()/to_list() có sẵn, gom bằng dict trong Python
     # ------------------------------------------------------------------ #
     async def _count_document_items_by_group(self,group_ids: list[str]) -> dict[str, dict]:
-        """Dùng cho todo + doc: total document item theo group_id (1 query)."""
+        """Dùng cho todo + docs: total document item theo group_id (1 query)."""
         if not group_ids:
             return {}
         filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=1)

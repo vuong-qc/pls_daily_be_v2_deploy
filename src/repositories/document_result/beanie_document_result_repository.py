@@ -15,7 +15,7 @@ class BeanieDocumentResultRepository(DocumentResultRepository):
 
     async def update_document_result(self, document_id: str, document_result: dict) ->DocumentResult|None:
         document = await DocumentResult.get(document_id)
-        print("doc", document)
+        print("docs", document)
         if document:
             await document.update(Set(document_result))
             return document

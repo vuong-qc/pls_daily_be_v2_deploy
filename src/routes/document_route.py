@@ -94,7 +94,7 @@ async def statistic_todo(
 ):
     return await service.statistic_todo(query)
 
-@router.get('/count-todo-bug-tc-doc',
+@router.get('/count-todo-bug-tc-docs',
             response_model=ResponseModel,
             status_code=status.HTTP_200_OK)
 async def count_todo_bug_tc(
@@ -108,7 +108,7 @@ async def count_todo_bug_tc(
 @router.get("/statistic-item-date-range",
             response_model=ResponsePaginatedModel,
             status_code=status.HTTP_200_OK,
-            summary="Get list date range with doc item",
+            summary="Get list date range with docs item",
             )
 async def statistic_item_date_range(
         query: Annotated[FilterDocumentItem, Query()],

@@ -64,6 +64,6 @@ async def delete_department(department_id: str,
 async def list_departments(
         query: Annotated[FilterDepartmentModel, Query()],
         service: DepartmentService = Depends(get_department_service),
-        user_data: dict = Depends(get_current_user_by_token),
+        # user_data: dict = Depends(get_current_user_by_token),
 ):
     return await service.get_list_departments(query)
