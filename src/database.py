@@ -41,6 +41,9 @@ from src.models.log.log_document import LogDocument
 from src.models.evaluate.evaluate_document import EvaluateDocument
 from src.models.comment.comment_document import CommentDocument
 from src.models.template.template_document import TemplateDocument
+from src.models.section.section_document import SectionDocument
+from src.models.report.report_document import ReportDocument
+from src.models.section_result.section_result_document import SectionResultDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
@@ -65,7 +68,8 @@ async def init_db():
                              ChatbotTokenDocument, OrderDocument, DailySessionView,
                              DepartmentDocument, NotificationDocument, MeetingDocument,
                              ShiftScheduleDocument, PlanDocument, LogDocument, EvaluateDocument,
-                             CommentDocument, TemplateDocument
+                             CommentDocument, TemplateDocument, SectionDocument,
+                             ReportDocument, SectionResultDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")
@@ -80,4 +84,3 @@ async def lifespan(app: FastAPI):
     yield
     client.close()
     print("MongoDB connection closed.")
-

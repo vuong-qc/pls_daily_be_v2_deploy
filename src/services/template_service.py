@@ -6,6 +6,7 @@ from src.models.template.request.update_template_model import UpdateTemplateMode
 from src.repositories.template.template_repository import TemplateRepository
 from src.exception.template_exception import TemplateException, TemplateStatusCode, TemplateMessage
 from src.services.group_service import GroupService
+from src.utils.lexorank_util import LexorankUtil
 
 class TemplateService:
     def __init__(self, template_repository: TemplateRepository, group_service: GroupService):
@@ -24,7 +25,9 @@ class TemplateService:
     async def create_template(self, template: CreateTemplateModel, user_id:str)-> TemplateResponseModel:
         template.created_by = user_id
         await self.group_service.get_group_by_id(template.group)
-        new_template = await self.template_repository.create_template(template.model_dump())
+        template_data = template.model_dump()
+        template_data["position"] = self._build_position(template_data)
+        new_template = await self.template_repository.create_template(template_data)
         response = TemplateResponseModel.model_validate(new_template)
         return response
 
@@ -41,6 +44,8 @@ class TemplateService:
         if template.created_by != user_id:
             raise TemplateException(TemplateMessage.NOT_OWNER, TemplateStatusCode.NOT_OWNER)
         data_dump = template_data.model_dump(exclude_unset=True)
+        if "prev_order" in data_dump or "next_order" in data_dump:
+            data_dump["position"] = self._build_position(data_dump)
         change_field = set(data_dump.keys())
         if change_field - self.allow_field and template.status != TemplateStatusEnum.DRAFT:
             raise TemplateException(TemplateMessage.CAN_NOT_MODIFY, TemplateStatusCode.CAN_NOT_MODIFY)
@@ -62,9 +67,14 @@ class TemplateService:
             raise TemplateException(TemplateMessage.NOT_OWNER, TemplateStatusCode.NOT_OWNER)
         await self.template_repository.delete_template(template_id)
 
-    async def get_list_templates(self, filters: FilterTemplateModel)-> tuple[list[TemplateResponseModel], int]:
-        list_template, total = await self.template_repository.get_list_templates(filters)
+    async def get_list_templates(self, filters: FilterTemplateModel, user_id: str)-> tuple[list[TemplateResponseModel], int]:
+        list_template, total = await self.template_repository.get_list_templates(filters, user_id)
         list_response = []
         for template in list_template:
             list_response.append(TemplateResponseModel.model_validate(template))
         return list_response, total
+
+    def _build_position(self, data: dict) -> str:
+        prev_order = data.pop("prev_order", None)
+        next_order = data.pop("next_order", None)
+        return LexorankUtil.get_lexorank_between(prev_order, next_order)

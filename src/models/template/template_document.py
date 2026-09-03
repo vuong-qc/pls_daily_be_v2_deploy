@@ -20,3 +20,6 @@ class TemplateDocument(DocumentWithSoftDelete):
     status: str = TemplateStatusEnum.DRAFT
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
+
+    class Settings:
+        name = "templates"

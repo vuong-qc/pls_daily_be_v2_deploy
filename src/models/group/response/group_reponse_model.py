@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from beanie import PydanticObjectId
 from src.models.user.response.user_response_model import UserResponse
 class GroupResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: Optional[PydanticObjectId] = None
     type: str
     name: str

@@ -13,8 +13,8 @@ class TemplateRepository(ABC):
     async def delete_template(self, template_id: str) -> None:
         pass
     @abstractmethod
-    async def get_template_by_id(self, template_id: str) -> TemplateDocument | None:
+    async def get_template_by_id(self, template_id: str, ignore_deleted: bool = False) -> TemplateDocument | None:
         pass
     @abstractmethod
-    async def get_list_templates(self, filters: FilterTemplateModel) -> tuple[list[TemplateDocument], int]:
+    async def get_list_templates(self, filters: FilterTemplateModel, user_id:str) -> tuple[list[TemplateDocument], int]:
         pass

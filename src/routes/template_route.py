@@ -28,7 +28,7 @@ async def get_list_template(
         service: TemplateService = Depends(get_template_service),
         user_data: dict = Depends(get_current_user_by_token),
 ):
-    list_data, total = await service.get_list_templates(query)
+    list_data, total = await service.get_list_templates(query, user_data["sub"])
     return ResponsePaginatedModel(data=list_data, total=total,offset=query.offset if query.offset is not None else 0)
 
 @router.post("/create-template",

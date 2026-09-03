@@ -33,6 +33,8 @@ from src.routes.plan_route import router as plan_route
 from src.routes.evaluate_route import router as evaluate_route
 from src.routes.comment_route import router as comment_route
 from src.routes.template_route import router as template_route
+from src.routes.section_route import router as section_route
+from src.routes.report_route import router as report_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -66,6 +68,8 @@ app.include_router(session_route, prefix="/sessions")
 app.include_router(shift_schedule_route, prefix="/shift-schedule")
 app.include_router(task_route, prefix="/task")
 app.include_router(template_route, prefix="/template")
+app.include_router(section_route, prefix="/sections")
+app.include_router(report_route, prefix="/reports")
 app.include_router(testcase_route, prefix="/testcase")
 app.include_router(work_item_route, prefix="/work-item")
 
