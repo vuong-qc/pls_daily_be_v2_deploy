@@ -31,6 +31,8 @@ class BeanieNotificationRepository(NotificationRepository):
 
         is_random = filter_dump.pop("is_random", False)
         is_expired = filter_dump.pop("is_expired", None)
+        is_desc = filter_dump.pop("is_desc", False)
+        operator = "-" if is_desc else "+"
 
         if filters.viewer_ids:
             filter_dump.update(
@@ -99,7 +101,7 @@ class BeanieNotificationRepository(NotificationRepository):
                 projection_model=NotificationDocument
             ).to_list()
         else:
-            items = await query.sort(f"+{NotificationDocument.updated_at}").skip(offset).limit(limit).to_list()
+            items = await query.sort(f"{operator}{NotificationDocument.updated_at}").skip(offset).limit(limit).to_list()
         return items, count
     async def add_viewer_noti(self, noti_id:str, user_id: str):
         pipeline_set = {

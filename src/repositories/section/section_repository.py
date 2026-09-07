@@ -31,3 +31,7 @@ class SectionRepository(ABC):
             value_types: list[str] | None = None,
             search: str | None = None,
     ) -> list[SectionDocument]: pass
+
+    @abstractmethod
+    async def create_many_section(self, list_data: list[dict]):
+        pass

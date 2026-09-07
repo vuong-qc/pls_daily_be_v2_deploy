@@ -10,7 +10,7 @@ class TaskResponse(BaseModel):
     type: str
     title: str
     des: Optional[str] = None
-    status: str
+    status: Optional[str] = None
     parent: Optional[str] = None
     deadline: Optional[int] = None
     point: Optional[int] = None

@@ -56,7 +56,8 @@ async def update_notification(
         user_data: dict = Depends(get_current_user_by_token),
 ):
     user_id = user_data["sub"]
-    return await service.update_noti(notification_id, user_id, notification_data)
+    roles = user_data["roles"]
+    return await service.update_noti(notification_id, user_id, notification_data, roles)
 
 @router.delete("/delete-notification/{notification_id}",
                status_code=status.HTTP_204_NO_CONTENT,

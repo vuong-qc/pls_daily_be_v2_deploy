@@ -1,15 +1,17 @@
+from src.enums.section_enum import SectionTypeEnum
 from src.enums.template_status_enum import TemplateStatusEnum
-from src.models.template.request.create_template_model import CreateTemplateModel
+from src.models.template.request.create_template_model import CreateTemplateModel, CreateDuplicateTemplateModel
 from src.models.template.response.template_response_model import TemplateResponseModel
 from src.models.template.request.filter_template_model import FilterTemplateModel
 from src.models.template.request.update_template_model import UpdateTemplateModel
 from src.repositories.template.template_repository import TemplateRepository
+from src.repositories.section.section_repository import SectionRepository
 from src.exception.template_exception import TemplateException, TemplateStatusCode, TemplateMessage
 from src.services.group_service import GroupService
 from src.utils.lexorank_util import LexorankUtil
 
 class TemplateService:
-    def __init__(self, template_repository: TemplateRepository, group_service: GroupService):
+    def __init__(self, template_repository: TemplateRepository, group_service: GroupService, section_repository: SectionRepository):
         self.template_repository = template_repository
         self.group_service = group_service
         self.allow_field = {"status"}
@@ -21,6 +23,7 @@ class TemplateService:
             TemplateStatusEnum.DISABLED: {TemplateStatusEnum.PUBLIC},
             TemplateStatusEnum.PUBLIC: {TemplateStatusEnum.DISABLED},
         }
+        self.section_repository = section_repository
 
     async def create_template(self, template: CreateTemplateModel, user_id:str)-> TemplateResponseModel:
         template.created_by = user_id
@@ -78,3 +81,38 @@ class TemplateService:
         prev_order = data.pop("prev_order", None)
         next_order = data.pop("next_order", None)
         return LexorankUtil.get_lexorank_between(prev_order, next_order)
+
+    async def duplicate_template(self, data: CreateDuplicateTemplateModel, user_id: str) -> TemplateResponseModel:
+        await self.group_service.get_group_by_id(data.group)
+        original_template = await self.template_repository.get_template_by_id(data.template_id)
+        if not original_template:
+            raise TemplateException(TemplateMessage.NOT_FOUND, TemplateStatusCode.NOT_FOUND)
+
+        template_cp = original_template.model_copy(deep=True)
+        template_cp.created_by = user_id
+        template_cp.group = data.group
+        latest_template = await self.template_repository.get_latest_template(data.group)
+        prev_order = latest_template.position if latest_template else None
+        next_order = None
+
+        template_cp.position = LexorankUtil.get_lexorank_between(prev_order, next_order)
+        template_data = template_cp.model_dump(exclude={"created_at, updated_at"})
+        template_data.pop("id", None)
+
+        new_template = await self.template_repository.create_template(template_data)
+        sections = await self.section_repository.get_sections_by_parent_id(data.template_id, SectionTypeEnum.SECTION)
+        for section in sections:
+            copy_sec = section.model_copy(deep=True)
+            copy_sec.parent_id = str(new_template.id)
+            items = await self.section_repository.get_sections_by_parent_ids([str(section.id)], SectionTypeEnum.ITEM)
+
+            new_section = await self.section_repository.create_section(copy_sec.model_dump(exclude={"created_at, updated_at", "id"}))
+            list_items = []
+            for item in items:
+                copy_item = item.model_copy(deep=True)
+                copy_item.parent_id = str(new_section.id)
+                copy_item_draw = copy_item.model_dump(exclude={"created_at, updated_at", "id"})
+                list_items.append(copy_item_draw)
+            await self.section_repository.create_many_section(list_items)
+        response = TemplateResponseModel.model_validate(new_template)
+        return response

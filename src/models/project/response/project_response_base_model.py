@@ -9,6 +9,6 @@ class ProjectInfo(BaseModel):
     title: str
     owner_id: Optional[str] = None
     type: str
-    status: str
+    status: Optional[str] = None
     parent: Optional[str] = None
     des: Optional[str] = None

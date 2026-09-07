@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Awaitable, Callable, Any
 
 from src.enums.work_item_type import WorkItemType
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel, ParentStatusCount
@@ -16,6 +16,10 @@ from src.models.user.user_document import UserDocument
 from src.configs import settings
 from src.utils.datetime_util import DateTimeUtil
 import re
+from contextlib import asynccontextmanager
+from pymongo.asynchronous.client_session import AsyncClientSession
+from pymongo import AsyncMongoClient
+from src.database import client as default_mongo_client
 import logging
 logger = logging.getLogger(__name__)
 DAY_MS = 24 * 60 * 60 * 1000
@@ -24,6 +28,38 @@ BUG_TYPE_BUG = BugTypeEnum.BUG_TYPE_BUG.value
 BUG_TYPE_FEEDBACK = BugTypeEnum.BUG_TYPE_FEEDBACK.value
 
 class BeanieWorkItemRepository(WorkItemRepository):
+    def __init__(self, client: Optional[AsyncMongoClient] = None):
+        self._client = client or default_mongo_client
+
+    @asynccontextmanager
+    async def transaction(self):
+        if not settings.MONGO_SUPPORTS_TRANSACTION:
+            logger.warning(
+                "Duplicate work item đang chạy KHÔNG có transaction — "
+                "môi trường %s không hỗ trợ replica set", settings.ENV,
+            )
+            yield None
+            return
+
+        async with self._client.start_session() as session:
+            async with await session.start_transaction():
+                yield session
+
+    async def run_in_transaction(
+            self, callback: Callable[[Optional[AsyncClientSession]], Awaitable[Any]]
+    ):
+        if not settings.MONGO_SUPPORTS_TRANSACTION:
+            logger.warning(
+                "Duplicate work item đang chạy KHÔNG có transaction — "
+                "môi trường %s không hỗ trợ replica set", settings.ENV,
+            )
+            return await callback(None)
+
+        async with self._client.start_session() as session:
+            async def _wrapped(s: AsyncClientSession):
+                return await callback(s)
+
+            return await session.with_transaction(_wrapped)
     async def create_work_item(self, data: dict):
         project = WorkItemDocument(**data)
         await self._add_link_document(data, project)
@@ -83,8 +119,13 @@ class BeanieWorkItemRepository(WorkItemRepository):
         # print("test res",res)
         return results, count
 
-    async def get_work_item_by_id(self, project_id:str):
-        project = await WorkItemDocument.find_one(WorkItemDocument.id==PydanticObjectId(project_id), fetch_links=True, nesting_depth=1)
+    async def get_work_item_by_id(self, item_id: str, session: Optional[Any] = None):
+        project = await WorkItemDocument.find_one(
+            WorkItemDocument.id==PydanticObjectId(item_id),
+            fetch_links=True,
+            nesting_depth=1,
+            session=session
+        )
         if project:
             return project
         return None
@@ -904,3 +945,28 @@ class BeanieWorkItemRepository(WorkItemRepository):
         return [
             DateCountResult(date=d, count=count_by_date.get(d, 0)) for d in full_range
         ]
+
+    async def get_active_children(
+            self,
+            parent_ids: list[str],
+            allowed_types: list[str],
+            session: Optional[Any] = None,
+    ) -> list[WorkItemDocument]:
+        return await WorkItemDocument.find(
+            In(WorkItemDocument.parent, parent_ids),
+            In(WorkItemDocument.type, allowed_types),
+            session=session,
+        ).to_list()
+
+    async def create_many_work_items(
+            self, payloads: list[dict], session: Optional[Any] = None
+    ) -> list[PydanticObjectId]:
+        docs = []
+        for payload in payloads:
+            document = WorkItemDocument(**payload)
+            await self._add_link_document(payload, document)
+            docs.append(document)
+        result = await WorkItemDocument.insert_many(docs, session=session)
+        return result.inserted_ids
+        # print(result.inserted_ids)
+        # return await WorkItemDocument.find(In(WorkItemDocument.id, result.inserted_ids), session=session).to_list()

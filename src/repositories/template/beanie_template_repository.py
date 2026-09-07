@@ -40,7 +40,27 @@ class BeanieTemplateRepository(TemplateRepository):
         offset = filter_dump.pop("offset", None)
         limit = filter_dump.pop("limit", None)
         if filters.status:
-            filter_dump.update(In("status", filters.status))
+            if TemplateStatusEnum.PUBLIC not in filters.status:
+                filter_dump.update(
+                    And(
+                        Eq(TemplateDocument.created_by, user_id),
+                        In(TemplateDocument.status, [status for status in filters.status]),
+                    )
+                )
+            else:
+                filter_dump.update(
+                    Or(
+                        And(
+                            Eq(TemplateDocument.created_by, user_id),
+                            In(TemplateDocument.status, [status for status in filters.status if status != TemplateStatusEnum.PUBLIC]),
+                        ),
+                        Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
+                    )
+                )
+        else:
+            filter_dump.update(
+                    Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
+            )
         if filters.created_by:
             filter_dump.update(
                 And(
@@ -48,9 +68,12 @@ class BeanieTemplateRepository(TemplateRepository):
                     Eq("status", TemplateStatusEnum.PUBLIC)
                 )
             )
-        else:
+        if not filters.created_by and not filters.status:
             filter_dump.update(
-                    Eq("created_by", user_id),
+                Or(
+                    Eq(TemplateDocument.created_by, user_id),
+                    Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
+                )
             )
         query = TemplateDocument.find(filter_dump, fetch_links=True).sort("+position")
         count = await query.count()
@@ -63,3 +86,7 @@ class BeanieTemplateRepository(TemplateRepository):
         created_by = data.pop("created_by", None)
         if created_by and PydanticObjectId.is_valid(created_by):
             template.creator_model = UserDocument.model_construct(id=PydanticObjectId(created_by))
+    async def get_latest_template(self, group: str) -> TemplateDocument | None:
+        query = TemplateDocument.find(Eq(TemplateDocument.group, group), fetch_links=True).sort("-position")
+        template= await query.limit(1).to_list()
+        return template[0] if template else None

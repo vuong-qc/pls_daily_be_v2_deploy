@@ -17,7 +17,7 @@ class WorkItemDocument(DocumentWithSoftDelete):
     type: str
     title: str
     des: Optional[str] = None
-    status: str = None
+    status: Optional[str] = None
     created_at: int
     updated_at: int
     parent: Optional[str] = None

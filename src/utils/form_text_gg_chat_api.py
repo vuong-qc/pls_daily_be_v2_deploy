@@ -73,7 +73,7 @@ class FormatContentGgChatAPI:
 
 
         content = TextFormatEnum.CHECKIN.format(
-                time=now_vn.strftime("%d.%m.%Y %H:%M"), user=user_name, checkin_time=now_vn.strftime("%-I:%M %p"),
+                time=datetime.now(tz_vn).strftime("%d.%m.%Y %H:%M"), user=user_name, checkin_time=now_vn.strftime("%-I:%M %p"),
             )
 
         if department:
@@ -233,7 +233,7 @@ class FormatContentGgChatAPI:
         # Build checkout content
         # =========================
         content = TextFormatEnum.CHECKOUT.format(
-            time=now_vn.strftime("%d.%m.%Y %H:%M"),
+            time=datetime.now(tz_vn).strftime("%d.%m.%Y %H:%M"),
             user=user_name,
             work_time=work_time,
             duration=duration,

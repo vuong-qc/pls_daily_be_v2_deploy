@@ -18,3 +18,6 @@ class TemplateRepository(ABC):
     @abstractmethod
     async def get_list_templates(self, filters: FilterTemplateModel, user_id:str) -> tuple[list[TemplateDocument], int]:
         pass
+    @abstractmethod
+    async def get_latest_template(self, group: str) -> TemplateDocument | None:
+        pass

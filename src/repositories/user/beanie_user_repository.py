@@ -105,3 +105,5 @@ class BeanieUserRepository(UserRepository):
         list_object_id = [PydanticObjectId(user_id) for user_id in list_id]
         list_user = await UserDocument.find(In(UserDocument.id, list_object_id),In(UserDocument.status, [UserStatusEnum.ACTIVE.value])).project(ProjectUsername).to_list()
         return list_user
+    async def get_all_user_department(self, departments: list[str]):
+        return await UserDocument.find(In(UserDocument.department, departments)).to_list()

@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any
+
+from beanie import PydanticObjectId
 
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel
 from src.models.work_item.work_item_document import WorkItemDocument, SprintTaskStatsResult
 
 class WorkItemRepository(ABC):
+    @abstractmethod
+    def transaction(self): ...
     @abstractmethod
     async def create_work_item(self, data: dict)->WorkItemDocument:
         pass
@@ -20,7 +24,7 @@ class WorkItemRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_work_item_by_id(self, project_id:str)->WorkItemDocument|None:
+    async def get_work_item_by_id(self, item_id: str, session: Optional[Any] = None)->WorkItemDocument|None:
         pass
 
     @abstractmethod
@@ -80,3 +84,16 @@ class WorkItemRepository(ABC):
     ) -> dict: pass
     async def statistic_in_date_range(self, filters: FilterWorkItemModel, is_summary: Optional[bool]= None):
         pass
+
+    @abstractmethod
+    async def get_active_children(
+            self,
+            parent_ids: list[str],
+            allowed_types: list[str],
+            session: Optional[Any] = None,
+    ) -> list[WorkItemDocument]: ...
+
+    @abstractmethod
+    async def create_many_work_items(
+            self, payloads: list[dict], session: Optional[Any] = None
+    ) -> list[PydanticObjectId]: ...

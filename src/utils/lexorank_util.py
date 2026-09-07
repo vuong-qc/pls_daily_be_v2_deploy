@@ -69,8 +69,8 @@ class LexorankUtil:
                 validate_task = response_model.model_validate(task_doc)
                 validate_task.order = order.order
                 list_response.append(validate_task)
-            else:
-                await order_repository.delete_order(str(order.id))
+            # else:
+            #     await order_repository.delete_order(str(order.id))
         # logger.info('list response with order: %s', list_response)
         list_response[:] = list_response[filter_item.offset:filter_item.offset + filter_item.limit]
 

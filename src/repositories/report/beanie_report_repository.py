@@ -1,10 +1,14 @@
-from beanie import PydanticObjectId
-from beanie.operators import And, In, Or, Set, GTE, LTE, RegEx
 import re
-from src.models.report.request.report_model import FilterReportModel
+
+from beanie import PydanticObjectId
+from beanie.operators import In, Set, And, GTE, LTE, RegEx, Or, Eq
+
+from src.enums.result_enum import ResultStatus
 from src.enums.report_enum import ReportStatusEnum
+from src.enums.result_enum import ResultObjectType, ResultType
 from src.models.department.department_document import DepartmentDocument
 from src.models.report.report_document import ReportDocument
+from src.models.report.request.report_model import FilterReportModel
 from src.models.user.user_document import UserDocument
 from src.repositories.report.report_repository import ReportRepository
 
@@ -21,59 +25,115 @@ class BeanieReportRepository(ReportRepository):
             return None
         return await ReportDocument.get(report_id, fetch_links=True)
 
-    async def get_list_reports(self, filters: FilterReportModel, actor_id: str, department_ids: list[str] | None = None,) -> list[ReportDocument]:
-        filter_dump = filters.model_dump(exclude_unset=True)
-        keyword = filter_dump.pop("search", None)
-        start_date = filter_dump.pop("start_date", None)
-        end_date = filter_dump.pop("end_date", None)
-
-        if filters.created_by:
-            filter_dump.update(
-                In(ReportDocument.created_by, filters.created_by)
-            )
-            if filters.status:
-                filter_dump.update(In(ReportDocument.status, [status for status in filters.status if status != ReportStatusEnum.DRAFT]))
-                filters.status = None
-        else:
-            filter_dump.update(
-                Or(
-                ReportDocument.created_by == actor_id,
-                And(
-                    Or(
-                        In(ReportDocument.shared_users, [actor_id]),
-                        In(ReportDocument.shared_departments, department_ids or []),
-                    ),
-                    In(ReportDocument.status, [
-                        ReportStatusEnum.SUBMITTED,
-                        ReportStatusEnum.DISPLAY,
-                        ReportStatusEnum.CLOSED,
-                    ] if not filters.status else [status for status in filters.status if status != ReportStatusEnum.DRAFT]),
-                ),
-                ),
-            )
-            filters.status = None
+    async def get_list_reports(
+            self, filters: FilterReportModel, actor_id: str,
+            department_ids: list[str] | None = None,
+    ) -> list[ReportDocument]:
+        report_match: dict = {"deleted_at": None}
         if filters.status:
-            filter_dump.update(
-                In(ReportDocument.status, filters.status)
-            )
-
+            if ReportStatusEnum.DRAFT in filters.status:
+                report_match.update(
+                    Or(
+                        And(
+                            Eq(ReportDocument.created_by, actor_id),
+                            Eq(ReportDocument.status, ReportStatusEnum.DRAFT.value),
+                        ),
+                        Eq(ReportDocument.status, [status.value for status in filters.status if status.value != ReportStatusEnum.DRAFT]),
+                    )
+                )
+            else:
+                report_match.update(In(ReportDocument.status, [status.value for status in filters.status]))
+        if filters.created_by:
+            report_match.update(In(ReportDocument.created_by, filters.created_by))
+            # report_match["created_by"] = {"$in": filters.created_by}
         if filters.start_date and filters.end_date:
-            filter_dump.update(
+            report_match.update(
                 And(
-                    GTE(ReportDocument.created_at, start_date),
-                    LTE(ReportDocument.created_at, end_date),
+                    GTE(ReportDocument.created_at, filters.start_date),
+                    LTE(ReportDocument.created_at, filters.end_date),
                 )
             )
-        if keyword:
-            normal_key = re.escape(keyword.strip())
-            filter_dump.update(
-                RegEx(
-                    ReportDocument.title, normal_key, "i"
-                )
+        elif filters.start_date:
+            report_match.update(
+                GTE(ReportDocument.created_at, filters.start_date)
+            )
+        elif filters.end_date:
+            report_match.update(
+                LTE(ReportDocument.created_at, filters.end_date)
+            )
+        if filters.search:
+
+            report_match.update(
+                RegEx(ReportDocument.title,re.escape(filters.search.strip()), "i")
             )
 
+        object_filters = [{
+            "$and": [
+                {"$eq": ["$object_type", ResultObjectType.USER.value]},
+                {"$eq": ["$object_id", actor_id]},
+            ]
+        }]
+        if department_ids:
+            object_filters.append({
+                "$and": [
+                    {"$eq": ["$object_type", ResultObjectType.DEPARTMENT]},
+                    {"$in": ["$object_id", department_ids]},
+                ]
+            })
+
+        pipeline = [
+            {"$match": report_match},
+        ]
+        result_match = [
+            {"$eq": ["$parent_id", "$$report_id"]},
+            {"$eq": ["$type", ResultType.REPORT]},
+            {"$eq": ["$deleted_at", None]},
+            {"$or": object_filters},
+        ]
+        if filters.result_status is not None:
+            # result_match.append({"$eq": ["$status", filters.result_status.value]})
+            closed_by_expr = {"$ifNull": ["$closed_by", []]}
+            if filters.result_status == ResultStatus.CLOSED:
+                result_match.append(
+                    {"$in": [actor_id, closed_by_expr]}
+                )
+            else:
+                result_match.append(
+                    {"$not": [{"$in": [actor_id, closed_by_expr]}]}
+                )
+            pipeline.extend(
+                [
+                    {
+                        "$lookup": {
+                            "from": "results",
+                            "let": {"report_id": {"$toString": "$_id"}},
+                            "pipeline": [{"$match": {"$expr": {"$and": result_match}}}],
+                            "as": "access_results",
+                        }
+                    },
+                    {
+                        "$match": {
+                            "$or": [
+                                {"access_results.0": {"$exists": True}},
+                            ]
+                        }
+                    },
+                ]
+            )
+
+        pipeline.extend(
+            [
+
+            {"$sort": {"created_at": -1}},
+            {"$project": {"_id": 1}},
+        ]
+        )
+        rows = await ReportDocument.aggregate(pipeline).to_list()
+        report_ids = [row["_id"] for row in rows]
+        if not report_ids:
+            return []
         return await ReportDocument.find(
-            filter_dump,
+            In(ReportDocument.id, report_ids),
             fetch_links=True,
         ).sort("-created_at").to_list()
 

@@ -1,12 +1,15 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status, Query
+
+from src.enums.result_enum import ResultStatus
 from src.models.report.request.report_model import FilterReportModel, UpdateReportModel
 from src.models.report.request.report_model import CreateReportModel, UpdateReportSharedModel, UpdateReportStatusModel
 from src.models.response_model import ResponseModel
 from src.models.section_result.request.section_result_model import UpsertSectionResultModel
 from src.repositories.department.beanie_department_repository import BeanieDepartmentRepository
 from src.repositories.report.beanie_report_repository import BeanieReportRepository
+from src.repositories.result.beanie_result_repository import BeanieResultRepository
 from src.repositories.section.beanie_section_repository import BeanieSectionRepository
 from src.repositories.section_result.beanie_section_result_repository import BeanieSectionResultRepository
 from src.repositories.template.beanie_template_repository import BeanieTemplateRepository
@@ -23,7 +26,8 @@ def get_report_service():
     template_repository = BeanieTemplateRepository()
     section_service = SectionService(BeanieSectionRepository(), template_repository)
     return ReportService(BeanieReportRepository(), template_repository, section_service,
-                         BeanieUserRepository(), BeanieDepartmentRepository())
+                         BeanieUserRepository(), BeanieDepartmentRepository(),
+                         BeanieSectionResultRepository(), BeanieResultRepository())
 
 
 def get_section_result_service():
@@ -80,3 +84,26 @@ async def get_report(report_id: str, service: ReportService = Depends(get_report
                      user_data: dict = Depends(get_current_user_by_token)):
     return ResponseModel(data=await service.get_report(report_id, user_data["sub"]))
 
+@router.delete("/delete-report/{report_id}",
+               description="Delete report by id",
+               status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(report_id: str,
+                        service: ReportService = Depends(get_report_service),
+                        user_data: dict = Depends(get_current_user_by_token)
+                        ):
+    user_id = user_data["sub"]
+    return await service.delete_report(report_id, user_id)
+
+@router.put("/update-report-result/{report_id}",
+            response_model=ResponseModel,
+            status_code=status.HTTP_202_ACCEPTED,
+            description="Update report result by id"
+            )
+async def update_report_result(
+        report_id: str,
+        status_result: ResultStatus,
+        service: ReportService = Depends(get_report_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    response = await service.change_status_result_view(report_id, user_data["sub"], status_result)
+    return ResponseModel(data=response)

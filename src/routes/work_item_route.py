@@ -1,3 +1,4 @@
+from src.models.work_item.request.duplicate_work_item_model import DuplicateWorkItemRequest
 from src.services.work_item_service import WorkItemService
 from src.repositories.group.beanie_group_repository import BeanieGroupRepository
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
@@ -10,6 +11,7 @@ from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.utils.proxy_util import get_current_user_by_token
 from fastapi import APIRouter, Depends, Query, status
 from typing import Annotated
+from src.services.duplicate_work_item_service import DuplicateWorkItemService
 
 router = APIRouter(
     tags = ['work-item']
@@ -21,6 +23,10 @@ def get_work_item_service():
     user_repository = BeanieUserRepository()
     chatbot_token_repository = BeanieChatbotTokenRepository()
     return WorkItemService(beanie_work_item_repository, group_repository, user_repository, chatbot_token_repository)
+
+def get_duplicate_work_item_service() -> DuplicateWorkItemService:
+    beanie_work_item_repository = BeanieWorkItemRepository()
+    return DuplicateWorkItemService(beanie_work_item_repository)
 
 @router.post('/create-work-item',
              summary='Create  new work item',
@@ -121,3 +127,15 @@ async def get_my_bug_model(
 ):
     user_id = user_data.get('sub')
     return await service.count_my_bugs(user_id)
+
+@router.post(
+    "/duplicate/{source_id}",
+    status_code=status.HTTP_201_CREATED,
+)
+async def duplicate_work_item(
+    source_id: str,
+    req: DuplicateWorkItemRequest,
+    user_data: dict = Depends(get_current_user_by_token),
+    service: DuplicateWorkItemService = Depends(get_duplicate_work_item_service),
+):
+    return await service.duplicate(source_id, req, user_data["sub"])

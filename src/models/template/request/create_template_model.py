@@ -7,3 +7,8 @@ class CreateTemplateModel(BaseModel):
     title: str
     description: Optional[str] = None
     group: str
+
+class CreateDuplicateTemplateModel(BaseModel):
+    created_by: Optional[str] = None
+    group: str
+    template_id: str

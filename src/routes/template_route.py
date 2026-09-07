@@ -1,8 +1,9 @@
 from src.services.template_service import TemplateService
-from src.models.template.request.create_template_model import CreateTemplateModel
+from src.models.template.request.create_template_model import CreateTemplateModel, CreateDuplicateTemplateModel
 from src.models.template.request.filter_template_model import FilterTemplateModel
 from src.models.template.request.update_template_model import UpdateTemplateModel
 from src.repositories.template.beanie_template_repository import BeanieTemplateRepository
+from src.repositories.section.beanie_section_repository import BeanieSectionRepository
 from typing import Annotated
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.routes.group_route import get_group_service, GroupService
@@ -17,7 +18,8 @@ def get_template_service(
         group_service: GroupService = Depends(get_group_service),
 ):
     template_repository = BeanieTemplateRepository()
-    return TemplateService(template_repository, group_service)
+    section_repository = BeanieSectionRepository()
+    return TemplateService(template_repository, group_service, section_repository)
 
 @router.get("/get-list-template",
             response_model=ResponsePaginatedModel,
@@ -65,3 +67,15 @@ async def delete_template(
         user_data: dict = Depends(get_current_user_by_token),
 ):
     response = await service.delete_template(template_id, user_data["sub"])
+
+@router.post("/duplicate-template",
+             response_model=ResponseModel,
+             status_code=status.HTTP_201_CREATED,
+             summary="Duplicate a template")
+async def duplicate_template(
+        data: CreateDuplicateTemplateModel,
+        service: TemplateService = Depends(get_template_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    response = await service.duplicate_template(data, user_data["sub"])
+    return ResponseModel(data=response)

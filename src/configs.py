@@ -63,6 +63,8 @@ class Settings(BaseSettings):
 
     HOUR_CHECKOUT_REMIND:int = 23
     MINUTE_CHECKOUT_REMIND:int = 0
+    MONGO_SUPPORTS_TRANSACTION: bool = True
+    ENV: str = "local"
 
     TZ:str='Asia/Ho_Chi_Minh'
 

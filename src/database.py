@@ -44,6 +44,8 @@ from src.models.template.template_document import TemplateDocument
 from src.models.section.section_document import SectionDocument
 from src.models.report.report_document import ReportDocument
 from src.models.section_result.section_result_document import SectionResultDocument
+from src.models.result.result_document import ResultDocument
+from src.models.version.version_document import VersionDocument
 
 WorkItemDocument.model_rebuild()
 SessionDocument.model_rebuild()
@@ -69,7 +71,8 @@ async def init_db():
                              DepartmentDocument, NotificationDocument, MeetingDocument,
                              ShiftScheduleDocument, PlanDocument, LogDocument, EvaluateDocument,
                              CommentDocument, TemplateDocument, SectionDocument,
-                             ReportDocument, SectionResultDocument
+                             ReportDocument, SectionResultDocument, ResultDocument,
+                             VersionDocument
                              ]
         )
         print("MongoDB & Beanie initialized!")

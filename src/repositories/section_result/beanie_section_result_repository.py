@@ -48,6 +48,13 @@ class BeanieSectionResultRepository(SectionResultRepository):
             fetch_links=True,
         ).to_list()
 
+    async def delete_results_by_report(self, report_id: str) -> None:
+        results = await SectionResultDocument.find(
+            SectionResultDocument.report_id == report_id,
+        ).to_list()
+        for result in results:
+            await result.delete()
+
     def _build_user_link(self, user_id: str | None):
         if user_id and PydanticObjectId.is_valid(user_id):
             return UserDocument.model_construct(id=PydanticObjectId(user_id))

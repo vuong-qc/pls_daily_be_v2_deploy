@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from src.enums.report_enum import ReportStatusEnum, ReportTypeEnum
+from src.enums.result_enum import ResultStatus
 
 
 class CreateReportModel(BaseModel):
@@ -28,8 +29,10 @@ class FilterReportModel(BaseModel):
     end_date: Optional[int] = None
     status: Optional[list[ReportStatusEnum]] = None
     created_by: Optional[list[str]] = None
+    result_status: Optional[ResultStatus] = ResultStatus.DISPLAY
 
 
 class UpdateReportModel(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    template_id: Optional[str] = None

@@ -84,3 +84,10 @@ class BeanieSectionRepository(SectionRepository):
             ]
 
         return await SectionDocument.find(filters).sort("+position").to_list()
+
+    async def create_many_section(self, list_data: list[dict]):
+        sections = []
+        for data in list_data:
+            section = SectionDocument(**data)
+            sections.append(section)
+        await SectionDocument.insert_many(sections)

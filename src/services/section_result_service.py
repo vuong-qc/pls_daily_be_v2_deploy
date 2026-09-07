@@ -53,11 +53,7 @@ class SectionResultService:
     async def _has_access(self, report, user_id: str) -> bool:
         if user_id == report.created_by:
             return True
-        if report.status not in {
-            ReportStatusEnum.SUBMITTED,
-            ReportStatusEnum.DISPLAY,
-            ReportStatusEnum.CLOSED,
-        }:
+        if report.status != ReportStatusEnum.SUBMITTED:
             return False
         if user_id in report.shared_users:
             return True

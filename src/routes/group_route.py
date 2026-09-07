@@ -60,6 +60,6 @@ async def delete_group(group_id:str,
 async def get_list_groups(
         query: Annotated[FilterGroupModel, Query()],
         service: GroupService = Depends(get_group_service),
-        user_data: dict = Depends(get_current_user_by_token)
+        # user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.get_list_group(query)

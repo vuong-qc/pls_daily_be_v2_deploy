@@ -13,3 +13,6 @@ class SectionResultRepository(ABC):
 
     @abstractmethod
     async def get_results_by_report(self, report_id: str) -> list[SectionResultDocument]: ...
+
+    @abstractmethod
+    async def delete_results_by_report(self, report_id: str) -> None: ...

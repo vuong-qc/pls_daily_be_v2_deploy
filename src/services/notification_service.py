@@ -10,6 +10,7 @@ from src.models.department.request.filter_department_model import FilterDepartme
 from src.exception.department_exception import DepartmentException, DepartmentMessage, DepartmentStatusCode
 from src.exception.notification_exception import NotificationException, NotificationStatusCode, NotificationMessage
 from src.enums.notification_type_enum import NotificationTypeEnum
+from src.enums.user_role_enum import UserRole
 
 class NotificationService:
     def __init__(self, notification_repository: NotificationRepository, user_repository: UserRepository, department_repository: DepartmentRepository):
@@ -33,7 +34,7 @@ class NotificationService:
         response = NotificationResponse.model_validate(noti)
         return ResponseModel(data=response)
 
-    async def update_noti(self, noti_id:str,  user_id: str, update_notification_model: UpdateNotificationModel):
+    async def update_noti(self, noti_id:str,  user_id: str, update_notification_model: UpdateNotificationModel, roles: int):
         if update_notification_model.departments:
             filter_department = FilterDepartmentModel(limit=1, offset=0, list_ids=update_notification_model.departments)
             departments, total = await self.department_repository.get_list_departments(filter_department)
@@ -42,7 +43,7 @@ class NotificationService:
         noti = await self.notification_repository.get_noti(noti_id)
         if not noti:
             raise NotificationException(NotificationMessage.NOT_FOUND, NotificationStatusCode.NOT_FOUND)
-        if user_id != noti.owner_id:
+        if user_id != noti.owner_id and UserRole.ADMIN not in roles:
             raise NotificationException(NotificationMessage.NOT_OWNER, NotificationStatusCode.NOT_OWNER)
         start_time = update_notification_model.start_time if update_notification_model.start_time else noti.start_time
         end_time = update_notification_model.end_time if update_notification_model.end_time else noti.end_time

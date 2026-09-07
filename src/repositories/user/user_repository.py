@@ -29,3 +29,6 @@ class UserRepository(ABC):
     @abstractmethod
     async def get_all_user_match_id(self, list_id: list[str])-> list[ProjectUsername]:
         pass
+    @abstractmethod
+    async def get_all_user_department(self, departments: list[str]):
+        pass

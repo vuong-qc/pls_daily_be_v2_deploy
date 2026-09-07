@@ -35,6 +35,7 @@ from src.routes.comment_route import router as comment_route
 from src.routes.template_route import router as template_route
 from src.routes.section_route import router as section_route
 from src.routes.report_route import router as report_route
+from src.routes.version_route import router as version_route
 
 app = FastAPI(
     title="Backend Daily",
@@ -72,6 +73,7 @@ app.include_router(section_route, prefix="/sections")
 app.include_router(report_route, prefix="/reports")
 app.include_router(testcase_route, prefix="/testcase")
 app.include_router(work_item_route, prefix="/work-item")
+app.include_router(version_route, prefix="/versions")
 
 logging.basicConfig(
     level=logging.INFO,

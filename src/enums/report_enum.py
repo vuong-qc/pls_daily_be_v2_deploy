@@ -9,5 +9,3 @@ class ReportTypeEnum(StrEnum):
 class ReportStatusEnum(StrEnum):
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
-    DISPLAY = "DISPLAY"
-    CLOSED = "CLOSED"
