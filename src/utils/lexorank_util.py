@@ -52,13 +52,13 @@ class LexorankUtil:
         logger.debug('current_position: %s', current_position)
 
         for miss_task in missing_tasks:
-            lexorank_position = LexorankUtil.get_lexorank_between(current_position, None)
+            lexorank_position = LexorankUtil.get_lexorank_between(None, current_position)
             new_order = CreateOrderModel(object_id=str(miss_task.id), parent_id=miss_task.parent,
                                          owner_id=filters.owner_id, type=filter_item.type_order,
                                          order=lexorank_position)
             current_position = lexorank_position
             # add new order to list order
-            list_order += [new_order]
+            list_order = [new_order] + list_order
             list_new_order.append(new_order.model_dump())
 
         if list_new_order:

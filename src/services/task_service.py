@@ -87,7 +87,7 @@ class TaskService:
             raise TaskException(TaskMessage.PARENT_TASK_NOT_FOUND, TaskStatusCode.PARENT_TASK_NOT_FOUND)
         if handler_id:
             # if user_id not in user assign => check role
-            if handler_id not in task.assigned_id:
+            if task.assigned_id and handler_id not in task.assigned_id:
                 sprint = await self.task_repository.get_work_item_by_id(task.parent)
                 if sprint.type == WorkItemType.SPRINT or sprint.type == WorkItemType.BACKLOG:
                     logger.info("update task in case sprint backlog")

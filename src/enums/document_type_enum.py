@@ -10,6 +10,7 @@ class DocumentTypeEnum(StrEnum):
     MEETING_REPORT = 'MEETING_REPORT'
     MEETING_CONTENT='MEETING_CONTENT'
     NOTE= 'NOTE'
+    POST_MEETING_TASK ='POST_MEETING_TASK'
 
 class DocumentParentType(StrEnum):
     PROJECT = 'PROJECT'

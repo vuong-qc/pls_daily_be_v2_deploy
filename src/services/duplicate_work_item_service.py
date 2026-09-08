@@ -67,13 +67,19 @@ class DuplicateWorkItemService:
             for level in levels:
                 payloads = []
                 for node in level:
+                    is_root = str(node.id) == str(source_ctx.root.id)
+
                     parent_id = (
                         destination.parent_id
                         if str(node.id) == str(source_ctx.root.id)
                         else id_map[str(node.parent)]
                     )
+                    payload = self._build_duplicate_payload(node, parent_id, actor_id, id_map, now)
+                    if is_root:
+                        payload["title"] = f"Copy - {node.title}"
+
                     payloads.append(
-                        self._build_duplicate_payload(node, parent_id, actor_id, id_map, now)
+                        payload
                     )
 
                 inserted = await self.work_item_repository.create_many_work_items(

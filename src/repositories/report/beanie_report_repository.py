@@ -31,18 +31,7 @@ class BeanieReportRepository(ReportRepository):
     ) -> list[ReportDocument]:
         report_match: dict = {"deleted_at": None}
         if filters.status:
-            if ReportStatusEnum.DRAFT in filters.status:
-                report_match.update(
-                    Or(
-                        And(
-                            Eq(ReportDocument.created_by, actor_id),
-                            Eq(ReportDocument.status, ReportStatusEnum.DRAFT.value),
-                        ),
-                        Eq(ReportDocument.status, [status.value for status in filters.status if status.value != ReportStatusEnum.DRAFT]),
-                    )
-                )
-            else:
-                report_match.update(In(ReportDocument.status, [status.value for status in filters.status]))
+            report_match.update(In(ReportDocument.status, [status.value for status in filters.status]))
         if filters.created_by:
             report_match.update(In(ReportDocument.created_by, filters.created_by))
             # report_match["created_by"] = {"$in": filters.created_by}

@@ -4,7 +4,8 @@ from src.models.template.request.filter_template_model import FilterTemplateMode
 from src.repositories.template.template_repository import TemplateRepository
 from src.models.user.user_document import UserDocument
 from src.models.template.template_document import TemplateDocument
-from beanie.operators import Set, In, Or, Eq, And
+from beanie.operators import Set, In, Or, Eq, And, RegEx
+import re
 
 class BeanieTemplateRepository(TemplateRepository):
     async def create_template(self, data: dict) -> TemplateDocument:
@@ -39,6 +40,13 @@ class BeanieTemplateRepository(TemplateRepository):
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop("offset", None)
         limit = filter_dump.pop("limit", None)
+        search = filter_dump.pop("search", None)
+        filter_dump.pop("status", None)
+        if filters.search:
+            keyword = search.strip()
+            filter_dump.update(
+                RegEx(TemplateDocument.title, re.escape(keyword), "i"),
+            )
         if filters.status:
             if TemplateStatusEnum.PUBLIC not in filters.status:
                 filter_dump.update(
@@ -75,6 +83,7 @@ class BeanieTemplateRepository(TemplateRepository):
                     Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
                 )
             )
+        print("filter_dump", filter_dump)
         query = TemplateDocument.find(filter_dump, fetch_links=True).sort("+position")
         count = await query.count()
         if offset and limit:
