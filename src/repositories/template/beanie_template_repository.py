@@ -65,15 +65,11 @@ class BeanieTemplateRepository(TemplateRepository):
                         Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
                     )
                 )
-        else:
-            filter_dump.update(
-                    Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC),
-            )
         if filters.created_by:
             filter_dump.update(
                 And(
-                    In("created_by", filters.created_by),
-                    Eq("status", TemplateStatusEnum.PUBLIC)
+                    In(TemplateDocument.created_by, filters.created_by),
+                    Eq(TemplateDocument.status, TemplateStatusEnum.PUBLIC)
                 )
             )
         if not filters.created_by and not filters.status:
