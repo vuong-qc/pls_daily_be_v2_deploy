@@ -7,3 +7,4 @@ class MeetingTodoTaskResponseModel(BaseModel):
     meeting: Any
     task: Any
     todo: Any
+    todo_department: Any

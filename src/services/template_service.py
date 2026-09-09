@@ -14,7 +14,7 @@ class TemplateService:
     def __init__(self, template_repository: TemplateRepository, group_service: GroupService, section_repository: SectionRepository):
         self.template_repository = template_repository
         self.group_service = group_service
-        self.allow_field = {"status"}
+        self.allow_field = {"status", "description", "title"}
         self.allowed_status_transitions = {
             TemplateStatusEnum.DRAFT: {
                 TemplateStatusEnum.DISABLED,
@@ -91,6 +91,7 @@ class TemplateService:
         template_cp = original_template.model_copy(deep=True)
         template_cp.created_by = user_id
         template_cp.group = data.group
+        template_cp.status = TemplateStatusEnum.DRAFT
         latest_template = await self.template_repository.get_latest_template(data.group)
         prev_order = latest_template.position if latest_template else None
         next_order = None

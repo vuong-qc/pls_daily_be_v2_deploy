@@ -11,7 +11,7 @@ class SectionResultResponseModel(BaseModel):
     id: PydanticObjectId
     report_id: str
     section_item_id: str
-    value: Optional[Union[float, str]] = None
+    value: Optional[Union[float, str, bool]] = None
     created_by: Optional[str] = None
     creator_model: Optional[UserResponse] = None
     created_at: int

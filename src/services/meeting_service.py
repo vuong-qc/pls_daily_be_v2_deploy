@@ -18,13 +18,17 @@ from src.enums.document_type_enum import DocumentTypeEnum
 from src.utils.datetime_util import DateTimeUtil
 from src.services.task_service import TaskService
 from src.models.meeting.response.meeting_todo_task_response_model import MeetingTodoTaskResponseModel
+from src.repositories.user.user_repository import UserRepository
 
 class MeetingService:
-    def __init__(self, meeting_repository: MeetingRepository, document_item_repository: DocumentItemRepository, task_service: TaskService, document_service: DocumentItemService) -> None:
+    def __init__(self, meeting_repository: MeetingRepository, document_item_repository: DocumentItemRepository,
+                 task_service: TaskService, document_service: DocumentItemService,
+                 user_repository: UserRepository) -> None:
         self.meeting_repository = meeting_repository
         self.document_item_repository = document_item_repository
         self.task_service = task_service
         self.document_service = document_service
+        self.user_repository = user_repository
 
     async def create_meeting(self, data: CreateMeetingModel) -> ResponseModel:
         meeting = await self.meeting_repository.create_meeting(data.model_dump())
@@ -36,8 +40,7 @@ class MeetingService:
         if not meeting:
             raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
         # check input
-        if user_id != meeting.creator:
-            raise MeetingException(MeetingMessage.NOT_OWNER, MeetingStatusCode.NOT_OWNER)
+        self._check_access(user_id, meeting)
         repeat_type = meeting.repeat_type if data.repeat_type is None else data.repeat_type
         date_of_month = meeting.date_of_month if data.date_of_month is None else data.date_of_month
         if date_of_month is None and repeat_type == MeetingRepeatType.MONTHLY:
@@ -99,9 +102,17 @@ class MeetingService:
         filters.end_date =int(end_of_today_vn.timestamp() * 1000)
         filter_task = FilterTaskModel(offset=filters.offset,limit=filters.limit, deadline_end=filters.end_date, assigned_id=[user_id], type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
         filter_todo = FilterDocumentItem(offset=filters.offset,limit=filters.limit, object_id=[user_id],  end_deadline=filters.end_date, is_checked=False, type=[DocumentTypeEnum.TODO])
+        # filter todo department
+        user = await self.user_repository.get_user_by_id(user_id)
+        if not user:
+            raise
+        filter_department_todo = filter_todo.model_copy(deep=True)
+        filter_department_todo.object_id = user.department
 
         list_todo_response = await self.document_service.get_list_document(filter_todo, user_id)
         task_response = await self.task_service.get_list_tasks(filter_task, user_id)
+
+        list_todo_department = await self.document_service.get_list_document(filter_department_todo, user_id)
 
         list_meeting, total = await self.meeting_repository.get_list_of_meetings(filters)
         list_meeting_response = []
@@ -112,6 +123,7 @@ class MeetingService:
             task=task_response.data,
             todo=list_todo_response.data,
             meeting=list_meeting_response,
+            todo_department=list_todo_department.data
         )
         return ResponseModel(data=summary_response)
 
@@ -140,7 +152,25 @@ class MeetingService:
 
     async def accept_meeting(self, meeting_id: str, user_id: str):
         data = await self.meeting_repository.add_participant(meeting_id, user_id)
-        return ResponseModel(data=data)
+        return ResponseModel(data=MeetingResponse.model_validate(data))
     async def reject_meeting(self, meeting_id: str, user_id: str):
         data = await self.meeting_repository.remove_participant(meeting_id, user_id)
-        return ResponseModel(data=data)
+        return ResponseModel(data=MeetingResponse.model_validate(data))
+    async def add_follower(self, meeting_id: str, user_ids: list[str], owner_id: str):
+        meeting = await self.meeting_repository.get_meeting_by_id(meeting_id)
+        if not meeting:
+            raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
+        self._check_access(owner_id, meeting)
+        data = await self.meeting_repository.add_follower(meeting_id, user_ids)
+        return ResponseModel(data=MeetingResponse.model_validate(data))
+    async def remove_follower(self, meeting_id: str, user_ids: list[str], owner_id: str):
+        meeting = await self.meeting_repository.get_meeting_by_id(meeting_id)
+        if not meeting:
+            raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
+        self._check_access(owner_id, meeting)
+        data = await self.meeting_repository.remove_follower(meeting_id, user_ids)
+        return ResponseModel(data=MeetingResponse.model_validate(data))
+
+    def _check_access(self, user_id: str, meeting:MeetingDocument):
+        if user_id != meeting.creator and user_id not in meeting.handler:
+            raise MeetingException(MeetingMessage.NOT_OWNER, MeetingStatusCode.NOT_OWNER)

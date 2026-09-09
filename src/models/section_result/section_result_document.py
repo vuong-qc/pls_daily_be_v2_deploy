@@ -11,7 +11,7 @@ from src.utils.datetime_util import DateTimeUtil
 class SectionResultDocument(DocumentWithSoftDelete):
     report_id: Indexed(str)
     section_item_id: Indexed(str)
-    value: Optional[Union[float, str]] = None
+    value: Optional[Union[float, str, bool]] = None
     created_by: Optional[str] = None
     creator_model: Optional[Link[UserDocument]] = None
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)

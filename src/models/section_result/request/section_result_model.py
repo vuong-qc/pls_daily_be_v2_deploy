@@ -4,4 +4,4 @@ from pydantic import BaseModel
 
 
 class UpsertSectionResultModel(BaseModel):
-    value: Union[float, str]
+    value: Union[float, str, bool]

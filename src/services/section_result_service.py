@@ -21,14 +21,14 @@ class SectionResultService:
         self.user_repository = user_repository
 
     async def upsert_result(self, report_id: str, section_item_id: str,
-                            value: Union[float, str], user_id: str) -> SectionResultResponseModel:
+                            value: Union[float, str, bool], user_id: str) -> SectionResultResponseModel:
         report = await self.report_repository.get_report_by_id(report_id)
         if not report:
             raise ReportException(ReportMessage.NOT_FOUND, ReportStatusCode.NOT_FOUND)
         if report.created_by != user_id:
             raise ReportException(ReportMessage.FORBIDDEN, ReportStatusCode.FORBIDDEN)
-        if report.status != ReportStatusEnum.DRAFT:
-            raise ReportException(ReportMessage.NOT_EDITABLE, ReportStatusCode.NOT_EDITABLE)
+        # if report.status != ReportStatusEnum.DRAFT:
+        #     raise ReportException(ReportMessage.NOT_EDITABLE, ReportStatusCode.NOT_EDITABLE)
         item = await self.section_repository.get_section_by_id(section_item_id)
         if not item or item.type != SectionTypeEnum.ITEM:
             raise SectionResultException(SectionResultMessage.ITEM_NOT_FOUND, SectionResultStatusCode.ITEM_NOT_FOUND)
@@ -62,7 +62,7 @@ class SectionResultService:
         user = await self.user_repository.get_user_by_id(user_id)
         return bool(user and set(user.department or []).intersection(report.shared_departments))
 
-    def _validate_value(self, value_type: str, value: Union[float, str]) -> Union[float, str]:
+    def _validate_value(self, value_type: str, value: Union[float, str,bool]) -> Union[float, str,bool]:
         is_number = isinstance(value, Real) and not isinstance(value, bool)
         if value_type == SectionValueTypeEnum.NUMBER and is_number:
             return float(value)
@@ -70,4 +70,9 @@ class SectionResultService:
             return value
         if value_type == SectionValueTypeEnum.PROGRESS and is_number and 0 <= value <= 100:
             return float(value)
+        if value_type == SectionValueTypeEnum.CHECK and isinstance(value, bool):
+            return value
+        if value_type == SectionValueTypeEnum.EVALUATE and isinstance(value, str):
+            return value
+
         raise SectionResultException(SectionResultMessage.INVALID_VALUE, SectionResultStatusCode.INVALID_VALUE)

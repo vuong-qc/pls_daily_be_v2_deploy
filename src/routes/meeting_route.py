@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, Query, status
 from typing import Annotated
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.utils.proxy_util import get_current_user_by_token
+from src.repositories.user.beanie_user_repository import BeanieUserRepository
+from src.models.meeting.request.add_follower_model import AddFollowerModel
 
 router = APIRouter(
     tags=["Meeting"],
@@ -19,7 +21,9 @@ def get_meeting_service(task_service: TaskService = Depends(get_task_service),
                         ):
     meet_repository = BeanieMeetingRepository()
     document_item_repository = BeanieDocumentItemRepository()
-    return MeetingService(meet_repository, document_item_repository, task_service, document_service)
+    user_repository = BeanieUserRepository()
+    return MeetingService(meet_repository, document_item_repository,
+                          task_service, document_service, user_repository)
 
 @router.post("/create-meeting",
              status_code=status.HTTP_201_CREATED,
@@ -107,3 +111,27 @@ async def reject_meeting(
 ):
     user_id = user_data['sub']
     return await service.reject_meeting(meeting_id, user_id)
+
+@router.put("/add-follow-meeting/{meeting_id}",
+            status_code=status.HTTP_202_ACCEPTED,
+            response_model=ResponseModel,)
+async def add_fl_meeting(
+        meeting_id: str,
+        request: AddFollowerModel,
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.add_follower(meeting_id, request.list_user_ids, user_id)
+
+@router.put("/remove-follow-meeting/{meeting_id}",
+            status_code=status.HTTP_202_ACCEPTED,
+            response_model=ResponseModel,)
+async def remove_fl_meeting(
+        meeting_id: str,
+        request: AddFollowerModel,
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.remove_follower(meeting_id, request.list_user_ids, user_id)

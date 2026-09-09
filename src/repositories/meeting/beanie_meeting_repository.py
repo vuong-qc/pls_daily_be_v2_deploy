@@ -4,6 +4,7 @@ from src.models.meeting.meeting_document import MeetingDocument
 from src.models.user.user_document import UserDocument
 from beanie import PydanticObjectId, UpdateResponse
 from beanie.operators import Set, In, LTE, GTE, And, Or
+from bson import DBRef
 
 
 class BeanieMeetingRepository(MeetingRepository):
@@ -150,6 +151,105 @@ class BeanieMeetingRepository(MeetingRepository):
             PydanticObjectId(meeting_id), fetch_links=True
         )
         return meeting
+
+    async def add_follower(self, meeting_id: str, user_ids:list[str])->MeetingDocument:
+        valid_ids = [PydanticObjectId(uid) for uid in user_ids if PydanticObjectId.is_valid(uid)]
+
+        pipeline_set = {
+
+            # Logic cập nhật update_user bằng DB
+            "followers": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$followers", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$not": [{"$in": ["$$user", user_ids]}]}
+                        }
+                    },
+                    # Nối thêm user_id vào cuối
+                    user_ids
+                ]
+            },
+            "follower_models": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$follower_models", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$not": [{"$in": ["$$user.$id", valid_ids]}]}
+                        }
+                    },
+                    {"$literal": [
+                        DBRef(collection=UserDocument.get_collection_name(), id=uid)
+                        for uid in valid_ids
+                    ]}
+                ]
+            }
+        }
+
+        # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
+        # Trả về document sau khi update
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
+        )
+        return meeting
+
+    async def remove_follower(self, meeting_id: str, user_ids:str)->MeetingDocument:
+        valid_ids = [PydanticObjectId(uid) for uid in user_ids if PydanticObjectId.is_valid(uid)]
+
+        pipeline_set = {
+
+            # Logic cập nhật update_user bằng DB
+            "followers": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$followers", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$not": [{"$in": ["$$user", user_ids]}]}
+                        }
+                    },
+                    []
+                ]
+            },
+            "follower_models": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$follower_models", []]},
+                            "as": "user",
+                            "cond": {"$not": [{"$in": ["$$user.$id", valid_ids]}]}
+                        }
+                    },
+                ]
+            }
+        }
+
+        # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
+        # Trả về document sau khi update
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
+        )
+        return meeting
+
     async def _add_link_document_item(self, data: dict, document: MeetingDocument):
         handler: list[str] | bool = data.get("handler", False)
         # print("handler_id",handler_id)

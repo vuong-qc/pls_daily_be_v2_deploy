@@ -10,3 +10,5 @@ class SectionValueTypeEnum(StrEnum):
     NUMBER = "NUMBER"
     TEXT = "TEXT"
     PROGRESS = "PROGRESS"
+    CHECK = "CHECK"
+    EVALUATE = "EVALUATE"
