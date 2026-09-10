@@ -15,6 +15,16 @@ class DateTimeUtil:
         start_of_today_vn = datetime.combine(now_vn.date(), time_datetime.min, tzinfo=tz_vn)
 
         return start_of_today_vn
+
+    @staticmethod
+    def get_end_today_timestamp():
+        tz_vn = ZoneInfo(settings.TZ)
+        now_vn = datetime.now(tz_vn)
+        end_of_today_vn = datetime.combine(now_vn.date(), time_datetime.max, tzinfo=tz_vn)
+
+        timestamp = end_of_today_vn.timestamp()
+        return int(timestamp * 1000)
+
     @staticmethod
     def generate_date_range(start_str: str, end_str: str) -> list[str]:
         dates = []

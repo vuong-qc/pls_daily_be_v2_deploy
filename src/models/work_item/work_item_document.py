@@ -58,6 +58,9 @@ class WorkItemDocument(DocumentWithSoftDelete):
     project_version: Optional[str] = None
     bug_type: Optional[str] = None
     department_id: Optional[str] = None
+    instruction: Optional[str] = None
+    reason: Optional[str] = None
+    solution: Optional[str] = None
 
     class Settings:
         name = "work_items"

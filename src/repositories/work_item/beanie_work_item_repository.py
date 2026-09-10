@@ -84,17 +84,27 @@ class BeanieWorkItemRepository(WorkItemRepository):
             updated_project = await WorkItemDocument.find_one(WorkItemDocument.id == PydanticObjectId(project.id),fetch_links=True)
             return updated_project
         return None
-    async def delete_work_item(self, project_id:str):
-        project = await WorkItemDocument.get(project_id)
-        if project:
-            if project.type == WorkItemType.BACKLOG:
+    async def delete_work_item(self, work_item_id:str):
+        work_item = await WorkItemDocument.get(work_item_id)
+        if work_item:
+            if work_item.type == WorkItemType.BACKLOG:
                 return
-            if project.type == WorkItemType.STORY:
-                # get all task to delete
-                tasks = await WorkItemDocument.find(WorkItemDocument.parent == project_id, WorkItemDocument.type == WorkItemType.TASK).to_list()
-                for task in tasks:
-                    await task.delete()
-            await project.delete()
+            ids_to_delete = await self._collect_tree_ids(work_item_id)
+
+            await WorkItemDocument.find(
+                In(WorkItemDocument.id, [PydanticObjectId(i) for i in ids_to_delete])
+            ).update(Set({WorkItemDocument.deleted_at: datetime.now(timezone.utc)}))
+
+
+    async def _collect_tree_ids(self, item_id: str) -> list[str]:
+        """Trả về list id gồm chính item_id và toàn bộ id con cháu."""
+        ids = [item_id]
+        children = await WorkItemDocument.find(
+            WorkItemDocument.parent == item_id
+        ).to_list()
+        for child in children:
+            ids.extend(await self._collect_tree_ids(str(child.id)))
+        return ids
     async def get_list_work_items(self, filters: FilterWorkItemModel) ->tuple[list[WorkItemDocument], int]:
         filter_dump = filters.model_dump(exclude_unset=True)
         logger.info('filter work item before apply update: %s', filter_dump)

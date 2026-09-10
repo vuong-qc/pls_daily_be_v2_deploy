@@ -92,6 +92,7 @@ class TemplateService:
         template_cp.created_by = user_id
         template_cp.group = data.group
         template_cp.status = TemplateStatusEnum.DRAFT
+        template_cp.title = f"Copy-{original_template.title}"
         latest_template = await self.template_repository.get_latest_template(data.group)
         prev_order = latest_template.position if latest_template else None
         next_order = None

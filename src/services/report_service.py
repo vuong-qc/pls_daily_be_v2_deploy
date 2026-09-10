@@ -111,9 +111,12 @@ class ReportService:
             raise ReportException(ReportMessage.NOT_FOUND, ReportStatusCode.NOT_FOUND)
         if report.created_by != user_id:
             raise ReportException(ReportMessage.FORBIDDEN, ReportStatusCode.FORBIDDEN)
+        now = DateTimeUtil.current_milli_time()
         await self.report_repository.update_report(report_id, {
             "status": target_status,
-            "updated_at": DateTimeUtil.current_milli_time(),
+            "updated_at": now,
+            "submitted_time": now
+
         })
         return await self.get_report(report_id, user_id)
     async def delete_report(self, report_id: str, user_id: str):

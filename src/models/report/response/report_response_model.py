@@ -27,3 +27,4 @@ class ReportResponseModel(BaseModel):
     updated_at: int
     template: Optional[TemplateResponseModel] = None
     sections: list[SectionResponseModel] = Field(default_factory=list)
+    submitted_time: Optional[int] = None

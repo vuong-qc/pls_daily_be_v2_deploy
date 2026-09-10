@@ -24,6 +24,7 @@ class ReportDocument(DocumentWithSoftDelete):
     status: str = ReportStatusEnum.DRAFT
     created_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
     updated_at: int = Field(default_factory=DateTimeUtil.current_milli_time)
+    submitted_time: Optional[int] = None
 
     class Settings:
         name = "reports"

@@ -425,7 +425,7 @@ class TaskService:
             raise TaskException(TaskMessage.NOT_HANDLER_PR0JECT, TaskStatusCode.NOT_HANDLER_PR0JECT)
 
     async def auto_update_late_dl_task(self):
-        filters = FilterWorkItemModel(offset=0, limit=1, deadline_end=DateTimeUtil.current_milli_time(),
+        filters = FilterWorkItemModel(offset=0, limit=1, deadline_end=DateTimeUtil.get_end_today_timestamp(),
                                       type=[WorkItemType.TASK], status=[TaskStatusEnum.NEW, TaskStatusEnum.PROCESSING])
         list_task = await self.task_repository.filter_work_item_for_order(filters)
         list_ids = [str(task.id) for task in list_task]
