@@ -77,6 +77,11 @@ class BeanieMeetingRepository(MeetingRepository):
             filter_dump.update(
                 In(MeetingDocument.status, filter_dump.pop('statuses')),
             )
+        if filters.followers:
+            filter_dump.update(
+                In(MeetingDocument.followers, filter_dump.pop('followers')),
+            )
+
         # print("filter_dump", filter_dump)
 
         query = MeetingDocument.find(filter_dump, fetch_links=True)

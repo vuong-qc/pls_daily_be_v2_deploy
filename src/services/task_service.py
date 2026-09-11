@@ -182,7 +182,9 @@ class TaskService:
         raise TaskException(TaskMessage.TASK_NOT_FOUND, TaskStatusCode.TASK_NOT_FOUND)
 
     async def get_list_tasks(self, filters: FilterTaskModel, user_id: str):
-        filter_order = FilterOrderModel(type=filters.type_order, owner_id=user_id, parent_id=filters.parent)
+        filter_order = FilterOrderModel(type=filters.type_order, owner_id=user_id)
+        if filters.parent:
+            filter_order.parent_id = filters.parent
         list_response = []
         if filters.is_today:
             # query in session
@@ -213,7 +215,7 @@ class TaskService:
                     )
                     for task in list_response
                 ])
-            self._handler_inject_task_to_story(list_response)
+            # self._handler_inject_task_to_story(list_response)
             total = await self._count_task(filters, total)
             return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 
@@ -229,7 +231,7 @@ class TaskService:
             list_tasks, total = await self.task_repository.get_list_work_items(filters)
             for task in list_tasks:
                 list_response.append(TaskResponse.model_validate(task))
-        self._handler_inject_task_to_story(list_response)
+        # self._handler_inject_task_to_story(list_response)
 
         if filters.type and (WorkItemType.STORY in filters.type  or WorkItemType.BACKLOG in filters.type):
             await asyncio.gather(*[
@@ -242,9 +244,9 @@ class TaskService:
                 )
                 for task in list_response
             ])
-        logger.info(f"list_response later len: {len(list_response)}")
-        for task in list_response:
-            logger.info("check print task later %s, %s", task.title, task.type)
+        # logger.info(f"list_response later len: {len(list_response)}")
+        # for task in list_response:
+        #     logger.info("check print task later %s, %s", task.title, task.type)
         total = await self._count_task(filters, total)
         return ResponsePaginatedModel(data=list_response, total=total, offset=filters.offset)
 

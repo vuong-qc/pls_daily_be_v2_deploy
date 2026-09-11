@@ -61,6 +61,7 @@ class WorkItemDocument(DocumentWithSoftDelete):
     instruction: Optional[str] = None
     reason: Optional[str] = None
     solution: Optional[str] = None
+    fixed_at: Optional[int] = None
 
     class Settings:
         name = "work_items"

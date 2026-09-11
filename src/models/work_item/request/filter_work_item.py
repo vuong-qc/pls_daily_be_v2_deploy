@@ -29,6 +29,8 @@ class FilterWorkItemModel(BaseModel):
     start: Optional[int] = None
     end: Optional[int] = None
     department_id: Optional[list[str]] = None
+    fixed_at_start: Optional[int] = None
+    fixed_at_end: Optional[int] = None
 
 class ParentStatusCount(BaseModel):
     parent: str

@@ -1,3 +1,5 @@
+from src.models.department.request.filter_department_model import FilterDepartmentModel
+from src.models.department.response.department_response_model import DepartmentResponseModel
 from src.enums.task_status_enum import TaskStatusEnum
 from src.models.task.request.filter_task_model import FilterTaskModel
 from src.enums.work_item_type import WorkItemType
@@ -17,18 +19,20 @@ from src.services.document_item_service import DocumentItemService
 from src.enums.document_type_enum import DocumentTypeEnum
 from src.utils.datetime_util import DateTimeUtil
 from src.services.task_service import TaskService
-from src.models.meeting.response.meeting_todo_task_response_model import MeetingTodoTaskResponseModel
+from src.models.meeting.response.meeting_todo_task_response_model import MeetingTodoTaskResponseModel, MenuMeetingTodoTaskResponseModel
 from src.repositories.user.user_repository import UserRepository
+from src.repositories.department.department_repository import DepartmentRepository
 
 class MeetingService:
     def __init__(self, meeting_repository: MeetingRepository, document_item_repository: DocumentItemRepository,
                  task_service: TaskService, document_service: DocumentItemService,
-                 user_repository: UserRepository) -> None:
+                 user_repository: UserRepository, department_repository: DepartmentRepository) -> None:
         self.meeting_repository = meeting_repository
         self.document_item_repository = document_item_repository
         self.task_service = task_service
         self.document_service = document_service
         self.user_repository = user_repository
+        self.department_repository = department_repository
 
     async def create_meeting(self, data: CreateMeetingModel) -> ResponseModel:
         meeting = await self.meeting_repository.create_meeting(data.model_dump())
@@ -108,6 +112,11 @@ class MeetingService:
             raise
         filter_department_todo = filter_todo.model_copy(deep=True)
         filter_department_todo.object_id = user.department
+        filter_department = FilterDepartmentModel(limit=100, offset=0, list_ids=user.department)
+        list_department, total_department = await self.department_repository.get_list_departments(filter_department)
+        department_map = {}
+        for department in list_department:
+            department_map[str(department.id)] = DepartmentResponseModel.model_validate(department)
 
         list_todo_response = await self.document_service.get_list_document(filter_todo, user_id)
         task_response = await self.task_service.get_list_tasks(filter_task, user_id)
@@ -119,6 +128,10 @@ class MeetingService:
         for meeting in list_meeting:
             list_meeting_response.append(MeetingResponse.model_validate(meeting))
 
+        if list_todo_department.data:
+            for todo_department in list_todo_department.data:
+                todo_department.department_model = department_map.get(todo_department.object_id)
+
         summary_response = MeetingTodoTaskResponseModel(
             task=task_response.data,
             todo=list_todo_response.data,
@@ -126,6 +139,30 @@ class MeetingService:
             todo_department=list_todo_department.data
         )
         return ResponseModel(data=summary_response)
+
+    async def get_task_todo_meeting_menu(self, user_id :str):
+        # todo
+        # count my total task, count my done task, remain task = total - done
+        # remain meeting: meeting status in [new, in progress] and user in list attendance
+        # to do done, my total todo
+        filter_total_todo = FilterDocumentItem(offset=0,limit=1, object_id=[user_id], type=[DocumentTypeEnum.TODO])
+        filter_done_todo = filter_total_todo.model_copy(deep=True)
+        filter_done_todo.is_checked = True
+        filter_meeting = FilterMeetingModel(statuses=[MeetingStatusEnum.NEW.value, MeetingStatusEnum.IN_PROGRESS.value], participant_ids=[user_id], offset=0, limit=1)
+
+        my_task = await self.task_service.count_my_tasks(user_id)
+        list_my_todo, total_my_todo = await self.document_item_repository.get_list_document_items(filter_total_todo)
+        list_my_done_todo, total_my_done_todo = await self.document_item_repository.get_list_document_items(filter_done_todo)
+        list_meeting, total_meeting = await self.meeting_repository.get_list_of_meetings(filter_meeting)
+        response = MenuMeetingTodoTaskResponseModel(
+            total_todo= total_my_todo,
+            total_done_todo= total_my_done_todo,
+            remaining_meeting= total_meeting,
+            total_tasks=my_task.data.count_my_tasks,
+            total_done_tasks=my_task.data.count_my_tasks - my_task.data.count_not_done_tasks,
+            remaining_task=my_task.data.count_not_done_tasks
+        )
+        return ResponseModel(data=response)
 
     async def _create_next_meeting(self, meeting: MeetingDocument):
         # calc the next date

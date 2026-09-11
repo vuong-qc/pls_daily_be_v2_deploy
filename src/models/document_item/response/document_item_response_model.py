@@ -2,6 +2,7 @@ from beanie import PydanticObjectId, Link
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from src.models.department.response.department_response_model import DepartmentResponseModel
 from src.models.sprint.response.sprint_response_model import SprintResponse
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.user.response.user_response_model import UserResponse
@@ -48,6 +49,7 @@ class DocumentResponse(BaseModel):
     is_closed: Optional[bool] = None
     updated_at: Optional[int] = None
     created_by_model: Optional[UserResponse] = None
+    department_model: Optional[list[DepartmentResponseModel]] = None
 
     @field_validator(
         'assignee_model', mode='before'

@@ -61,6 +61,7 @@ class WorkItemResponse(BaseModel):
     instruction: Optional[str] = None
     reason: Optional[str] = None
     solution: Optional[str] = None
+    fixed_at: Optional[int] = None
 
     @field_validator(
         'parent_model', mode='before'

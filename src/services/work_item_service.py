@@ -19,6 +19,7 @@ from src.enums.chatbot_type_enum import ChatbotTypeEnum
 from src.enums.text_format_enum import TextFormatEnum
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 from src.enums.bug_status_enum import BugStatusEnum
+from src.utils.datetime_util import DateTimeUtil
 
 import logging
 logger = logging.getLogger(__name__)
@@ -56,10 +57,13 @@ class WorkItemService:
 
     async def update_work_item_model(self, user_id:str, work_item_id:str, work_item_model: UpdateWorkItemModel):
         old_work_item_model = await self.work_item_repository.get_work_item_by_id(work_item_id)
-        print("old_work_item_model", old_work_item_model)
+        # print("old_work_item_model", old_work_item_model)
         if not old_work_item_model:
             raise WorkItemException(WorkItemMessage.WORK_ITEM_NOT_FOUND, WorkItemStatusCode.WORK_ITEM_NOT_FOUND)
-        work_item = await self.work_item_repository.update_work_item(work_item_id,work_item_model.model_dump(exclude_unset=True))
+        update_data = work_item_model.model_dump(exclude_unset=True)
+        if old_work_item_model.type == WorkItemType.BUG and work_item_model.status and work_item_model.status == BugStatusEnum.FIXED.value:
+            update_data.update({"fixed_at": DateTimeUtil.current_milli_time()})
+        work_item = await self.work_item_repository.update_work_item(work_item_id, update_data)
         if not work_item:
             raise WorkItemException(WorkItemMessage.WORK_ITEM_NOT_FOUND, WorkItemStatusCode.WORK_ITEM_NOT_FOUND)
         response = WorkItemResponse.model_validate(work_item)

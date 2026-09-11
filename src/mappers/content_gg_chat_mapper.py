@@ -66,5 +66,6 @@ PRIORITY: dict[str, str] = {
     "NO_HANDLE" : "Không xử lý",
     "LATER": "Để sau",
     "DUPLICATE": "Trùng",
-    "UNKNOWN": "Không xác định"
+    "UNKNOWN": "Không xác định",
+    "URGENT": "Gấp"
 }

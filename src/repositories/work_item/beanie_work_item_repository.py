@@ -1,5 +1,7 @@
 from typing import Optional, Awaitable, Callable, Any
 
+from beanie.odm.operators.find.comparison import Eq
+
 from src.enums.work_item_type import WorkItemType
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel, ParentStatusCount
 from src.models.project.response.project_response_model import ProjectResponse
@@ -207,6 +209,24 @@ class BeanieWorkItemRepository(WorkItemRepository):
     async def _update_query_by_form(self, filters: FilterWorkItemModel, filter_dump: dict):
         if filters.type_order:
             filter_dump.pop("type_order")
+        fixed_at_start = filter_dump.pop("fixed_at_start", None)
+        fixed_at_end = filter_dump.pop("fixed_at_end", None)
+        if fixed_at_start and fixed_at_end:
+            filter_dump.update(
+                And(
+                    GTE(WorkItemDocument.fixed_at, fixed_at_start),
+                    LTE(WorkItemDocument.fixed_at, fixed_at_end),
+                )
+            )
+        elif fixed_at_start:
+            filter_dump.update(
+                    GTE(WorkItemDocument.fixed_at, fixed_at_start),
+            )
+        elif fixed_at_end:
+            filter_dump.update(
+                    LTE(WorkItemDocument.fixed_at, fixed_at_end),
+
+            )
         if filters.department_id:
             filter_dump.update(
                 In(WorkItemDocument.department_id, filter_dump.pop("department_id"))

@@ -12,6 +12,7 @@ from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.utils.proxy_util import get_current_user_by_token
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
 from src.models.meeting.request.add_follower_model import AddFollowerModel
+from src.repositories.department.beanie_department_repository import BeanieDepartmentRepository
 
 router = APIRouter(
     tags=["Meeting"],
@@ -22,8 +23,9 @@ def get_meeting_service(task_service: TaskService = Depends(get_task_service),
     meet_repository = BeanieMeetingRepository()
     document_item_repository = BeanieDocumentItemRepository()
     user_repository = BeanieUserRepository()
+    department_repository = BeanieDepartmentRepository()
     return MeetingService(meet_repository, document_item_repository,
-                          task_service, document_service, user_repository)
+                          task_service, document_service, user_repository, department_repository)
 
 @router.post("/create-meeting",
              status_code=status.HTTP_201_CREATED,
@@ -88,6 +90,18 @@ async def get_list_tasks(
 ):
     user_id = user_data['sub']
     return await service.get_meeting_todo_task(user_id,query)
+
+@router.get("/get-menu-tasks-todo_meeting",
+            status_code=status.HTTP_200_OK,
+            response_model=ResponseModel,
+            description="Get menu of list of tasks, todo, meeting",
+            )
+async def get_list_menu_tasks_todo_meeting(
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.get_task_todo_meeting_menu(user_id)
 
 @router.put("/attend-meeting/{meeting_id}",
              status_code=status.HTTP_202_ACCEPTED,
