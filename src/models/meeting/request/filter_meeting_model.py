@@ -14,5 +14,7 @@ class FilterMeetingModel(BaseModel):
     end_date: Optional[int] = None
     is_in_meeting: Optional[list[str]] = None
     followers: Optional[list[str]] = None
+    users_involved: Optional[list[str]] = None
+    is_closed: Optional[bool] = False
     limit: int = Field(10, le=100)
     offset: int = 0

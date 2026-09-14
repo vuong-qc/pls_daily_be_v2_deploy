@@ -25,6 +25,7 @@ class MeetingDocument(DocumentWithSoftDelete):
     department_id: Optional[str] = None
     followers: Optional[list[str]] = None
     follower_models: Optional[list[Link[UserDocument]]] = None
+    list_closed_ids: Optional[list[str]] = None
 
     class Settings:
         name= 'meetings'

@@ -30,6 +30,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude '.github/workflows/' \
     --exclude '.env' \
     --exclude '.env.*' \
+    --exclude 'mongo-keyfile' \
     --exclude '*_SSH_PRIVATE_KEY*' \
     --exclude '.venv/' \
     --exclude 'venv/' \
@@ -58,7 +59,7 @@ elif command -v robocopy.exe >/dev/null 2>&1; then
     "$(cygpath -w "${DEPLOY_REPO}")" \
     /MIR \
     /XD ".git" ".github\workflows" ".venv" "venv" "__pycache__" ".pytest_cache" ".mypy_cache" "htmlcov" "ops\production-deploy-repo-template" \
-    /XF ".env" ".env.*" ".coverage" ".coverage.*" ".DS_Store" "credentials.json" "*_SSH_PRIVATE_KEY*" "*deploy_key*" "production_deploy_key*" "backend_production_deploy_key*" "README.md"
+    /XF "mongo-keyfile" ".env" ".env.*" ".coverage" ".coverage.*" ".DS_Store" "credentials.json" "*_SSH_PRIVATE_KEY*" "*deploy_key*" "production_deploy_key*" "backend_production_deploy_key*" "README.md"
 
   RC=$?
   set -e

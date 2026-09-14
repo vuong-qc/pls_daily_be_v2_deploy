@@ -51,7 +51,8 @@ async def get_list_meetings(
         service: MeetingService = Depends(get_meeting_service),
         user_data: dict = Depends(get_current_user_by_token)
 ):
-    return await service.get_list_meetings(query)
+    user_id = user_data['sub']
+    return await service.get_list_meetings(query, user_id)
 
 @router.put("/update-meeting/{meeting_id}",
              status_code=status.HTTP_202_ACCEPTED,
@@ -149,3 +150,29 @@ async def remove_fl_meeting(
 ):
     user_id = user_data['sub']
     return await service.remove_follower(meeting_id, request.list_user_ids, user_id)
+
+@router.put(
+    "/close-meeting/{meeting_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ResponseModel,
+)
+async def close_meeting(
+        meeting_id: str,
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.add_closed_user(meeting_id, user_id)
+
+@router.put(
+    "/open-meeting/{meeting_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ResponseModel,
+)
+async def open_meeting(
+        meeting_id: str,
+        service: MeetingService = Depends(get_meeting_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.remove_closed_user(meeting_id, user_id)

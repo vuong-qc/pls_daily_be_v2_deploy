@@ -83,8 +83,8 @@ class MeetingService:
         response = MeetingResponse.model_validate(meeting)
         return ResponseModel(data=response)
 
-    async def get_list_meetings(self, filters: FilterMeetingModel) -> ResponsePaginatedModel:
-        meetings, total = await self.meeting_repository.get_list_of_meetings(filters)
+    async def get_list_meetings(self, filters: FilterMeetingModel, user_id: str) -> ResponsePaginatedModel:
+        meetings, total = await self.meeting_repository.get_list_of_meetings(filters, user_id)
         list_meetings = []
         for meeting in meetings:
             response = MeetingResponse.model_validate(meeting)
@@ -207,6 +207,18 @@ class MeetingService:
         self._check_access(owner_id, meeting)
         data = await self.meeting_repository.remove_follower(meeting_id, user_ids)
         return ResponseModel(data=MeetingResponse.model_validate(data))
+
+    async def add_closed_user(self, meeting_id: str, user_id: str):
+        meeting = await self.meeting_repository.add_closed_user(meeting_id, user_id)
+        if not meeting:
+            raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
+        return ResponseModel(data=MeetingResponse.model_validate(meeting))
+    async def remove_closed_user(self, meeting_id: str, user_id: str):
+        meeting = await self.meeting_repository.remove_closed_user(meeting_id, user_id)
+        if not meeting:
+            raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
+        return ResponseModel(data=MeetingResponse.model_validate(meeting))
+
 
     def _check_access(self, user_id: str, meeting:MeetingDocument):
         if user_id != meeting.creator and user_id not in meeting.handler:

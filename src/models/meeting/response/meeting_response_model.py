@@ -26,3 +26,4 @@ class MeetingResponse(BaseModel):
     department_id: Optional[str] = None
     followers: Optional[list[str]] = None
     follower_models: Optional[list[UserResponse]] = None
+    list_closed_ids: Optional[list[str]] = None

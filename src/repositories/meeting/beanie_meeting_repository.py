@@ -1,9 +1,10 @@
+from typing import Optional
 from src.repositories.meeting.meeting_repository import MeetingRepository
 from src.models.meeting.request.filter_meeting_model import FilterMeetingModel
 from src.models.meeting.meeting_document import MeetingDocument
 from src.models.user.user_document import UserDocument
 from beanie import PydanticObjectId, UpdateResponse
-from beanie.operators import Set, In, LTE, GTE, And, Or
+from beanie.operators import Set, In, LTE, GTE, And, Or, NotIn
 from bson import DBRef
 
 
@@ -28,10 +29,21 @@ class BeanieMeetingRepository(MeetingRepository):
         if meeting:
             await meeting.delete()
 
-    async def get_list_of_meetings(self, filters: FilterMeetingModel) -> tuple[list[MeetingDocument],int]:
+    async def get_list_of_meetings(self, filters: FilterMeetingModel, user_id: Optional[str] = None) -> tuple[list[MeetingDocument],int]:
         filter_dump = filters.model_dump(exclude_unset=True)
         offset = filter_dump.pop('offset', 0)
         limit = filter_dump.pop('limit', 10)
+        view_meeting= filter_dump.pop('users_involved', [])
+        is_closed = filter_dump.pop('is_closed', False)
+        if user_id:
+            if is_closed:
+                filter_dump.update(
+                    In(MeetingDocument.list_closed_ids, [user_id])
+                )
+            else:
+                filter_dump.update(
+                    NotIn(MeetingDocument.list_closed_ids, [user_id])
+                )
 
         if filters.start_date and filters.end_date:
             filter_dump.update(
@@ -71,6 +83,15 @@ class BeanieMeetingRepository(MeetingRepository):
                     In(MeetingDocument.creator, join_user_ids),
                     In(MeetingDocument.handler, join_user_ids),
 
+                )
+            )
+        if view_meeting:
+            filter_dump.update(
+                Or(
+                    In(MeetingDocument.participant_ids, join_user_ids),
+                    In(MeetingDocument.creator, join_user_ids),
+                    In(MeetingDocument.handler, join_user_ids),
+                    In(MeetingDocument.followers, join_user_ids),
                 )
             )
         if filters.statuses:
@@ -255,11 +276,76 @@ class BeanieMeetingRepository(MeetingRepository):
         )
         return meeting
 
+    async def add_closed_user(self, meeting_id: str, user_id: str)->MeetingDocument:
+        pipeline_set = {
+
+            # Logic cập nhật update_user bằng DB
+            "list_closed_ids": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$list_closed_ids", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$ne": ["$$user", user_id]}
+                        }
+                    },
+                    # Nối thêm user_id vào cuối
+                    [user_id]
+                ]
+            }
+        }
+
+        # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
+        # Trả về document sau khi update
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
+        )
+        return meeting
+    async def remove_closed_user(self, meeting_id: str, user_id:str)->MeetingDocument:
+        pipeline_set = {
+
+            # Logic cập nhật update_user bằng DB
+            "list_closed_ids": {
+                "$concatArrays": [
+                    {
+                        "$filter": {
+                            # Nếu field chưa có (null), mặc định là mảng rỗng []
+                            "input": {"$ifNull": ["$list_closed_ids", []]},
+                            "as": "user",
+                            # Lọc bỏ phần tử bị trùng với update_user truyền vào
+                            "cond": {"$ne": ["$$user", user_id]}
+                        }
+                    },
+                    []
+                ]
+            }
+        }
+
+        # 2. Thực thi lệnh update ngay trên DB (Truyền dưới dạng list để kích hoạt Pipeline Update)
+        # Trả về document sau khi update
+        await MeetingDocument.find_one(
+            {"_id": PydanticObjectId(meeting_id)}
+        ).update([{"$set": pipeline_set}])
+
+        # Fetch lại document với fetch_links=True để resolve link đầy đủ
+        meeting = await MeetingDocument.get(
+            PydanticObjectId(meeting_id), fetch_links=True
+        )
+        return meeting
+
     async def _add_link_document_item(self, data: dict, document: MeetingDocument):
         handler: list[str] | bool = data.get("handler", False)
         # print("handler_id",handler_id)
         # getattr(data,"owner_id", False)
         creator: str | bool = data.get("creator", False)
+        followers: list[str] | bool = data.get("followers", False)
 
 
         participant_ids: list[str] | bool = data.get("participant_ids", False)
@@ -288,3 +374,11 @@ class BeanieMeetingRepository(MeetingRepository):
                 pass
             else:
                 document.creator_model = UserDocument.model_construct(id=PydanticObjectId(creator))
+
+        if type(followers) is not bool:
+            if followers == [] or followers is None:
+                document.follower_models = []
+            else:
+                document.follower_models = [UserDocument.model_construct(id=PydanticObjectId(uid))
+                    for uid in participant_ids if PydanticObjectId.is_valid(uid)
+                ]

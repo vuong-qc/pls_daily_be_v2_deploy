@@ -207,3 +207,6 @@ docker-compose.local-testing.yml
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# MongoDB server-managed replica set secret
+mongo-keyfile

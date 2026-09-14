@@ -151,6 +151,7 @@ jobs:
             --exclude='.github' \
             --exclude='.env' \
             --exclude='.env.*' \
+            --exclude='mongo-keyfile' \
             --exclude='.idea' \
             --exclude='__pycache__' \
             --exclude='.pytest_cache' \
@@ -173,8 +174,16 @@ jobs:
 
           sudo install -d -m 755 -o "$owner_user" -g "$owner_group" "${PROD_SERVER_DEPLOY_DIR}"
 
+          # Fail before cleanup if the server-managed keyfile is missing.
+          if ! sudo test -f "${PROD_SERVER_DEPLOY_DIR}/mongo-keyfile" || \
+             ! sudo test -s "${PROD_SERVER_DEPLOY_DIR}/mongo-keyfile"; then
+            echo "Missing or empty production mongo-keyfile. Provision it on the server before deploying." >&2
+            exit 1
+          fi
+
           find "${PROD_SERVER_DEPLOY_DIR}" -mindepth 1 -maxdepth 1 \
             ! -name '.active_color' \
+            ! -name 'mongo-keyfile' \
             -exec rm -rf {} +
 
           mv /tmp/backend_daily.production.env "${PROD_SERVER_DEPLOY_DIR}/.env"

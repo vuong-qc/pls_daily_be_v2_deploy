@@ -8,3 +8,6 @@ venv/
 .git
 .vscode
 .env
+
+# MongoDB server-managed replica set secret
+mongo-keyfile

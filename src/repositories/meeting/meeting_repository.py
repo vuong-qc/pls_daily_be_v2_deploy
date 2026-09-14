@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Optional
+
 from src.models.meeting.request.filter_meeting_model import FilterMeetingModel
 from src.models.meeting.meeting_document import MeetingDocument
 
@@ -16,7 +18,7 @@ class MeetingRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_list_of_meetings(self, filters: FilterMeetingModel) -> tuple[list[MeetingDocument],int]:
+    async def get_list_of_meetings(self, filters: FilterMeetingModel, user_id: Optional[str] = None) -> tuple[list[MeetingDocument],int]:
         pass
 
     @abstractmethod
@@ -34,4 +36,10 @@ class MeetingRepository(ABC):
         pass
     @abstractmethod
     async def remove_follower(self, meeting_id: str, user_ids:list[str])->MeetingDocument:
+        pass
+    @abstractmethod
+    async def add_closed_user(self, meeting_id: str, user_id: str)->MeetingDocument:
+        pass
+    @abstractmethod
+    async def remove_closed_user(self, meeting_id: str, user_id:str)->MeetingDocument:
         pass

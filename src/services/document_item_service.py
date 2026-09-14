@@ -331,14 +331,15 @@ class DocumentItemService:
         """Dùng cho todo + docs: total document item theo group_id (1 query)."""
         if not group_ids:
             return {}
-        filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=1)
+        filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=100)
         items, total = await self.repository.get_all_document_items(filters)
         # print("items:", items)
-        print("filters:", filters)
+        # print("filters:", filters)
         counts: dict = {}
         for item in items:
             bucket = counts.setdefault(item.group_id, {"total": 0})
             bucket["total"] += 1
+        print("counts todo:", counts)
         return counts
 
     async def _count_bug_work_items_by_group(self,group_ids: list[str]) -> dict[str, dict]:
@@ -422,3 +423,30 @@ class DocumentItemService:
     async def statistic_doc_item(self, filters: FilterDocumentItem):
         statistic_doc_item = await self.repository.statistic_document_item(filters)
         return ResponsePaginatedModel(data=statistic_doc_item, total=len(statistic_doc_item), offset=filters.offset,)
+
+    async def count_group_todo(self, user_id: str):
+        filter_groups = FilterGroupModel(
+            offset=0,
+            limit=100,
+            parent_type=GroupType.TODO,
+            type=[GroupType.TODO],
+            created_by=user_id
+        )
+        todo_groups, _ = await self.group_repository.get_all_groups(filter_groups)
+        filter_todo_child = filter_groups.model_copy(deep=True)
+        todo_ids = [str(g.id) for g in todo_groups]
+        filter_todo_child.parent_ids = todo_ids
+        filter_todo_child.parent_type = None
+
+        todo_children, total_todo = await self.group_repository.get_all_groups(filter_todo_child)
+        todo_all_ids =  [str(c.id) for c in todo_children]
+        doc_item_count_todo = await self._count_document_items_by_group(todo_all_ids)
+
+        dict_group: dict[str, GroupSummaryResponseModel] = {}
+
+        todo_result = self._build_doc(todo_groups, todo_children, doc_item_count_todo, dict_group)
+        return ResponseModel(
+            data={
+                "todo": todo_result
+            }
+        )

@@ -116,3 +116,13 @@ async def statistic_item_date_range(
         user_data: dict = Depends(get_current_user_by_token)
 ):
     return await service.statistic_doc_item(query)
+
+@router.get("/count-my-todo",
+            response_model=ResponseModel,
+            status_code=status.HTTP_200_OK)
+async def count_my_todo(
+        service: DocumentItemService = Depends(get_document_service),
+        user_data: dict = Depends(get_current_user_by_token)
+):
+    user_id = user_data['sub']
+    return await service.count_group_todo(user_id)
