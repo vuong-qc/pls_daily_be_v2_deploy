@@ -342,6 +342,23 @@ class DocumentItemService:
         print("counts todo:", counts)
         return counts
 
+    async def _count_my_document_items_by_group(self,group_ids: list[str]) -> dict[str, dict]:
+        """Dùng cho my todo: total document item theo group_id (1 query)."""
+        if not group_ids:
+            return {}
+        filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=100)
+        items, total = await self.repository.get_all_document_items(filters)
+        # print("items:", items)
+        # print("filters:", filters)
+        counts: dict = {}
+        for item in items:
+            bucket = counts.setdefault(item.group_id, {"total": 0, "resolve": 0, "not_resolved": 0})
+            bucket["total"] += 1
+            if item.is_checked:
+                bucket["resolve"] += 1
+            else:
+                bucket["not_resolved"] += 1
+        return counts
     async def _count_bug_work_items_by_group(self,group_ids: list[str]) -> dict[str, dict]:
         """
         Bug THUỘC group: total + resolve (status VERIFIED) theo từng group_id.
@@ -440,7 +457,7 @@ class DocumentItemService:
 
         todo_children, total_todo = await self.group_repository.get_all_groups(filter_todo_child)
         todo_all_ids =  [str(c.id) for c in todo_children]
-        doc_item_count_todo = await self._count_document_items_by_group(todo_all_ids)
+        doc_item_count_todo = await self._count_my_document_items_by_group(todo_all_ids)
 
         dict_group: dict[str, GroupSummaryResponseModel] = {}
 

@@ -21,4 +21,5 @@ class FilterDocumentItem(BaseModel):
     end_time: Optional[int] = None
     assignee: Optional[list[str]] = None
     created_by: Optional[list[str]] = None
+    priority: Optional[list[str]] = None
     creator_or_assignee: Optional[list[str]] = None

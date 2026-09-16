@@ -128,7 +128,8 @@ class VersionService:
                 VersionStatusCode.OBJECT_ID_REQUIRED,
             )
         if UserRole.HANDLER.value not in roles:
-            self._raise_forbidden()
+            if owner_id is not None and owner_id != user_id:
+                self._raise_forbidden()
 
         if version_type == VersionTypeEnum.PROJECT:
             project = await self.work_item_repository.get_work_item_by_id(object_id)

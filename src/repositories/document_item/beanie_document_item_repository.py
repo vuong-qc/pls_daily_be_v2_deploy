@@ -123,6 +123,8 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
         """Xây dựng match dict thuần cho aggregation (không còn is_closed, offset, limit)."""
         no_object_id = filter_dump.pop('no_object_id', None)
 
+        if filters.priority:
+            filter_dump.update(In(DocumentItem.priority, filters.priority))
         if filters.type:
             filter_dump.update(In(DocumentItem.type, [type_enum.value for type_enum in filters.type]))
         if filters.parent_type:
