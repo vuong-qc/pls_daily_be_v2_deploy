@@ -1,6 +1,7 @@
 from typing import Optional
 from beanie import PydanticObjectId
 
+from src.enums.sprint_status_enum import SprintStatusEnum
 from src.enums.session_status_enum import SessionStatusEnum
 from src.models.session.request.filter_session_model import FilterSessionModel
 from src.models.task.request.create_task_model import CreateTaskModel, CreateUserTaskModel, CreateStoryModel
@@ -285,6 +286,7 @@ class TaskService:
                 await self._handle_update_status_task_done(update_task.parent, data.session_id)
             if data.status == TaskStatusEnum.PROCESSING and task.status == TaskStatusEnum.DONE:
                 await self.task_repository.update_work_item(subtask.parent,{"session_id": None, "status": TaskStatusEnum.PROCESSING})
+                await self._handle_update_sprint_processing(task.parent)
             return ResponseModel(data=TaskResponse.model_validate(update_task))
         raise TaskException(TaskMessage.SUBTASK_NOT_FOUND, TaskStatusCode.SUBTASK_NOT_FOUND)
 
@@ -568,6 +570,13 @@ class TaskService:
             await self.task_repository.update_work_item(sprint_id, update_data.model_dump(
                 exclude_unset=True))
 
+    async def _handle_update_sprint_processing(self, sprint_id: str):
+        sprint = await self.task_repository.get_work_item_by_id(sprint_id)
+        if not sprint:
+            raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
+        if sprint.status == SprintStatusEnum.DONE.value:
+            update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
+            await self.task_repository.update_work_item(sprint_id, update_data.model_dump())
 
     async def _count_task(self, filters: FilterTaskModel, total: int):
         # count = 0

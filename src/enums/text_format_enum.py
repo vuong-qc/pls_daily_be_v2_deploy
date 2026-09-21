@@ -73,3 +73,6 @@ class TextFormatEnum(StrEnum):
     USERNAME = """<font color=#dc3545><b>{username}</b></font>"""
     BOLD = """<b>{username}</b>"""
     OWNER = """của <font color=#0d6efd><b>{username}</b></font>"""
+
+    REMIND_SUBMIT_REPORT = "<font color=\"#CB1D21\"><b>{user}</b></font> nhớ nộp báo cáo tuần nhé!"
+    USER_SUBMIT_REPORT = "<font color=\"#CB1D21\"><b>{user}</b></font> đã nộp báo cáo tuần!"

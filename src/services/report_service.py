@@ -1,3 +1,6 @@
+from src.enums.chatbot_type_enum import ChatbotTypeEnum
+from src.enums.text_format_enum import TextFormatEnum
+from src.models.chatbot_token.request.filter_chatbot_token_model import FilterChatbotTokenModel
 from src.models.report.request.report_model import FilterReportModel, UpdateReportModel
 from src.enums.report_enum import ReportStatusEnum
 from src.enums.result_enum import ResultObjectType, ResultStatus, ResultType
@@ -15,6 +18,12 @@ from src.repositories.user.user_repository import UserRepository
 from src.repositories.section_result.section_result_repository import SectionResultRepository
 from src.services.section_service import SectionService
 from src.utils.datetime_util import DateTimeUtil
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from src.configs import settings
+from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
+from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
+from src.utils.google_chat_webhook_util import GgChatWebhookUtil
 
 
 class ReportService:
@@ -22,7 +31,7 @@ class ReportService:
                  section_service: SectionService, user_repository: UserRepository,
                  department_repository: DepartmentRepository,
                  section_result_repository: SectionResultRepository,
-                 result_repository: ResultRepository):
+                 result_repository: ResultRepository, chatbot_token_repository: ChatbotTokenRepository,):
         self.report_repository = report_repository
         self.template_repository = template_repository
         self.section_service = section_service
@@ -30,6 +39,7 @@ class ReportService:
         self.department_repository = department_repository
         self.section_result_repository = section_result_repository
         self.result_repository = result_repository
+        self.chatbot_token_repository = chatbot_token_repository
 
     async def create_report(self, data: CreateReportModel, user_id: str) -> ReportResponseModel:
         template = await self.template_repository.get_template_by_id(data.template_id)
@@ -57,10 +67,10 @@ class ReportService:
             "sections": sections,
         })
 
-    async def get_list_reports(self, filters: FilterReportModel, user_id: str) -> list[ReportResponseModel]:
+    async def get_list_reports(self, filters: FilterReportModel, user_id: str) -> tuple[list[ReportResponseModel], int]:
         user = await self.user_repository.get_user_by_id(user_id)
-        reports = await self.report_repository.get_list_reports(filters, user_id, user.department or [] if user else [])
-        return [ReportResponseModel.model_validate(report) for report in reports]
+        reports, total = await self.report_repository.get_list_reports(filters, user_id, user.department or [] if user else [])
+        return [ReportResponseModel.model_validate(report) for report in reports], total
 
     async def update_shared(self, report_id: str, data: UpdateReportSharedModel, user_id: str) -> ReportResponseModel:
         report = await self.report_repository.get_report_by_id(report_id)
@@ -118,6 +128,30 @@ class ReportService:
             "submitted_time": now
 
         })
+        # send noti
+        # print("status changed to", target_status)
+        if target_status == ReportStatusEnum.SUBMITTED:
+            user = await self.user_repository.get_user_by_id(user_id)
+            # print("submitted to", user)
+            if user:
+                departments = [f"DEPARTMENT_{department}" for department in
+                               user.department] if user.department else []
+                filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=departments,
+                                                            type=[ChatbotTypeEnum.DEFAULT])
+                chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+                # print("filter", filter_chat_token)
+                dict_departments = dict()
+                for token in chat_token:
+                    position = token.position
+                    dict_departments[position.removeprefix("DEPARTMENT_")] = token
+                content = FormatContentGgChatAPI.format_html_gg(TextFormatEnum.USER_SUBMIT_REPORT.format(user=user.name))
+                # print(dict_departments)
+                if user.department:
+                    for department in user.department:
+                        token = dict_departments.get(department)
+                        if token:
+                            GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
+
         return await self.get_report(report_id, user_id)
     async def delete_report(self, report_id: str, user_id: str):
         report = await self.report_repository.get_report_by_id(report_id)
@@ -143,6 +177,45 @@ class ReportService:
         elif status == ResultStatus.DISPLAY:
             await self.result_repository.remove_close_result(report_id, ResultType.REPORT, object_ids, user_id)
         return report
+
+    async def remind_submit_weekly_report(self):
+        # get list user id sent report in a week
+        # pass start time, end time, status == SUBMITTED
+        # remind submit in department
+        now = datetime.now(ZoneInfo(settings.TZ))
+        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7) - timedelta(milliseconds=1)
+
+        filters = FilterReportModel(status=[ReportStatusEnum.SUBMITTED], start_date = int(start.timestamp()*1000), end_date= int(end.timestamp()*1000))
+        list_user_submit = await self.report_repository.get_user_not_contain_report(filters)
+        list_user = await self.user_repository.get_all_user_not_match_id(list_user_submit)
+
+        print("list_user", list_user)
+        list_departments = set()
+        for user in list_user:
+            departments = [f"DEPARTMENT_{department}" for department in
+                           user.department] if user.department else []
+            list_departments.update(departments)
+
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=list(list_departments),
+                                                    type=[ChatbotTypeEnum.DEFAULT])
+        chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        dict_departments = dict()
+        for token in chat_token:
+            position = token.position
+            dict_departments[position.removeprefix("DEPARTMENT_")] = token
+
+        for user in list_user:
+            # send default with master, use map store department key and tokens
+            content = FormatContentGgChatAPI.format_html_gg(TextFormatEnum.REMIND_SUBMIT_REPORT.format(user=user.name))
+
+            if user.department:
+                for department in user.department:
+                    token = dict_departments.get(department)
+                    if token:
+                        GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
+
+        return
 
     async def _sync_share_results(self, report_id: str, user_ids: list[str], department_ids: list[str]) -> None:
         if not self.result_repository:

@@ -38,6 +38,12 @@ async def check_n_update_task(ctx):
     api_url = f'{settings.INTERNAL_API_URL}/task/{settings.SUB_DOMAIN_AUTO_UPDATE_TASK}'
     await call_internal_api(api_url, "check_n_update_task")
 
+async def remind_submit_report(ctx):
+    logger.info('testing submit report...')
+    api_url = f'{settings.INTERNAL_API_URL}/reports/remind-submit'
+    await call_internal_api(api_url, "remind_submit_report")
+
+
 class WorkerSettings:
     functions = []
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
@@ -56,5 +62,8 @@ class WorkerSettings:
 
         # cron(remind_forgot_checkout_task, second=0)
 
-        cron(check_n_update_task,hour=0, minute=0)
+        cron(check_n_update_task,hour=0, minute=0),
+
+        # remind submit report at 20h sunday
+        cron(remind_submit_report, hour=20, minute=0, weekday=6)
     ]

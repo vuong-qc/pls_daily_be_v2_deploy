@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, Header, HTTPException
 
+from src.configs import settings
 from src.enums.result_enum import ResultStatus
 from src.models.report.request.report_model import FilterReportModel, UpdateReportModel
 from src.models.report.request.report_model import CreateReportModel, UpdateReportSharedModel, UpdateReportStatusModel
-from src.models.response_model import ResponseModel
+from src.models.response_model import ResponseModel, ResponsePaginatedModel
 from src.models.section_result.request.section_result_model import UpsertSectionResultModel
 from src.repositories.department.beanie_department_repository import BeanieDepartmentRepository
 from src.repositories.report.beanie_report_repository import BeanieReportRepository
@@ -18,6 +19,7 @@ from src.services.report_service import ReportService
 from src.services.section_result_service import SectionResultService
 from src.services.section_service import SectionService
 from src.utils.proxy_util import get_current_user_by_token
+from src.repositories.chatbot_token.beanie_chatbot_token_repository import BeanieChatbotTokenRepository
 
 router = APIRouter(tags=["report"])
 
@@ -27,7 +29,7 @@ def get_report_service():
     section_service = SectionService(BeanieSectionRepository(), template_repository)
     return ReportService(BeanieReportRepository(), template_repository, section_service,
                          BeanieUserRepository(), BeanieDepartmentRepository(),
-                         BeanieSectionResultRepository(), BeanieResultRepository())
+                         BeanieSectionResultRepository(), BeanieResultRepository(), BeanieChatbotTokenRepository())
 
 
 def get_section_result_service():
@@ -35,12 +37,13 @@ def get_section_result_service():
                                 BeanieReportRepository(), BeanieUserRepository())
 
 
-@router.get("/get-reports", response_model=ResponseModel)
+@router.get("/get-reports", response_model=ResponsePaginatedModel)
 async def get_reports(
         query: Annotated[FilterReportModel, Query()],
         service: ReportService = Depends(get_report_service),
         user_data: dict = Depends(get_current_user_by_token)):
-    return ResponseModel(data=await service.get_list_reports(query, user_data["sub"]))
+    data, total = await service.get_list_reports(query, user_data["sub"])
+    return ResponsePaginatedModel(data=data, total=total, offset=0 if query.offset is None else query.offset)
 
 @router.post("/create-report", response_model=ResponseModel, status_code=status.HTTP_201_CREATED)
 async def create_report(data: CreateReportModel, service: ReportService = Depends(get_report_service),
@@ -107,3 +110,12 @@ async def update_report_result(
 ):
     response = await service.change_status_result_view(report_id, user_data["sub"], status_result)
     return ResponseModel(data=response)
+
+@router.post("/remind-submit")
+async def remind_submit(
+        x_internal_key: str = Header(alias="x-internal-key"),
+        service: ReportService = Depends(get_report_service),
+):
+    if x_internal_key != settings.INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid internal key")
+    return await service.remind_submit_weekly_report()

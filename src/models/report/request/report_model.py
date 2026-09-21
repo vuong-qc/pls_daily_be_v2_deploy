@@ -30,6 +30,8 @@ class FilterReportModel(BaseModel):
     status: Optional[list[ReportStatusEnum]] = None
     created_by: Optional[list[str]] = None
     result_status: Optional[ResultStatus] = ResultStatus.DISPLAY
+    offset: Optional[int] = None
+    limit: Optional[int] = None
 
 
 class UpdateReportModel(BaseModel):

@@ -282,12 +282,38 @@ class SessionService:
         list_user_not_checkin = await self.user_repository.get_all_user_not_match_id(list_user_id)
 
         logger.info(f"list_user_not_checkin: %s{list_user_not_checkin}")
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        # get list user id not checkin and departments of user
+        # 1 user is reminded with master and list department
+        #
+        filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
+
+        list_departments = set()
+        for user in list_user_not_checkin:
+
+            departments = [f"DEPARTMENT_{department}" for department in
+                           user.department] if user.department else []
+            list_departments.update(departments)
+
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=list(list_departments),
+                                                    type=[ChatbotTypeEnum.DEFAULT])
+        chat_master_token, _ = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token_master)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        dict_departments = dict()
+        for token in chat_token:
+            position = token.position
+            dict_departments[position.removeprefix("DEPARTMENT_")] = token
+
         for user in list_user_not_checkin:
             if total > 0 and UserRole.TASKER in user.roles and user.daily_checkin:
+                # send default with master, use map store department key and tokens
                 content = FormatContentGgChatAPI.format_content_remind_checkin(user.name)
-                GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+                GgChatWebhookUtil.call_webhook(content, chat_master_token[0].space_id, chat_master_token[0].key, chat_master_token[0].token)
+                if user.department:
+                    for department in user.department:
+                        token = dict_departments.get(department)
+                        if token:
+                            GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
+
         return
 
     async def remind_checkout(self):
@@ -301,12 +327,33 @@ class SessionService:
         logger.info(f"list_user_id: %s{list_user_id}")
 
         list_user_name = await self.user_repository.get_all_user_match_id(list_user_id)
-        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=1)
+        filter_chat_token_master = FilterChatbotTokenModel(offset=0, limit=1, type=[ChatbotTypeEnum.MASTER.value])
+
+        list_departments = set()
+        for user in list_user_name:
+            departments = [f"DEPARTMENT_{department}" for department in
+                           user.department] if user.department else []
+            list_departments.update(departments)
+
+        filter_chat_token = FilterChatbotTokenModel(offset=0, limit=100, position=list(list_departments),
+                                                    type=[ChatbotTypeEnum.DEFAULT])
+        chat_master_token, _ = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token_master)
         chat_token, total = await self.chatbot_token_repository.get_list_chatbot_tokens(filter_chat_token)
+        dict_departments = dict()
+        for token in chat_token:
+            position = token.position
+            dict_departments[position.removeprefix("DEPARTMENT_")] = token
         for user in list_user_name:
             if total > 0:
                 content = FormatContentGgChatAPI.format_content_remind_checkout(user.name)
-                GgChatWebhookUtil.call_webhook(content, chat_token[0].space_id, chat_token[0].key, chat_token[0].token)
+                GgChatWebhookUtil.call_webhook(content, chat_master_token[0].space_id, chat_master_token[0].key, chat_master_token[0].token)
+                if user.department:
+                    for department in user.department:
+                        token = dict_departments.get(department)
+                        if token:
+                            # print(f"{department}: {token}")
+                            GgChatWebhookUtil.call_webhook(content, token.space_id, token.key, token.token)
+
         return
 
     async def _check_dif_date(self,start_time: datetime|None, end_time: datetime|None ):

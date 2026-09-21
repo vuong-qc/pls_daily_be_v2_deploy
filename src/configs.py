@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     HOUR_CHECKIN_REMIND:int = 9
     MINUTE_CHECKIN_REMIND:int = 30
-    WEEKDAY_REMIND: set[int] = {1, 2, 3, 4, 5}
+    WEEKDAY_REMIND: set[int] = {0, 1, 2, 3, 4}
 
     HOUR_CHECKOUT_REMIND:int = 23
     MINUTE_CHECKOUT_REMIND:int = 0

@@ -11,7 +11,7 @@ from src.models.report.report_document import ReportDocument
 from src.models.report.request.report_model import FilterReportModel
 from src.models.user.user_document import UserDocument
 from src.repositories.report.report_repository import ReportRepository
-
+from src.models.user.response.project_user_model import ProjectUsername
 
 class BeanieReportRepository(ReportRepository):
     async def create_report(self, data: dict) -> ReportDocument:
@@ -28,7 +28,7 @@ class BeanieReportRepository(ReportRepository):
     async def get_list_reports(
             self, filters: FilterReportModel, actor_id: str,
             department_ids: list[str] | None = None,
-    ) -> list[ReportDocument]:
+    ) -> tuple[list[ReportDocument], int]:
         report_match: dict = {"deleted_at": None}
         if filters.status:
             report_match.update(In(ReportDocument.status, [status.value for status in filters.status]))
@@ -120,11 +120,15 @@ class BeanieReportRepository(ReportRepository):
         rows = await ReportDocument.aggregate(pipeline).to_list()
         report_ids = [row["_id"] for row in rows]
         if not report_ids:
-            return []
-        return await ReportDocument.find(
+            return [], 0
+        query = ReportDocument.find(
             In(ReportDocument.id, report_ids),
             fetch_links=True,
-        ).sort("-created_at").to_list()
+        ).sort("-created_at")
+        total = await query.count()
+        if filters.offset is not None and filters.limit is not None:
+            query = query.limit(filters.limit).skip(filters.offset)
+        return await query.to_list(), total
 
     async def update_report(self, report_id: str, data: dict) -> ReportDocument | None:
         report = await self.get_report_by_id(report_id)
@@ -159,3 +163,26 @@ class BeanieReportRepository(ReportRepository):
 
     def _build_user_links(self, user_ids: list[str]):
         return [link for user_id in user_ids if (link := self._build_user_link(user_id))]
+
+    async def get_user_not_contain_report(self, filters: FilterReportModel):
+        filter_dump = filters.model_dump(exclude_unset=True)
+        offset = filter_dump.pop("offset", None)
+        limit = filter_dump.pop("limit", None)
+        start = filter_dump.pop("start_date", None)
+        end = filter_dump.pop("end_date", None)
+
+        if filters.status:
+            filter_dump.update(
+                In(ReportDocument.status, filters.status)
+            )
+        if end and start:
+            filter_dump.update(
+                And(
+                    GTE(
+                        ReportDocument.created_at, start
+                    ),
+                    LTE(ReportDocument.created_at, end)
+                )
+            )
+        query = ReportDocument.distinct(ReportDocument.created_by, filter_dump)
+        return await query
