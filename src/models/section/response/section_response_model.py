@@ -17,3 +17,7 @@ class SectionResponseModel(BaseModel):
     created_at: int
     updated_at: int
     items: list["SectionResponseModel"] = Field(default_factory=list)
+
+class SectionParentProjection(BaseModel):
+    id: PydanticObjectId = Field(alias="_id")
+    parent_id: str

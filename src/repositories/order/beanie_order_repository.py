@@ -1,3 +1,5 @@
+from pymongo.errors import BulkWriteError
+
 from src.models.order.order_document import OrderDocument
 from src.repositories.order.order_repository import OrderRepository
 from src.utils.lexorank_util import LexorankUtil
@@ -61,16 +63,22 @@ class BeanieOrderRepository(OrderRepository):
             filter_query = {
                 f'{OrderDocument.owner_id}': order['owner_id'],
                 f'{OrderDocument.object_id}': order['object_id'],
+                f'{OrderDocument.type}': order['type'],
             }
 
-            update_query = Set(order)
+            update_query = {"$setOnInsert": {**order, "deleted_at": None}}
 
             operations.append(UpdateOne(filter_query, update_query, upsert=True))
 
         collection = OrderDocument.get_pymongo_collection()
 
-        result = await collection.bulk_write(operations)
-        return result
+        try:
+            return await collection.bulk_write(operations, ordered=False)
+        except BulkWriteError as e:
+            # chỉ nuốt duplicate key, lỗi khác thì raise
+            if any(err["code"] != 11000 for err in e.details.get("writeErrors", [])):
+                raise
+            return None
 
     async def find_one_order(self, filters: dict) -> OrderDocument | None:
         logger.info(f"Getting 1 order for filters: %s", filters)

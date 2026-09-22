@@ -6,3 +6,4 @@ class UpdateTemplateModel(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
+    type: Optional[str] = None

@@ -3,6 +3,7 @@ import re
 from beanie import PydanticObjectId
 from beanie.operators import In, Set
 
+from src.models.section.response.section_response_model import SectionParentProjection
 from src.models.section.section_document import SectionDocument
 from src.repositories.section.section_repository import SectionRepository
 
@@ -91,3 +92,18 @@ class BeanieSectionRepository(SectionRepository):
             section = SectionDocument(**data)
             sections.append(section)
         await SectionDocument.insert_many(sections)
+
+    async def get_parent_by_section_ids(self, parents: list[str]) -> dict[str, str]:
+        if not parents:
+            return {}
+        sections = await SectionDocument.find(
+            In(SectionDocument.parent_id, parents),
+        ).project(SectionParentProjection).to_list()
+        return {str(section.id): section.parent_id for section in sections}
+
+    async def get_section_ids_by_parent_id(self, parent_id: str, section_type: str) -> list[str]:
+        sections = await SectionDocument.find(
+            SectionDocument.parent_id == parent_id,
+            SectionDocument.type == section_type,
+        ).project(SectionParentProjection).to_list()
+        return [str(section.id) for section in sections]

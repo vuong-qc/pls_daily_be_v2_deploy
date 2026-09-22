@@ -35,3 +35,7 @@ class SectionRepository(ABC):
     @abstractmethod
     async def create_many_section(self, list_data: list[dict]):
         pass
+    @abstractmethod
+    async def get_parent_by_section_ids(self, parents: list[str]) -> dict[str, str]: pass
+    @abstractmethod
+    async def get_section_ids_by_parent_id(self, parent_id: str, section_type: str) -> list[str]: pass

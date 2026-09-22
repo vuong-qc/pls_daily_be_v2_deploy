@@ -13,6 +13,7 @@ from src.utils.datetime_util import DateTimeUtil
 class TemplateDocument(DocumentWithSoftDelete):
     group: str
     created_by: str
+    type: Optional[str] = None
     creator_model: Optional[Link[UserDocument]] = None
     position: Optional[str] = None
     title: Annotated[str, Indexed(index_type=pymongo.TEXT)]

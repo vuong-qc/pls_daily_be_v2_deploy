@@ -11,6 +11,8 @@ from src.utils.datetime_util import DateTimeUtil
 class SectionResultDocument(DocumentWithSoftDelete):
     report_id: Indexed(str)
     section_item_id: Indexed(str)
+    note: Optional[str] = None
+    date: Optional[int] = None
     value: Optional[Union[float, str, bool]] = None
     created_by: Optional[str] = None
     creator_model: Optional[Link[UserDocument]] = None
@@ -21,7 +23,7 @@ class SectionResultDocument(DocumentWithSoftDelete):
         name = "section_results"
         indexes = [
             IndexModel(
-                [("report_id", ASCENDING), ("section_item_id", ASCENDING)],
+                [("report_id", ASCENDING), ("section_item_id", ASCENDING), ("date", ASCENDING),],
                 unique=True,
             ),
         ]

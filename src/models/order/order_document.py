@@ -26,6 +26,7 @@ class OrderDocument(DocumentWithSoftDelete):
                 [
                     ('owner_id', pymongo.ASCENDING),
                     ('object_id', pymongo.ASCENDING),
+                    ('type', pymongo.ASCENDING),
                 ],
                 unique=True,  # Kích hoạt tính năng duy nhất
                 partialFilterExpression={"deleted_at": None},

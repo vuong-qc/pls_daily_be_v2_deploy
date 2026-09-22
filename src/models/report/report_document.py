@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 
 import pymongo
-from beanie import DocumentWithSoftDelete, Indexed, Link
+from beanie import DocumentWithSoftDelete, Indexed, Link, before_event, Update
 from pydantic import Field
 
 from src.enums.report_enum import ReportStatusEnum, ReportTypeEnum
@@ -28,3 +28,7 @@ class ReportDocument(DocumentWithSoftDelete):
 
     class Settings:
         name = "reports"
+
+    @before_event(Update)
+    def before_update(self):
+        self.updated_at = DateTimeUtil.current_milli_time()

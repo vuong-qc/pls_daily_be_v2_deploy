@@ -342,11 +342,11 @@ class DocumentItemService:
         print("counts todo:", counts)
         return counts
 
-    async def _count_my_document_items_by_group(self,group_ids: list[str]) -> dict[str, dict]:
+    async def _count_my_document_items_by_group(self,group_ids: list[str], user_id: str) -> dict[str, dict]:
         """Dùng cho my todo: total document item theo group_id (1 query)."""
         if not group_ids:
             return {}
-        filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=100)
+        filters = FilterDocumentItem(group_id=group_ids, offset=0, limit=100, object_id=[user_id])
         items, total = await self.repository.get_all_document_items(filters)
         # print("items:", items)
         # print("filters:", filters)
@@ -457,7 +457,7 @@ class DocumentItemService:
 
         todo_children, total_todo = await self.group_repository.get_all_groups(filter_todo_child)
         todo_all_ids =  [str(c.id) for c in todo_children]
-        doc_item_count_todo = await self._count_my_document_items_by_group(todo_all_ids)
+        doc_item_count_todo = await self._count_my_document_items_by_group(todo_all_ids, user_id)
 
         dict_group: dict[str, GroupSummaryResponseModel] = {}
 

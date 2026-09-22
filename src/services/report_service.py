@@ -68,8 +68,8 @@ class ReportService:
         })
 
     async def get_list_reports(self, filters: FilterReportModel, user_id: str) -> tuple[list[ReportResponseModel], int]:
-        user = await self.user_repository.get_user_by_id(user_id)
-        reports, total = await self.report_repository.get_list_reports(filters, user_id, user.department or [] if user else [])
+        # user = await self.user_repository.get_user_by_id(user_id)
+        reports, total = await self.report_repository.get_list_reports(filters, user_id, filters.departments)
         return [ReportResponseModel.model_validate(report) for report in reports], total
 
     async def update_shared(self, report_id: str, data: UpdateReportSharedModel, user_id: str) -> ReportResponseModel:

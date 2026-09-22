@@ -6,5 +6,6 @@ class FilterTemplateModel(BaseModel):
     search: Optional[str] = None
     created_by: Optional[list[str]] = None
     offset: Optional[int] = None
+    type: Optional[str] = None
     limit: Optional[int] = Field(default=None, le=100)
-    group: str
+    group: Optional[str] = None

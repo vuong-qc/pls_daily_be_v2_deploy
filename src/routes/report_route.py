@@ -7,7 +7,7 @@ from src.enums.result_enum import ResultStatus
 from src.models.report.request.report_model import FilterReportModel, UpdateReportModel
 from src.models.report.request.report_model import CreateReportModel, UpdateReportSharedModel, UpdateReportStatusModel
 from src.models.response_model import ResponseModel, ResponsePaginatedModel
-from src.models.section_result.request.section_result_model import UpsertSectionResultModel
+from src.models.section_result.request.section_result_model import UpsertSectionResultModel, UpsertResultProcessModel
 from src.repositories.department.beanie_department_repository import BeanieDepartmentRepository
 from src.repositories.report.beanie_report_repository import BeanieReportRepository
 from src.repositories.result.beanie_result_repository import BeanieResultRepository
@@ -34,7 +34,7 @@ def get_report_service():
 
 def get_section_result_service():
     return SectionResultService(BeanieSectionResultRepository(), BeanieSectionRepository(),
-                                BeanieReportRepository(), BeanieUserRepository())
+                                BeanieReportRepository(), BeanieTemplateRepository(), BeanieUserRepository())
 
 
 @router.get("/get-reports", response_model=ResponsePaginatedModel)
@@ -111,6 +111,19 @@ async def update_report_result(
     response = await service.change_status_result_view(report_id, user_data["sub"], status_result)
     return ResponseModel(data=response)
 
+@router.put("/upsert-process/{template_id}",
+            response_model=ResponseModel,
+            status_code=status.HTTP_202_ACCEPTED,
+            )
+async def upsert_process(
+        template_id: str,
+        data: UpsertResultProcessModel,
+        service: SectionResultService = Depends(get_report_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    user_id = user_data["sub"]
+    response = await service.upsert_result_process(template_id, data.section_item_id, data.value, user_id, data.date)
+    return ResponseModel(data=response)
 @router.post("/remind-submit")
 async def remind_submit(
         x_internal_key: str = Header(alias="x-internal-key"),

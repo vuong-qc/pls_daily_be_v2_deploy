@@ -15,3 +15,4 @@ class TemplateResponseModel(BaseModel):
     created_at: int
     updated_at: int
     group: str
+    type: Optional[str] = None

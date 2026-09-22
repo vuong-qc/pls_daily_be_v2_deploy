@@ -1,7 +1,4 @@
 from typing import Optional, Awaitable, Callable, Any
-
-from beanie.odm.operators.find.comparison import Eq
-
 from src.enums.work_item_type import WorkItemType
 from src.models.work_item.request.filter_work_item import FilterWorkItemModel, ParentStatusCount
 from src.models.project.response.project_response_model import ProjectResponse

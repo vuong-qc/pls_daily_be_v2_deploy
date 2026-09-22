@@ -7,6 +7,7 @@ class CreateTemplateModel(BaseModel):
     title: str
     description: Optional[str] = None
     group: str
+    type: Optional[str] = None
 
 class CreateDuplicateTemplateModel(BaseModel):
     created_by: Optional[str] = None

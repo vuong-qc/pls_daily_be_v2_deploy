@@ -32,6 +32,9 @@ class FilterReportModel(BaseModel):
     result_status: Optional[ResultStatus] = ResultStatus.DISPLAY
     offset: Optional[int] = None
     limit: Optional[int] = None
+    departments: Optional[list[str]] = None
+    shared_id: Optional[list[str]] = None
+    use_token: Optional[bool] = False
 
 
 class UpdateReportModel(BaseModel):

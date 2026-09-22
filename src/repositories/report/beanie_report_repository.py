@@ -3,6 +3,7 @@ import re
 from beanie import PydanticObjectId
 from beanie.operators import In, Set, And, GTE, LTE, RegEx, Or, Eq
 
+from src.models.result.result_document import ResultDocument
 from src.enums.result_enum import ResultStatus
 from src.enums.report_enum import ReportStatusEnum
 from src.enums.result_enum import ResultObjectType, ResultType
@@ -30,11 +31,67 @@ class BeanieReportRepository(ReportRepository):
             department_ids: list[str] | None = None,
     ) -> tuple[list[ReportDocument], int]:
         report_match: dict = {"deleted_at": None}
+
+            # report_match["created_by"] = {"$in": filters.created_by}
+
+        object_filters = []
+        if department_ids:
+            object_filters.append({
+                "$and": [
+                    {"$eq": ["$object_type", ResultObjectType.DEPARTMENT]},
+                    {"$in": ["$object_id", department_ids]},
+                ]
+            })
+        if filters.shared_id:
+            object_filters.append({
+            "$and": [
+                {"$eq": ["$object_type", ResultObjectType.USER.value]},
+                {"$eq": ["$object_id", actor_id]},
+            ]
+        })
+
+        list_report_id = []
+        if filters.shared_id and filters.use_token:
+            shared_ids = filters.shared_id if filters.shared_id else []
+            shared_ids.append(actor_id)
+            results = await ResultDocument.find(
+                In(ResultDocument.object_id, shared_ids),
+            ).to_list()
+            list_report_id = [r.parent_id for r in results]
+        elif filters.shared_id:
+            results = await ResultDocument.find(
+                In(ResultDocument.object_id, filters.shared_id),
+            ).to_list()
+            list_report_id = [r.parent_id for r in results]
+        elif filters.use_token:
+            results = await ResultDocument.find(
+                In(ResultDocument.object_id, [actor_id]),
+            ).to_list()
+            list_report_id = [r.parent_id for r in results]
+
         if filters.status:
+            if list_report_id:
+                filters.status.append(ReportStatusEnum.SUBMITTED)
             report_match.update(In(ReportDocument.status, [status.value for status in filters.status]))
+        else:
+            if list_report_id:
+                report_match.update(
+                    In(ReportDocument.status, [ReportStatusEnum.SUBMITTED.value])
+                )
+
+        if list_report_id:
+            report_match = {
+                "$or": [
+                    report_match,  # dict cũ (đã có deleted_at + các filter)
+                    {
+                        "_id": {"$in": [PydanticObjectId(i) for i in list_report_id]},
+                        "deleted_at": None,  # nhánh shared cũng phải loại report đã xóa
+                        "status" : ReportStatusEnum.SUBMITTED.value
+                    },
+                ]
+            }
         if filters.created_by:
             report_match.update(In(ReportDocument.created_by, filters.created_by))
-            # report_match["created_by"] = {"$in": filters.created_by}
         if filters.start_date and filters.end_date:
             report_match.update(
                 And(
@@ -51,31 +108,16 @@ class BeanieReportRepository(ReportRepository):
                 LTE(ReportDocument.created_at, filters.end_date)
             )
         if filters.search:
-
             report_match.update(
                 RegEx(ReportDocument.title,re.escape(filters.search.strip()), "i")
             )
-
-        object_filters = [{
-            "$and": [
-                {"$eq": ["$object_type", ResultObjectType.USER.value]},
-                {"$eq": ["$object_id", actor_id]},
-            ]
-        }]
-        if department_ids:
-            object_filters.append({
-                "$and": [
-                    {"$eq": ["$object_type", ResultObjectType.DEPARTMENT]},
-                    {"$in": ["$object_id", department_ids]},
-                ]
-            })
-
+        print("query", report_match)
         pipeline = [
             {"$match": report_match},
         ]
         result_match = [
             {"$eq": ["$parent_id", "$$report_id"]},
-            {"$eq": ["$type", ResultType.REPORT]},
+            {"$eq": ["$type", ResultType.REPORT.value]},
             {"$eq": ["$deleted_at", None]},
             {"$or": object_filters},
         ]
@@ -117,6 +159,7 @@ class BeanieReportRepository(ReportRepository):
             {"$project": {"_id": 1}},
         ]
         )
+        print("pipeline", pipeline)
         rows = await ReportDocument.aggregate(pipeline).to_list()
         report_ids = [row["_id"] for row in rows]
         if not report_ids:
