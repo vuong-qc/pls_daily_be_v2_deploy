@@ -61,7 +61,7 @@ class MeetingService:
         updated_meeting = await self.meeting_repository.update_meeting(meeting_id,data.model_dump(exclude_unset=True))
         if not updated_meeting:
             raise MeetingException(MeetingMessage.NOT_FOUND, MeetingStatusCode.NOT_FOUND)
-        if meeting.status == MeetingStatusEnum.IN_PROGRESS and data.status and data.status == MeetingStatusEnum.DONE:
+        if data.status and data.status == MeetingStatusEnum.DONE:
             # create new meeting
             await self._create_next_meeting(updated_meeting)
 

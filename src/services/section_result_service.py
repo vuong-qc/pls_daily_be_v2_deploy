@@ -60,8 +60,8 @@ class SectionResultService:
         template = await self.template_repository.get_template_by_id(template_id)
         if not template:
             raise TemplateException(TemplateMessage.NOT_FOUND, TemplateStatusCode.NOT_FOUND)
-        if template.created_by != user_id:
-            raise TemplateException(TemplateMessage.NOT_OWNER, TemplateStatusCode.NOT_OWNER)
+        # if template.created_by != user_id:
+        #     raise TemplateException(TemplateMessage.NOT_OWNER, TemplateStatusCode.NOT_OWNER)
         # if report.status != ReportStatusEnum.DRAFT:
         #     raise ReportException(ReportMessage.NOT_EDITABLE, ReportStatusCode.NOT_EDITABLE)
         item = await self.section_repository.get_section_by_id(section_item_id)

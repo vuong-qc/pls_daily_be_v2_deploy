@@ -111,19 +111,6 @@ async def update_report_result(
     response = await service.change_status_result_view(report_id, user_data["sub"], status_result)
     return ResponseModel(data=response)
 
-@router.put("/upsert-process/{template_id}",
-            response_model=ResponseModel,
-            status_code=status.HTTP_202_ACCEPTED,
-            )
-async def upsert_process(
-        template_id: str,
-        data: UpsertResultProcessModel,
-        service: SectionResultService = Depends(get_report_service),
-        user_data: dict = Depends(get_current_user_by_token),
-):
-    user_id = user_data["sub"]
-    response = await service.upsert_result_process(template_id, data.section_item_id, data.value, user_id, data.date)
-    return ResponseModel(data=response)
 @router.post("/remind-submit")
 async def remind_submit(
         x_internal_key: str = Header(alias="x-internal-key"),
@@ -132,3 +119,17 @@ async def remind_submit(
     if x_internal_key != settings.INTERNAL_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid internal key")
     return await service.remind_submit_weekly_report()
+
+@router.put("/upsert-process/{template_id}",
+            response_model=ResponseModel,
+            status_code=status.HTTP_202_ACCEPTED,
+            )
+async def upsert_process(
+        template_id: str,
+        data: UpsertResultProcessModel,
+        service: SectionResultService = Depends(get_section_result_service),
+        user_data: dict = Depends(get_current_user_by_token),
+):
+    user_id = user_data["sub"]
+    response = await service.upsert_result_process(template_id, data.section_item_id, data.value, user_id, data.date)
+    return ResponseModel(data=response)

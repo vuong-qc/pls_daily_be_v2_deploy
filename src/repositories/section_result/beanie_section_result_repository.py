@@ -83,10 +83,10 @@ class BeanieSectionResultRepository(SectionResultRepository):
 
     async def upsert_result_process(self, report_id:str, section_item_id: str, value: bool, created_by: str, date: int, note: Optional[str] = None) -> tuple[SectionResultDocument, bool]:
         now = DateTimeUtil.current_milli_time()
-        existing = await self.get_result_process_date(report_id, section_item_id, date)
+        existing = await self.get_result_process_date(report_id, section_item_id, date, created_by)
         if existing:
             await existing.update(Set({"value": value, "updated_at": now}))
-            return await self.get_result_process_date(report_id, section_item_id, date), False
+            return await self.get_result_process_date(report_id, section_item_id, date, created_by), False
 
         result = SectionResultDocument(
             report_id=report_id,

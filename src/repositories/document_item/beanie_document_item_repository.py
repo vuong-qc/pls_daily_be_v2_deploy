@@ -241,7 +241,8 @@ class BeanieDocumentItemRepository(DocumentItemRepository):
             data = DocumentItem(**raw_data)
             data.object_id = new_object_id
             list_document_items.append(data)
-        await DocumentItem.insert_many(list_document_items)
+        if list_document_items:
+            await DocumentItem.insert_many(list_document_items)
     def _vn_day_start(self, ts_ms: int) -> int:
         """
         Trả về mốc epoch (ms, UTC) tương ứng với 00:00:00 giờ VN
