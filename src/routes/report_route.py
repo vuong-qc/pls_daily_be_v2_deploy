@@ -131,5 +131,5 @@ async def upsert_process(
         user_data: dict = Depends(get_current_user_by_token),
 ):
     user_id = user_data["sub"]
-    response = await service.upsert_result_process(template_id, data.section_item_id, data.value, user_id, data.date)
+    response = await service.upsert_result_process(template_id, data.section_item_id, data.value, user_id, data.date, data.note)
     return ResponseModel(data=response)

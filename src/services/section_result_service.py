@@ -1,5 +1,5 @@
 from numbers import Real
-from typing import Union
+from typing import Union, Optional
 
 from src.exception.template_exception import TemplateException, TemplateMessage, TemplateStatusCode
 from src.enums.report_enum import ReportStatusEnum
@@ -56,7 +56,7 @@ class SectionResultService:
         return [SectionResultResponseModel.model_validate(result) for result in results]
 
     async def upsert_result_process(self, template_id: str, section_item_id: str,
-                            value: bool, user_id: str, date: int):
+                            value: bool, user_id: str, date: int, note: Optional[str]=None) -> SectionResultResponseModel:
         template = await self.template_repository.get_template_by_id(template_id)
         if not template:
             raise TemplateException(TemplateMessage.NOT_FOUND, TemplateStatusCode.NOT_FOUND)
@@ -72,7 +72,7 @@ class SectionResultService:
             raise SectionResultException(SectionResultMessage.ITEM_NOT_BELONG, SectionResultStatusCode.ITEM_NOT_BELONG)
         valid_value = self._validate_value(item.value_type, value)
         result, _ = await self.result_repository.upsert_result_process(
-            template_id, section_item_id, valid_value, user_id, date
+            template_id, section_item_id, valid_value, user_id, date, note
         )
         return SectionResultResponseModel.model_validate(result)
 

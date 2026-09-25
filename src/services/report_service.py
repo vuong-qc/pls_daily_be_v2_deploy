@@ -144,7 +144,13 @@ class ReportService:
                 for token in chat_token:
                     position = token.position
                     dict_departments[position.removeprefix("DEPARTMENT_")] = token
-                content = FormatContentGgChatAPI.format_html_gg(TextFormatEnum.USER_SUBMIT_REPORT.format(user=user.name))
+
+                text = TextFormatEnum.USER_SUBMIT_REPORT.format(user=user.name)
+                text = text + TextFormatEnum.NEWLINE + TextFormatEnum.BOLD.format(username = report.title)
+                if report.description:
+                    text = text + TextFormatEnum.NEWLINE + TextFormatEnum.BUG_DESCRIPTION.format(description = report.description)
+
+                content = FormatContentGgChatAPI.format_html_gg(text)
                 # print(dict_departments)
                 if user.department:
                     for department in user.department:

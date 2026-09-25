@@ -119,8 +119,11 @@ class BeanieReportRepository(ReportRepository):
             {"$eq": ["$parent_id", "$$report_id"]},
             {"$eq": ["$type", ResultType.REPORT.value]},
             {"$eq": ["$deleted_at", None]},
-            {"$or": object_filters},
         ]
+        if object_filters:
+            result_match.append(
+                {"$or": object_filters},
+            )
         if filters.result_status is not None:
             # result_match.append({"$eq": ["$status", filters.result_status.value]})
             closed_by_expr = {"$ifNull": ["$closed_by", []]}

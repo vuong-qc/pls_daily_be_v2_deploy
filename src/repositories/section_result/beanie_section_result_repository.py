@@ -85,7 +85,7 @@ class BeanieSectionResultRepository(SectionResultRepository):
         now = DateTimeUtil.current_milli_time()
         existing = await self.get_result_process_date(report_id, section_item_id, date, created_by)
         if existing:
-            await existing.update(Set({"value": value, "updated_at": now}))
+            await existing.update(Set({"value": value, "updated_at": now, "note": note}))
             return await self.get_result_process_date(report_id, section_item_id, date, created_by), False
 
         result = SectionResultDocument(
@@ -104,7 +104,7 @@ class BeanieSectionResultRepository(SectionResultRepository):
             return await self.get_result_process_date(report_id, section_item_id, date, created_by), True
         except DuplicateKeyError:
             existing = await self.get_result_process_date(report_id, section_item_id, date, created_by)
-            await existing.update(Set({"value": value, "updated_at": now}))
+            await existing.update(Set({"value": value, "updated_at": now, "note": note}))
             return await self.get_result_process_date(report_id, section_item_id, date, created_by), False
 
     async def get_result(self, report_id: str, section_item_id: str) -> SectionResultDocument | None:
