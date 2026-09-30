@@ -22,12 +22,16 @@ jobs:
       PROD_DOMAIN: workingapi.pls.edu.vn
       PROD_API_BASE_URL: https://workingapi.pls.edu.vn
       PROD_HEALTHCHECK_URL: https://workingapi.pls.edu.vn/support/check-server
+      PROD_BACKUP_HEALTHCHECK_URL: https://workingapi.plsbackup.com/support/check-server
       PROD_DOCS_URL: https://workingapi.pls.edu.vn/docs
+      PROD_BACKUP_DOCS_URL: https://workingapi.plsbackup.com/docs
       PROD_OPENAPI_URL: https://workingapi.pls.edu.vn/openapi.json
+      PROD_BACKUP_OPENAPI_URL: https://workingapi.plsbackup.com/openapi.json
       PROD_HTTP_HEALTHCHECK_URL: http://workingapi.pls.edu.vn/support/check-server
       PROD_HTTP_DOCS_URL: http://workingapi.pls.edu.vn/docs
       PROD_HTTP_OPENAPI_URL: http://workingapi.pls.edu.vn/openapi.json
       PROD_NGINX_CONF_PATH: /etc/nginx/conf.d/backend_daily.production.conf
+      PROD_BACKUP_NGINX_CONF_PATH: /etc/nginx/conf.d/daily_plsbackup.conf
       PROD_SERVER_DEPLOY_DIR: /opt/backend_daily_production
       PROD_APP_BLUE_HOST_PORT: 8011
       PROD_APP_GREEN_HOST_PORT: 8013
@@ -205,7 +209,7 @@ jobs:
 
           ssh -i ~/.ssh/prod_deploy_key -p "$port" -o StrictHostKeyChecking=yes \
             "${PROD_SERVER_USER}@${PROD_SERVER_IP}" \
-            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_OPENAPI_URL='${PROD_OPENAPI_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_PUBLIC_HTTP_OPENAPI_URL='${PROD_HTTP_OPENAPI_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${PROD_APP_IMAGE}' bash -seu" <<'EOF_REMOTE'
+            "PROD_SERVER_DEPLOY_DIR='${PROD_SERVER_DEPLOY_DIR}' PROD_NGINX_CONF_PATH='${PROD_NGINX_CONF_PATH}' PROD_BACKUP_NGINX_CONF_PATH='${PROD_BACKUP_NGINX_CONF_PATH}' PROD_APP_BLUE_HOST_PORT='${PROD_APP_BLUE_HOST_PORT}' PROD_APP_GREEN_HOST_PORT='${PROD_APP_GREEN_HOST_PORT}' PROD_PUBLIC_HEALTHCHECK_URL='${PROD_HEALTHCHECK_URL}' PROD_BACKUP_HEALTHCHECK_URL='${PROD_BACKUP_HEALTHCHECK_URL}' PROD_PUBLIC_DOCS_URL='${PROD_DOCS_URL}' PROD_PUBLIC_OPENAPI_URL='${PROD_OPENAPI_URL}' PROD_PUBLIC_HTTP_HEALTHCHECK_URL='${PROD_HTTP_HEALTHCHECK_URL}' PROD_PUBLIC_HTTP_DOCS_URL='${PROD_HTTP_DOCS_URL}' PROD_PUBLIC_HTTP_OPENAPI_URL='${PROD_HTTP_OPENAPI_URL}' PROD_COMPOSE_PROJECT_NAME='${PROD_COMPOSE_PROJECT_NAME}' PROD_DOMAIN='${PROD_DOMAIN}' PROD_EXPECTED_PUBLIC_IP='${PROD_EXPECTED_PUBLIC_IP}' APP_IMAGE='${PROD_APP_IMAGE}' bash -seu" <<'EOF_REMOTE'
           set -euo pipefail
           bash "${PROD_SERVER_DEPLOY_DIR}/scripts/deploy_production_blue_green.sh"
           EOF_REMOTE
@@ -215,7 +219,7 @@ jobs:
           set -euo pipefail
 
           for attempt in $(seq 1 30); do
-            if curl --fail --show-error --silent "$PROD_HEALTHCHECK_URL"; then
+            if curl --fail --show-error --silent --resolve "${PROD_DOMAIN}:443:${PROD_EXPECTED_PUBLIC_IP}" "$PROD_HEALTHCHECK_URL"; then
               exit 0
             fi
 
@@ -226,6 +230,11 @@ jobs:
           echo "Backend healthcheck did not become ready in time." >&2
           exit 1
 
+      - name: Verify backup backend healthcheck
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --resolve "workingapi.plsbackup.com:443:${PROD_EXPECTED_PUBLIC_IP}" "$PROD_BACKUP_HEALTHCHECK_URL" >/dev/null
+
       - name: Verify backend docs are blocked
         run: |
           set -euo pipefail
@@ -233,9 +242,11 @@ jobs:
           expect_blocked() {
             label="$1"
             url="$2"
+            domain="$3"
 
             for attempt in $(seq 1 30); do
-              status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url" || true)"
+              status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+                --resolve "${domain}:443:${PROD_EXPECTED_PUBLIC_IP}" "$url" || true)"
               case "$status_code" in
                 403|404)
                   echo "${label} is blocked with HTTP ${status_code}"
@@ -251,5 +262,7 @@ jobs:
             return 1
           }
 
-          expect_blocked "Backend docs" "$PROD_DOCS_URL"
-          expect_blocked "Backend OpenAPI" "$PROD_OPENAPI_URL"
+          expect_blocked "Backend docs" "$PROD_DOCS_URL" "$PROD_DOMAIN"
+          expect_blocked "Backend OpenAPI" "$PROD_OPENAPI_URL" "$PROD_DOMAIN"
+          expect_blocked "Backup backend docs" "$PROD_BACKUP_DOCS_URL" workingapi.plsbackup.com
+          expect_blocked "Backup backend OpenAPI" "$PROD_BACKUP_OPENAPI_URL" workingapi.plsbackup.com

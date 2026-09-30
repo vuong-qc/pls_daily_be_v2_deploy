@@ -3,9 +3,11 @@ set -euo pipefail
 
 PROD_SERVER_DEPLOY_DIR="${PROD_SERVER_DEPLOY_DIR:?PROD_SERVER_DEPLOY_DIR is required}"
 PROD_NGINX_CONF_PATH="${PROD_NGINX_CONF_PATH:?PROD_NGINX_CONF_PATH is required}"
+PROD_BACKUP_NGINX_CONF_PATH="${PROD_BACKUP_NGINX_CONF_PATH:?PROD_BACKUP_NGINX_CONF_PATH is required}"
 PROD_APP_BLUE_HOST_PORT="${PROD_APP_BLUE_HOST_PORT:?PROD_APP_BLUE_HOST_PORT is required}"
 PROD_APP_GREEN_HOST_PORT="${PROD_APP_GREEN_HOST_PORT:?PROD_APP_GREEN_HOST_PORT is required}"
 PROD_PUBLIC_HEALTHCHECK_URL="${PROD_PUBLIC_HEALTHCHECK_URL:?PROD_PUBLIC_HEALTHCHECK_URL is required}"
+PROD_BACKUP_HEALTHCHECK_URL="${PROD_BACKUP_HEALTHCHECK_URL:?PROD_BACKUP_HEALTHCHECK_URL is required}"
 PROD_PUBLIC_DOCS_URL="${PROD_PUBLIC_DOCS_URL:?PROD_PUBLIC_DOCS_URL is required}"
 PROD_PUBLIC_OPENAPI_URL="${PROD_PUBLIC_OPENAPI_URL:?PROD_PUBLIC_OPENAPI_URL is required}"
 PROD_PUBLIC_HTTP_HEALTHCHECK_URL="${PROD_PUBLIC_HTTP_HEALTHCHECK_URL:?PROD_PUBLIC_HTTP_HEALTHCHECK_URL is required}"
@@ -141,11 +143,14 @@ wait_for_public_blocked() {
   label="$1"
   url="$2"
   timeout_seconds="$3"
+  domain="$4"
+  port="$5"
   interval_seconds=2
   elapsed=0
 
   while [ "$elapsed" -lt "$timeout_seconds" ]; do
-    status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url" || true)"
+    status_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+      --resolve "${domain}:${port}:127.0.0.1" "$url" || true)"
     case "$status_code" in
       403|404)
         echo "${label} is blocked with HTTP ${status_code}"
@@ -178,11 +183,29 @@ render_nginx_config() {
 
 install_production_nginx() {
   target_port="$1"
+  if ! sudo test -f "$PROD_BACKUP_NGINX_CONF_PATH"; then
+    echo "Backup Nginx config is missing: $PROD_BACKUP_NGINX_CONF_PATH" >&2
+    exit 1
+  fi
+  if ! sudo grep -Fq 'server_name workingapi.plsbackup.com;' "$PROD_BACKUP_NGINX_CONF_PATH"; then
+    echo "Backup Nginx config does not serve workingapi.plsbackup.com" >&2
+    exit 1
+  fi
+
   nginx_test_log="$(mktemp)"
   rendered_https_conf="$(render_nginx_config "$https_nginx_source" "$target_port")"
+  rendered_backup_conf="$(mktemp)"
+  sudo sed -E "s|(proxy_pass http://127\\.0\\.0\\.1:)[0-9]+;|\\1${target_port};|g" \
+    "$PROD_BACKUP_NGINX_CONF_PATH" > "$rendered_backup_conf"
+  if ! grep -Fq "proxy_pass http://127.0.0.1:${target_port};" "$rendered_backup_conf"; then
+    echo "Backup Nginx config has no API upstream to update" >&2
+    exit 1
+  fi
   rendered_bootstrap_conf=""
 
   sudo install -m 644 "$rendered_https_conf" "${PROD_NGINX_CONF_PATH}"
+  sudo install -m 644 "$rendered_backup_conf" "${PROD_BACKUP_NGINX_CONF_PATH}"
+  sudo restorecon -v "$PROD_BACKUP_NGINX_CONF_PATH" >/dev/null 2>&1 || true
   if sudo nginx -t >"$nginx_test_log" 2>&1; then
     cat "$nginx_test_log"
     nginx_mode="https"
@@ -194,7 +217,7 @@ install_production_nginx() {
     nginx_mode="http"
   fi
 
-  rm -f "$nginx_test_log" "$rendered_https_conf"
+  rm -f "$nginx_test_log" "$rendered_https_conf" "$rendered_backup_conf"
   if [ -n "$rendered_bootstrap_conf" ]; then
     rm -f "$rendered_bootstrap_conf"
   fi
@@ -260,13 +283,16 @@ if [ "$nginx_mode" = "https" ]; then
   public_healthcheck_url="$PROD_PUBLIC_HEALTHCHECK_URL"
   public_docs_url="$PROD_PUBLIC_DOCS_URL"
   public_openapi_url="$PROD_PUBLIC_OPENAPI_URL"
+  public_port=443
 else
   public_healthcheck_url="$PROD_PUBLIC_HTTP_HEALTHCHECK_URL"
   public_docs_url="$PROD_PUBLIC_HTTP_DOCS_URL"
   public_openapi_url="$PROD_PUBLIC_HTTP_OPENAPI_URL"
+  public_port=80
 fi
 
-if ! curl --fail --silent --show-error --retry 10 --retry-delay 2 "$public_healthcheck_url"; then
+if ! curl --fail --silent --show-error --retry 10 --retry-delay 2 \
+  --resolve "$PROD_DOMAIN:$public_port:127.0.0.1" "$public_healthcheck_url"; then
   echo "Public healthcheck failed after switching traffic to port ${target_port}" >&2
   if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
     install_production_nginx "$current_backend_port"
@@ -274,7 +300,16 @@ if ! curl --fail --silent --show-error --retry 10 --retry-delay 2 "$public_healt
   exit 1
 fi
 
-if ! wait_for_public_blocked "Public docs" "$public_docs_url" 30; then
+if ! curl --fail --silent --show-error --retry 10 --retry-delay 2 \
+  --resolve "workingapi.plsbackup.com:443:127.0.0.1" "$PROD_BACKUP_HEALTHCHECK_URL"; then
+  echo "Backup healthcheck failed after switching traffic to port ${target_port}" >&2
+  if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
+    install_production_nginx "$current_backend_port"
+  fi
+  exit 1
+fi
+
+if ! wait_for_public_blocked "Public docs" "$public_docs_url" 30 "$PROD_DOMAIN" "$public_port"; then
   echo "Public docs remained accessible after switching traffic to port ${target_port}" >&2
   if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
     install_production_nginx "$current_backend_port"
@@ -282,7 +317,7 @@ if ! wait_for_public_blocked "Public docs" "$public_docs_url" 30; then
   exit 1
 fi
 
-if ! wait_for_public_blocked "Public OpenAPI" "$public_openapi_url" 30; then
+if ! wait_for_public_blocked "Public OpenAPI" "$public_openapi_url" 30 "$PROD_DOMAIN" "$public_port"; then
   echo "Public OpenAPI remained accessible after switching traffic to port ${target_port}" >&2
   if [ -n "$current_backend_port" ] && [ "$current_backend_port" != "$target_port" ]; then
     install_production_nginx "$current_backend_port"
