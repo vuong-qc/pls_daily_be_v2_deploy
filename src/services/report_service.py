@@ -24,6 +24,7 @@ from src.configs import settings
 from src.repositories.chatbot_token.chatbot_token_repository import ChatbotTokenRepository
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 from src.utils.google_chat_webhook_util import GgChatWebhookUtil
+from html import escape
 
 
 class ReportService:
@@ -145,10 +146,15 @@ class ReportService:
                     position = token.position
                     dict_departments[position.removeprefix("DEPARTMENT_")] = token
 
+                report_detail = await self.get_report(report_id, user_id)
+                results = await self.section_result_repository.get_results_by_report(report_id)
+
                 text = TextFormatEnum.USER_SUBMIT_REPORT.format(user=user.name)
-                text = text + TextFormatEnum.NEWLINE + TextFormatEnum.BOLD.format(username = report.title)
-                if report.description:
-                    text = text + TextFormatEnum.NEWLINE + TextFormatEnum.BUG_DESCRIPTION.format(description = report.description)
+                text += TextFormatEnum.NEWLINE
+                text += TextFormatEnum.REPORT_TITLE.format(title=escape(report.title or ""))
+
+                text += TextFormatEnum.NEWLINE
+                text += FormatContentGgChatAPI.build_report_content(report_detail.sections or [], results)
 
                 content = FormatContentGgChatAPI.format_html_gg(text)
                 # print(dict_departments)

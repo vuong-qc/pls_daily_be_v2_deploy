@@ -77,6 +77,11 @@ class TaskResponse(BaseModel):
 
         return v
 
+    @field_validator('title', mode='before')
+    @classmethod
+    def handle_title(cls, v):
+        return "" if v is None else v
+
 class ResponseSprintStatisticTask(ResponsePaginatedModel):
     total_point: int
     total_done_tasks: int

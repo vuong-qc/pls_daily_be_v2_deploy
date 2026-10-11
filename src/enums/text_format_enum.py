@@ -76,3 +76,9 @@ class TextFormatEnum(StrEnum):
 
     REMIND_SUBMIT_REPORT = "<font color=\"#CB1D21\"><b>{user}</b></font> nhớ nộp báo cáo tuần nhé!"
     USER_SUBMIT_REPORT = "<font color=\"#CB1D21\"><b>{user}</b></font> đã nộp báo cáo tuần!"
+    # ===== WEEKLY REPORT =====
+    REPORT_TITLE = """<b>{title}</b>"""
+    REPORT_SECTION_HEADER = """<b>{index}. {title}</b>"""
+    REPORT_ITEM_LINE = """&#8226; {title}: <b>{value}</b>"""
+    REPORT_ITEM_NOTE = """&nbsp;&nbsp;&nbsp;&nbsp;<i>{note}</i>"""
+    REPORT_NO_VALUE = "—"

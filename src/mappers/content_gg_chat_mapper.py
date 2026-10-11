@@ -69,3 +69,11 @@ PRIORITY: dict[str, str] = {
     "UNKNOWN": "Không xác định",
     "URGENT": "Gấp"
 }
+
+SECTION_RESULT: dict[str, str] = {
+    "EXCELLENT" : 'Xuất Sắc',
+    "GOOD" : 'Tốt',
+    "OKE" : 'Ổn',
+    "NOT_GOOD" : 'Chưa Tốt',
+    "BAD" : 'Tệ',
+}

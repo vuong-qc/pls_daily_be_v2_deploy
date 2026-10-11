@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
+
 from src.enums.task_status_enum import TaskStatusEnum
 from typing import Optional
 from src.enums.task_priority_enum import TaskPriorityEnum
@@ -23,6 +24,20 @@ class UpdateUserTaskModel(BaseModel):
     order_type: Optional[str] = None
     next_order: Optional[str] = None
     prev_order: Optional[str] = None
+
+    @field_validator("title", "type", mode="before")
+    @classmethod
+    def not_allow_null(cls, v, info:ValidationInfo):
+        if v is None:
+            raise ValueError(f"{info.field_name} cannot be null")
+        return v
+
+    @field_validator('title', mode='after')
+    @classmethod
+    def title_not_blank(cls, v: Optional[str]):
+        if v is not None and not v.strip():
+            raise ValueError("'title' không được để trống")
+        return v.strip() if v else v
 
 class UpdateTaskModel(UpdateUserTaskModel):
     deadline: Optional[int] = None

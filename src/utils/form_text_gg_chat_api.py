@@ -1,19 +1,22 @@
 from datetime import datetime
 from typing import Optional, Any
 from zoneinfo import ZoneInfo
+
+from src.enums.section_enum import SectionValueTypeEnum, SectionTypeEnum
 from src.configs import settings
 from src.enums.text_format_enum import TextFormatEnum
 from src.models.task.response.task_response_model import TaskResponse
 from src.models.work_item.response.work_item_response_model import WorkItemResponse
 from src.mappers.content_gg_chat_mapper import (ARRIVAL_STATUS, DEPARTMENT_STATUS, BUG_TYPE,
                                                 FIELD_LABEL_MAP, EVALUATE_SESSION, BUG_STATUS,
-                                                PRIORITY, WORK_FORM)
+                                                PRIORITY, WORK_FORM, SECTION_RESULT)
 from src.enums.bug_status_enum import BugStatusEnum
 from src.enums.bug_type_enum import BugTypeEnum
 from src.enums.task_priority_enum import TaskPriorityEnum
 from src.enums.session_status_enum import ArrivalStatusEnum, DepartmentStatusEnum, WorkFormEnum
 import hashlib
-
+from html import escape
+import math
 import json
 import re
 
@@ -580,6 +583,62 @@ class FormatContentGgChatAPI:
         ]
         return TextFormatEnum.NEWLINE.join(lines)
 
+    @staticmethod
+    def format_result_value( value_type: Optional[str], result) -> str:
+        """Chuyển value của result thành text hiển thị theo value_type."""
+        if result is None or result.value is None or result.value == "":
+            if value_type == SectionValueTypeEnum.CHECK:
+                return "❌"
+            if value_type == SectionValueTypeEnum.PROGRESS:
+                return "0%"
+            return TextFormatEnum.REPORT_NO_VALUE
+
+        value = result.value
+        if value_type == SectionValueTypeEnum.CHECK:
+            return "✅" if value in (True, "true", "True", 1) else "❌"
+        if value_type == SectionValueTypeEnum.PROGRESS:
+            # value có thể là float (vd 80 hoặc 80.0)
+            return f"{math.ceil(value * 100)}%" if isinstance(value, (int, float)) else f"{escape(str(value))}%"
+        if value_type == SectionValueTypeEnum.NUMBER:
+            return f"{value:g}" if isinstance(value, (int, float)) else escape(str(value))
+        # TEXT, EVALUATE và mặc định
+        if value_type == SectionValueTypeEnum.EVALUATE:
+            return escape(SECTION_RESULT[str(value)])
+        return escape(str(value))
+
+    @staticmethod
+    def build_report_content( sections: list, results: list) -> str:
+        """
+        Build HTML theo format:
+        <Tên report>
+        1. <Danh mục>
+        • <Tiêu đề>: <Giá trị>
+        """
+        result_map = {r.section_item_id: r for r in results}
+        lines: list[str] = []
+
+        top_sections = [s for s in sections if s.type == SectionTypeEnum.SECTION]
+
+        for idx, section in enumerate(top_sections, start=1):
+            # if lines:
+            #     lines.append("")  # dòng trống giữa các danh mục
+
+            lines.append(TextFormatEnum.REPORT_SECTION_HEADER.format(
+                index=idx, title=escape(section.title or section.category or "")
+            ))
+
+            for item in section.items:
+                if item.type != SectionTypeEnum.ITEM:
+                    continue
+                result = result_map.get(str(item.id))
+                lines.append(TextFormatEnum.REPORT_ITEM_LINE.format(
+                    title=escape(item.title or ""),
+                    value= FormatContentGgChatAPI.format_result_value(item.value_type, result),
+                ))
+                if result and result.note:
+                    lines.append(TextFormatEnum.REPORT_ITEM_NOTE.format(note=escape(result.note)))
+
+        return TextFormatEnum.NEWLINE.join(lines)
     @staticmethod
     def format_html_gg(content: str) -> dict:
         tz_vn = ZoneInfo(settings.TZ)
