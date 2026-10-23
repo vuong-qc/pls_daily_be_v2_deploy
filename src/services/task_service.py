@@ -270,7 +270,7 @@ class TaskService:
 
     async def update_subtask(self, subtask_id:str, data: UpdateSubtaskModel, user_id: str):
         subtask = await self.task_repository.get_work_item_by_id(subtask_id)
-        if data.status != TaskStatusEnum.DONE:
+        if data.status and data.status != TaskStatusEnum.DONE:
             data.session_id = None
 
         if not subtask:
@@ -576,7 +576,7 @@ class TaskService:
             raise SprintException(SprintMessage.NOT_FOUND, SprintStatusCode.NOT_FOUND)
         if sprint.status == SprintStatusEnum.DONE.value:
             update_data = UpdateTaskModel(status=TaskStatusEnum.PROCESSING)
-            await self.task_repository.update_work_item(sprint_id, update_data.model_dump())
+            await self.task_repository.update_work_item(sprint_id, update_data.model_dump(exclude_unset=True))
 
     async def _count_task(self, filters: FilterTaskModel, total: int):
         # count = 0

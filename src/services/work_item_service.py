@@ -61,7 +61,7 @@ class WorkItemService:
         if not old_work_item_model:
             raise WorkItemException(WorkItemMessage.WORK_ITEM_NOT_FOUND, WorkItemStatusCode.WORK_ITEM_NOT_FOUND)
         update_data = work_item_model.model_dump(exclude_unset=True)
-        if old_work_item_model.type == WorkItemType.BUG and work_item_model.status and work_item_model.status == BugStatusEnum.FIXED.value:
+        if old_work_item_model.type == WorkItemType.BUG and work_item_model.status and work_item_model.status == BugStatusEnum.VERIFIED.value:
             update_data.update({"fixed_at": DateTimeUtil.current_milli_time()})
         work_item = await self.work_item_repository.update_work_item(work_item_id, update_data)
         if not work_item:
