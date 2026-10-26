@@ -47,6 +47,7 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'backend_production_deploy_key*' \
     --exclude 'ops/production-deploy-repo-template/' \
     --exclude 'README.md' \
+    --exclude '/scripts/deploy_production_blue_green.sh' \
     "${SOURCE_REPO}/" "${DEPLOY_REPO}/"
     
 elif command -v robocopy.exe >/dev/null 2>&1; then
@@ -59,7 +60,7 @@ elif command -v robocopy.exe >/dev/null 2>&1; then
     "$(cygpath -w "${DEPLOY_REPO}")" \
     /MIR \
     /XD ".git" ".github\workflows" ".venv" "venv" "__pycache__" ".pytest_cache" ".mypy_cache" "htmlcov" "ops\production-deploy-repo-template" \
-    /XF "mongo-keyfile" ".env" ".env.*" ".coverage" ".coverage.*" ".DS_Store" "credentials.json" "*_SSH_PRIVATE_KEY*" "*deploy_key*" "production_deploy_key*" "backend_production_deploy_key*" "README.md"
+    /XF "mongo-keyfile" ".env" ".env.*" ".coverage" ".coverage.*" ".DS_Store" "credentials.json" "*_SSH_PRIVATE_KEY*" "*deploy_key*" "production_deploy_key*" "backend_production_deploy_key*" "README.md" "deploy_production_blue_green.sh"
 
   RC=$?
   set -e
@@ -79,11 +80,7 @@ find "${DEPLOY_REPO}" -maxdepth 1 -type f \
   -delete
 
 mkdir -p "${DEPLOY_REPO}/.github/workflows"
-rm -f "${DEPLOY_REPO}/.github/workflows/"*.yml
-
-cp \
-  "${SOURCE_REPO}/ops/production-deploy-repo-template/.github/workflows/deploy-production.yml" \
-  "${DEPLOY_REPO}/.github/workflows/deploy-production.yml"
+find "${DEPLOY_REPO}/.github/workflows" -maxdepth 1 -name '*.yml' ! -name 'deploy-production.yml' -delete
 
 cp \
   "${SOURCE_REPO}/ops/production-deploy-repo-template/README.md" \
