@@ -4,6 +4,8 @@ from arq import cron
 from arq.connections import RedisSettings
 import logging
 from src.constant.session_url_constant import SessionUrlEnum
+from src.database import init_db, client
+from src.services.debounce_notification_service import build_debounced_notification_service
 logger = logging.getLogger(__name__)
 
 async def call_internal_api(api_url: str, task_name: str):
@@ -42,12 +44,24 @@ async def remind_submit_report(ctx):
     logger.info('testing submit report...')
     api_url = f'{settings.INTERNAL_API_URL}/reports/remind-submit'
     await call_internal_api(api_url, "remind_submit_report")
+# Gửi các thông báo (update candidate / interview) đã hết thời gian debounce: mỗi 10s
+async def flush_debounced_noti_task(ctx):
+    await ctx["debounced_noti_service"].flush_due()
+
+
+async def startup(ctx):
+    await init_db()  # worker cần kết nối Mongo để lấy chatbot token
+    ctx["debounced_noti_service"] = build_debounced_notification_service()
+
+async def shutdown(ctx):
+    await client.close()
 
 
 class WorkerSettings:
     functions = []
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
-
+    on_startup = startup
+    on_shutdown = shutdown
     # Định nghĩa lịch Cronjob
     cron_jobs = [
         # 1. Thông báo check-in: 9 giờ 30 phút, từ Thứ 2 (1) đến Thứ 6 (5)
@@ -65,5 +79,7 @@ class WorkerSettings:
         cron(check_n_update_task,hour=0, minute=0),
 
         # remind submit report at 20h sunday
-        cron(remind_submit_report, hour=20, minute=0, weekday=6)
+        cron(remind_submit_report, hour=settings.HOUR_REMIND_REPORT, minute=settings.MINUTE_REMIND_REPORT, weekday=settings.DAY_REMIND_REPORT),
+
+        cron(flush_debounced_noti_task, second=set(range(0, 60, 10))),
     ]

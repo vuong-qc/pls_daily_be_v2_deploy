@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     HOUR_CHECKOUT_REMIND:int = 23
     MINUTE_CHECKOUT_REMIND:int = 0
     MONGO_SUPPORTS_TRANSACTION: bool = True
+
+    HOUR_REMIND_REPORT: int = 20
+    MINUTE_REMIND_REPORT: int = 0
+    DAY_REMIND_REPORT: int =6
     ENV: str = "local"
 
     TZ:str='Asia/Ho_Chi_Minh'

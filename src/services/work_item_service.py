@@ -20,6 +20,7 @@ from src.enums.text_format_enum import TextFormatEnum
 from src.utils.form_text_gg_chat_api import FormatContentGgChatAPI
 from src.enums.bug_status_enum import BugStatusEnum
 from src.utils.datetime_util import DateTimeUtil
+from src.repositories.debounce_queue.debounce_queue_repository import DebounceQueueRepository
 
 import logging
 logger = logging.getLogger(__name__)
@@ -29,7 +30,9 @@ class WorkItemService:
     def __init__(self, work_item_repository: WorkItemRepository,
                  group_repository: GroupRepository, user_repository: UserRepository,
                  chatbot_token_repository: ChatbotTokenRepository,
+                 debounce_queue_repository: DebounceQueueRepository,
                  ):
+        self.debounce_queue_repository = debounce_queue_repository
         self.work_item_repository = work_item_repository
         self.group_repository = group_repository
         self.user_repository = user_repository
@@ -69,14 +72,20 @@ class WorkItemService:
         response = WorkItemResponse.model_validate(work_item)
         if work_item.type == WorkItemType.BUG:
             user = await self.user_repository.get_user_by_id(user_id)
-            content = FormatContentGgChatAPI.build_bug_updated_message(user.name, response, WorkItemResponse.model_validate(old_work_item_model), work_item_model.model_dump(exclude_unset=True))
             if response.project:
-                tokens = await self._get_tokens(ChatbotTypeEnum.BUG, self._convert_position(response.project))
-                if tokens:
-                    format_div = FormatContentGgChatAPI.format_html_gg(content)
-                    for token in tokens:
-                        GgChatWebhookUtil.call_webhook(format_div, token.space_id, token.key, token.token)
-
+                # cùng user + cùng bug trong khung debounce -> gộp vào 1 nhóm, worker gửi khi hết hạn
+                await self.debounce_queue_repository.push(
+                    key=f"bug_update:{work_item_id}:{user_id}",
+                    entry={
+                        "changed_fields": work_item_model.model_dump(exclude_unset=True),
+                        "old_item": WorkItemResponse.model_validate(old_work_item_model).model_dump(mode="json"),
+                    },
+                    meta={
+                        "type": "bug",
+                        "user_name": user.name,
+                        "item": response.model_dump(mode="json"),
+                    },
+                )
 
         await self._format_work_item_response(response)
         return ResponseModel(data=response)

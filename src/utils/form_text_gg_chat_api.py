@@ -520,8 +520,10 @@ class FormatContentGgChatAPI:
             user_name: str,
             item: "WorkItemResponse",
             old_item: "WorkItemResponse",
-            changed_fields: Optional[dict[str, Any]] = None,
+            changed_fields: Optional[list[dict[str, Any]]] = None,
     ) -> str:
+        """changed_fields: các lần sửa theo thứ tự thời gian (gộp trong khung debounce), mỗi phần tử là 1 dict field -> value.
+        old_item là trạng thái TRƯỚC lần sửa đầu tiên. Field bị sửa nhiều lần thì mỗi lần là 1 dòng riêng, không ghi đè."""
         user_display = TextFormatEnum.BOLD.format(username= user_name) or TextFormatEnum.GUEST
         bug_code = FormatContentGgChatAPI._get_bug_code(item.id)
         owner = item.owner
@@ -558,14 +560,15 @@ class FormatContentGgChatAPI:
                 ""
             )
 
-            for field_key, new_value in changed_fields.items():
-                field_label = FIELD_LABEL_MAP.get(field_key, field_key)
-                lines.append(
-                    TextFormatEnum.BUG_UPDATE_FIELD_LINE.format(
-                        field_label=TextFormatEnum.BOLD.format(username=field_label),
-                        new_value=FormatContentGgChatAPI._format_field_value(field_key, new_value, item),
+            for change in changed_fields:
+                for field_key, new_value in change.items():
+                    field_label = FIELD_LABEL_MAP.get(field_key, field_key)
+                    lines.append(
+                        TextFormatEnum.BUG_UPDATE_FIELD_LINE.format(
+                            field_label=TextFormatEnum.BOLD.format(username=field_label),
+                            new_value=FormatContentGgChatAPI._format_field_value(field_key, new_value, item),
+                        )
                     )
-                )
 
         return TextFormatEnum.NEWLINE.join(lines)
 

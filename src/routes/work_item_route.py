@@ -1,5 +1,6 @@
 from src.models.work_item.request.duplicate_work_item_model import DuplicateWorkItemRequest
 from src.services.work_item_service import WorkItemService
+from src.repositories.debounce_queue.debounce_queue_repository import DebounceQueueRepository
 from src.repositories.group.beanie_group_repository import BeanieGroupRepository
 from src.repositories.user.beanie_user_repository import BeanieUserRepository
 from src.repositories.work_item.beanie_work_item_repository import BeanieWorkItemRepository
@@ -22,7 +23,7 @@ def get_work_item_service():
     group_repository = BeanieGroupRepository()
     user_repository = BeanieUserRepository()
     chatbot_token_repository = BeanieChatbotTokenRepository()
-    return WorkItemService(beanie_work_item_repository, group_repository, user_repository, chatbot_token_repository)
+    return WorkItemService(beanie_work_item_repository, group_repository, user_repository, chatbot_token_repository, DebounceQueueRepository())
 
 def get_duplicate_work_item_service() -> DuplicateWorkItemService:
     beanie_work_item_repository = BeanieWorkItemRepository()
