@@ -9,7 +9,7 @@ class DateTimeUtil:
     def current_milli_time():
         return int(time.time() * 1000)
     @staticmethod
-    def get_start_time_today():
+    def get_start_time_today()->datetime:
         tz_vn = ZoneInfo(settings.TZ)
         now_vn = datetime.now(tz_vn)
         start_of_today_vn = datetime.combine(now_vn.date(), time_datetime.min, tzinfo=tz_vn)
@@ -24,6 +24,9 @@ class DateTimeUtil:
 
         timestamp = end_of_today_vn.timestamp()
         return int(timestamp * 1000)
+    @staticmethod
+    def get_start_date_today_ms():
+        return int(DateTimeUtil.get_start_time_today().timestamp() *1000)
 
     @staticmethod
     def generate_date_range(start_str: str, end_str: str) -> list[str]:

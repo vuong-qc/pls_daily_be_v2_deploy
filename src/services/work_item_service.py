@@ -73,6 +73,7 @@ class WorkItemService:
         if work_item.type == WorkItemType.BUG:
             user = await self.user_repository.get_user_by_id(user_id)
             if response.project:
+                logger.info("add queue job")
                 # cùng user + cùng bug trong khung debounce -> gộp vào 1 nhóm, worker gửi khi hết hạn
                 await self.debounce_queue_repository.push(
                     key=f"bug_update:{work_item_id}:{user_id}",
